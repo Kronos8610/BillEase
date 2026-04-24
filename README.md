@@ -131,6 +131,45 @@ BillEase/
 
 ---
 
-## 📄 Licencia
+## 🔮 Futuras mejoras
 
-Este proyecto ha sido desarrollado como Trabajo de Fin de Grado (TFG). Uso libre para fines educativos.
+Estas son algunas funcionalidades que se plantean incorporar en próximas versiones de BillEase:
+
+### 🔒 Seguridad y cifrado de datos
+- Cifrado de la base de datos local para proteger los datos sensibles de los clientes (nombre, NIF/CIF, email, teléfono)
+- Almacenamiento seguro de la contraseña del autónomo mediante hash (bcrypt)
+- Protección contra accesos no autorizados a los archivos de la aplicación
+
+### 🔍 Búsqueda y filtros
+- Buscador en tiempo real para facturas, clientes y servicios
+- Filtros por fecha, importe, estado o tipo de cliente
+- Ordenación de columnas en las listas del panel principal
+
+### 🎨 Personalización de la interfaz
+- Apartado de **ajustes de tema**: modo claro, modo oscuro y selección de color de acento
+- Posibilidad de cambiar el tamaño de fuente de la aplicación
+- Guardado automático de las preferencias visuales del usuario
+
+### 👤 Ajustes de usuario
+- Pantalla de **perfil del autónomo** para modificar los datos personales (nombre, dirección, NIF, teléfono, email) sin necesidad de reinstalar
+- Cambio de contraseña desde la propia aplicación
+- Subida de logotipo propio para que aparezca en los PDFs generados
+
+### 📊 Estadísticas e informes
+- Panel de estadísticas con gráficos de ingresos por mes
+- Resumen anual de facturación para facilitar la declaración de impuestos
+- Exportación de informes en Excel o CSV
+
+### 📄 Mejoras en la generación de PDF
+- Plantillas de diseño seleccionables para las facturas
+- Inclusión del logotipo del autónomo en la cabecera
+- Numeración automática de facturas con formato personalizable (ej: `2025-001`)
+- Campo de número de cuenta bancaria para incluirlo en la factura
+
+### 📧 Envío de facturas
+- Envío directo de facturas por email desde la aplicación
+- Historial de facturas enviadas por correo
+
+### 🗄️ Gestión avanzada de datos
+- Sistema de copias de seguridad automáticas de la base de datos
+- Posibilidad de marcar facturas como **pagadas / pendientes / vencidas**
