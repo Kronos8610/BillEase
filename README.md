@@ -57,13 +57,8 @@ La primera vez que arranques la aplicación, se mostrará un formulario de **con
 
 ## 🗂️ Base de datos de prueba (opcional)
 
-Si quieres explorar la aplicación con datos ficticios ya cargados, ejecuta:
-
-```bash
-python seed_db.py
-```
-
-Esto creará una base de datos con clientes, servicios y facturas de ejemplo.
+Viene incluido una base de datos cargada con datos para una prueba fluida del programa.
+Si se desea empezar de cero borre la base de datos o muevala a otra carpeta.
 
 Las credenciales de acceso generadas son:
 
