@@ -1,7 +1,7 @@
 <title>BillEase en Fluent</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&family=Doto:wght@600;800&display=swap">
 
 <style>
 /* ═══════════════════════════════════════════════
@@ -36,6 +36,7 @@
   --f-ui:"Segoe UI Variable Display","Segoe UI","Source Sans 3",system-ui,sans-serif;
   --f-txt:"Segoe UI Variable Text","Segoe UI","Source Sans 3",system-ui,sans-serif;
   --f-mono:"Cascadia Mono",Consolas,"IBM Plex Mono",ui-monospace,monospace;
+  --f-dot:"Doto","Courier New",monospace;
 
   --r-card:8px;
   --r-ctrl:4px;
@@ -309,7 +310,7 @@ section > .wrap{padding-block:48px}
   text-align:left;font-weight:600;font-size:11.5px;color:var(--w-text2);
   padding:10px 14px;background:var(--w-alt);border-bottom:1px solid var(--w-div);white-space:nowrap;
 }
-.wtable td{padding:10px 14px;border-bottom:1px solid var(--w-div);vertical-align:middle}
+.wtable td{padding:10px 14px;border-bottom:1px solid var(--w-div);vertical-align:middle;color:var(--w-text)}
 .wtable tr:last-child td{border-bottom:0}
 .wtable tr.sel td{background:var(--w-acc-soft)}
 .wtable .r{text-align:right;font-variant-numeric:tabular-nums}
@@ -337,11 +338,23 @@ section > .wrap{padding-block:48px}
 .wfinput.ph{color:var(--w-text3)}
 .wfinput.focus{border-bottom-color:var(--w-acc)}
 .wfinput.ro{background:var(--w-alt);color:var(--w-text2);border-bottom-width:1px}
-.lrow{display:grid;grid-template-columns:1fr 54px 74px 80px 26px;gap:8px;align-items:end}
-.lrow .del{
-  border:1px solid var(--w-stroke);border-radius:3px;height:27px;display:grid;place-items:center;color:var(--w-text2);
+.lineblock{
+  border:1px solid var(--w-stroke);border-radius:var(--r-ctrl);padding:10px 11px;display:grid;gap:8px;
+  background:var(--w-alt);
 }
-.lrow .del svg{width:13px;height:13px}
+.lhead{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:11px;color:var(--w-text2);
+}
+.lhead .del{border:1px solid var(--w-stroke);border-radius:3px;padding:2px 5px;display:grid;place-items:center}
+.lhead .del svg{width:12px;height:12px;display:block}
+.wfinput.area{
+  min-height:46px;line-height:1.5;font-size:12.5px;white-space:normal;background:var(--w-ctrl);
+}
+.wfinput.area .caret{
+  display:inline-block;width:1px;height:12px;background:var(--w-acc);vertical-align:-2px;margin-left:1px;
+}
+.lnums{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .sect{
   background:var(--w-layer);border:1px solid var(--w-stroke);border-bottom-color:var(--w-stroke2);
   border-radius:var(--r-card);padding:14px 15px;display:grid;gap:11px;
@@ -362,46 +375,62 @@ section > .wrap{padding-block:48px}
 }
 .infobar svg{width:15px;height:15px;color:var(--w-acc);flex:none;margin-top:1px}
 
-/* ── documento impreso ── */
-.docshell{background:var(--layer-alt);border:1px solid var(--stroke);border-radius:var(--r-card);padding:22px;box-shadow:var(--elev-2)}
+/* ── documento impreso · lenguaje v1: monocromo y matricial ── */
+.docshell{background:#E9E9E6;border:1px solid var(--stroke);border-radius:var(--r-card);padding:22px;box-shadow:var(--elev-2)}
 .sheet{
-  background:#fff;color:#1A1A1A;border-radius:3px;padding:30px 32px;
-  font-family:var(--f-txt);font-size:11.5px;line-height:1.5;display:grid;gap:18px;
-  box-shadow:0 2px 14px rgba(0,0,0,.10);max-width:620px;margin:0 auto;
+  background:#fff;color:#0A0A0B;border-radius:2px;padding:32px 34px;
+  font-family:"Source Sans 3",system-ui,sans-serif;font-size:11.5px;line-height:1.55;
+  display:grid;gap:18px;box-shadow:0 2px 16px rgba(0,0,0,.12);max-width:620px;margin:0 auto;
 }
 .dochead{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
 .dochead .kind{
-  font-family:var(--f-ui);font-size:25px;font-weight:600;letter-spacing:-.01em;line-height:1;color:#0F6CBD;
+  font-family:var(--f-dot);font-weight:800;font-size:31px;line-height:.95;
+  letter-spacing:.02em;color:#0A0A0B;text-transform:uppercase;
 }
-.dochead .kind.inv{color:#1A1A1A}
-.dochead .who{margin-top:10px;font-size:10.5px;line-height:1.6;color:#3A3A3A}
-.dochead .who b{color:#1A1A1A}
-.docmeta{text-align:right;font-size:10px;line-height:1.9;color:#6A6A6A;font-variant-numeric:tabular-nums;white-space:nowrap}
-.docmeta b{color:#1A1A1A;font-size:11px}
-.docrule{height:2px;background:#1A1A1A}
-.docrule.acc{background:#0F6CBD}
+.dochead .who{margin-top:11px;font-size:10.5px;line-height:1.65;color:#3C3C3C}
+.dochead .who b{color:#0A0A0B;font-weight:600;font-size:11.5px}
+.docmeta{
+  text-align:right;font-family:var(--f-mono);font-size:9.5px;line-height:2;color:#6E6E6E;
+  font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:.03em;
+}
+.docmeta b{color:#0A0A0B;font-weight:500;font-size:11px;font-family:var(--f-dot);letter-spacing:.04em}
+.docrule{height:2px;background:#0A0A0B}
+.docstrip{
+  font-family:var(--f-mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:#6E6E6E;display:flex;justify-content:space-between;gap:12px;margin-top:-10px;
+}
 .docto{font-size:10.5px;line-height:1.65}
-.docto .lb{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#8A8A8A;margin-bottom:4px;font-family:var(--f-mono)}
-.docto b{font-size:12px}
+.docto .lb{
+  font-family:var(--f-mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:#8A8A8A;margin-bottom:5px;
+}
+.docto b{font-size:12.5px;font-weight:600}
 .doctable{width:100%;border-collapse:collapse;font-size:10.5px}
 .doctable th{
-  text-align:left;font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:#8A8A8A;
-  font-weight:400;font-family:var(--f-mono);padding:0 0 7px;border-bottom:1px solid #1A1A1A;
+  text-align:left;font-family:var(--f-mono);font-size:8.5px;letter-spacing:.15em;text-transform:uppercase;
+  color:#8A8A8A;font-weight:400;padding:0 0 7px;border-bottom:1px solid #0A0A0B;
 }
-.doctable td{padding:8px 0;border-bottom:1px solid #EDEDED;font-variant-numeric:tabular-nums}
-.doctable .r{text-align:right}
-.doctable .d2{color:#6A6A6A;font-size:9.5px}
-.doctot{margin-left:auto;width:238px;display:grid;gap:5px;font-size:10.5px;font-variant-numeric:tabular-nums}
-.doctot .row{display:flex;justify-content:space-between;color:#5C5C5C}
+.doctable td{padding:9px 0;border-bottom:1px solid #E8E8E4;vertical-align:top;font-variant-numeric:tabular-nums;color:#0A0A0B}
+.doctable .r{text-align:right;white-space:nowrap;padding-left:10px}
+.doctable .desc{line-height:1.5;padding-right:14px}
+.doctot{margin-left:auto;width:250px;display:grid;gap:6px;font-size:10.5px;font-variant-numeric:tabular-nums}
+.doctot .row{display:flex;justify-content:space-between;color:#5A5A5A}
 .doctot .row.t{
-  border-top:2px solid #1A1A1A;margin-top:4px;padding-top:8px;color:#1A1A1A;align-items:baseline;
+  border-top:2px solid #0A0A0B;margin-top:5px;padding-top:9px;color:#0A0A0B;align-items:baseline;
 }
-.doctot .row.t b{font-family:var(--f-ui);font-size:19px;font-weight:600}
-.doctot .row.t.acc{border-top-color:#0F6CBD}
-.doctot .row.t.acc b{color:#0F6CBD}
-.docnote{background:#F7F7F5;border-left:3px solid #DADAD6;padding:9px 12px;font-size:9.5px;color:#5C5C5C;line-height:1.6}
-.docfoot{border-top:1px solid #EDEDED;padding-top:9px;display:flex;justify-content:space-between;gap:14px;font-size:8.5px;color:#8A8A8A;font-family:var(--f-mono)}
-
+.doctot .row.t span{font-family:var(--f-mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase}
+.doctot .row.t b{font-family:var(--f-dot);font-size:23px;font-weight:800;letter-spacing:.02em}
+.docnote{
+  border-top:1px solid #E8E8E4;padding-top:11px;font-size:9.5px;color:#5A5A5A;line-height:1.7;
+}
+.docnote .lb{
+  font-family:var(--f-mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase;
+  color:#8A8A8A;margin-bottom:4px;
+}
+.docfoot{
+  display:flex;justify-content:space-between;gap:14px;font-size:8.5px;color:#9A9A9A;
+  font-family:var(--f-mono);letter-spacing:.08em;
+}
 .caption{
   font-size:12.5px;color:var(--text-2);margin-top:12px;display:flex;gap:9px;align-items:baseline;
 }
@@ -438,8 +467,7 @@ footer .wrap{padding-block:28px;color:var(--text-2);font-size:13px;display:flex;
   .compare{grid-template-columns:1fr;gap:0}
   .compare .h:first-child{display:none}
   .irow{grid-template-columns:1fr;gap:6px}
-  .lrow{grid-template-columns:1fr 1fr}
-  .lrow .del{display:none}
+  .lnums{grid-template-columns:1fr 1fr}
 }
 @media (max-width:560px){
   .sheet{padding:20px}
@@ -498,10 +526,10 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
 
 <header class="hero">
   <div class="wrap">
-    <span class="badge"><span class="d"></span> Propuesta v2 · sustituye a la dirección Nothing</span>
+    <span class="badge"><span class="d"></span> Propuesta v2.1 · Fluent en pantalla, plantilla v1 en papel</span>
     <h1>BillEase en Fluent</h1>
     <p class="lead">Misma estructura, otro carácter. Dejamos el monocromo por el sistema de diseño de Windows&nbsp;11: superficies en capas, esquinas de 8&nbsp;px, tipografía Segoe y un azul de acento que hace de guía en lugar de decorar. Se parece a las aplicaciones que el usuario ya tiene abiertas — y eso, en una herramienta de trabajo, se nota.</p>
-    <p class="note">Los documentos impresos —presupuesto y factura— <strong>van sin ninguna marca de agua</strong>: sin logotipo de la aplicación, sin fondos tramados, sin pie de marca. Solo los datos del autónomo y del cliente.</p>
+    <p class="note">Tres decisiones que cambian respecto a lo anterior: los <strong>conceptos se escriben a mano</strong> —desaparece el catálogo de servicios—, los documentos impresos <strong>mantienen la plantilla de la primera propuesta</strong>, y <strong>no aparece el IRPF</strong> por ningún lado. Sin marcas de agua, claro.</p>
   </div>
 </header>
 
@@ -524,7 +552,7 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
       </div>
       <div class="card principle">
         <h3><span class="ic"><svg width="16" height="16"><use href="#i-chart"/></svg></span>Densidad de trabajo</h3>
-        <p>Filas de 36&nbsp;px, tipografía de 13&nbsp;px en tablas, cifras tabulares. Caben 14 facturas sin desplazar la vista; hoy caben 7 y sin el importe.</p>
+        <p>Filas de 36&nbsp;px y cifras tabulares en la tabla; en cambio el concepto de una factura se escribe en un bloque que crece con el texto, sin límite de línea.</p>
       </div>
       <div class="card principle">
         <h3><span class="ic"><svg width="16" height="16"><use href="#i-user"/></svg></span>Familiar</h3>
@@ -537,10 +565,11 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
         <div class="h"></div><div class="h">Nothing (v1)</div><div class="h">Fluent (v2)</div>
         <div class="k">Fondo</div><div class="old">Negro absoluto con rejilla de puntos</div><div class="new">Mica claro tintado · oscuro #202020</div>
         <div class="k">Acento</div><div class="old">Rojo #D71921, dos variantes por contraste</div><div class="new">Azul #0F6CBD · #60CDFF en oscuro</div>
-        <div class="k">Tipografía</div><div class="old">Doto matricial + grotesca</div><div class="new">Segoe UI Variable, un solo sistema</div>
+        <div class="k">Tipografía</div><div class="old">Doto matricial + grotesca</div><div class="new">Segoe UI Variable en pantalla · la matricial se queda en el papel</div>
         <div class="k">Geometría</div><div class="old">Filetes de 1&nbsp;px, casi sin radios</div><div class="new">8&nbsp;px en tarjetas, 4&nbsp;px en controles</div>
+        <div class="k">Conceptos</div><div class="old">Elegidos de un catálogo de servicios</div><div class="new">Texto libre: se escribe el trabajo entero</div>
         <div class="k">Carácter</div><div class="old">Objeto de diseño, declaración estética</div><div class="new">Herramienta: se aparta y deja ver los datos</div>
-        <div class="k">Documentos</div><div class="old">Rótulo BILLEASE bajo el título</div><div class="new">Sin marca de agua ni logotipo de la app</div>
+        <div class="k">Documentos</div><div class="old">Rótulo BILLEASE bajo el título</div><div class="new">Plantilla v1 conservada · sin marca de agua ni IRPF</div>
       </div>
     </div>
   </div>
@@ -638,7 +667,6 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
               <div class="nitem on"><svg><use href="#i-doc"/></svg>Facturas</div>
               <div class="nitem"><svg><use href="#i-tag"/></svg>Presupuestos</div>
               <div class="nitem"><svg><use href="#i-people"/></svg>Clientes</div>
-              <div class="nitem"><svg><use href="#i-tag"/></svg>Servicios</div>
               <div class="nitem"><svg><use href="#i-chart"/></svg>Resumen IVA</div>
               <div class="navspacer"></div>
               <div class="naccount"><span class="avatar">CG</span><span>Carlos García<br><span style="font-size:11px">12345678A</span></span></div>
@@ -706,7 +734,6 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
               <div class="nitem on"><svg><use href="#i-doc"/></svg>Facturas</div>
               <div class="nitem"><svg><use href="#i-tag"/></svg>Presupuestos</div>
               <div class="nitem"><svg><use href="#i-people"/></svg>Clientes</div>
-              <div class="nitem"><svg><use href="#i-tag"/></svg>Servicios</div>
               <div class="nitem"><svg><use href="#i-chart"/></svg>Resumen IVA</div>
               <div class="navspacer"></div>
               <div class="naccount"><span class="avatar">CG</span><span>Carlos García<br><span style="font-size:11px">12345678A</span></span></div>
@@ -745,30 +772,38 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
 
                   <div class="sect">
                     <div class="lg"><svg><use href="#i-doc"/></svg>Conceptos</div>
-                    <div class="lrow">
-                      <div class="wfield"><span class="lb">Servicio</span><div class="wfinput">Instalación de fontanería</div></div>
-                      <div class="wfield"><span class="lb">Uds.</span><div class="wfinput">4</div></div>
-                      <div class="wfield"><span class="lb">Precio</span><div class="wfinput">85,00</div></div>
-                      <div class="wfield"><span class="lb">Importe</span><div class="wfinput ro">340,00</div></div>
-                      <div class="del"><svg><use href="#i-trash"/></svg></div>
+                    <div class="lineblock">
+                      <div class="lhead"><span>Concepto 1</span><span class="del"><svg><use href="#i-trash"/></svg></span></div>
+                      <div class="wfinput area">Suministro y montaje de armario empotrado de dos módulos con puerta corredera, acabado en blanco lacado. Medidas 2,00 × 2,40 m. Incluye herrajes, guía inferior de aluminio y dos baldas interiores.</div>
+                      <div class="lnums">
+                        <div class="wfield"><span class="lb">Cantidad</span><div class="wfinput">1</div></div>
+                        <div class="wfield"><span class="lb">Unidad</span><div class="wfinput">ud</div></div>
+                        <div class="wfield"><span class="lb">Precio</span><div class="wfinput">1.240,00</div></div>
+                        <div class="wfield"><span class="lb">Importe</span><div class="wfinput ro">1.240,00</div></div>
+                      </div>
                     </div>
-                    <div class="lrow">
-                      <div class="wfield"><span class="lb">Servicio</span><div class="wfinput focus">Pintura interior m²</div></div>
-                      <div class="wfield"><span class="lb">Uds.</span><div class="wfinput">28</div></div>
-                      <div class="wfield"><span class="lb">Precio</span><div class="wfinput">12,50</div></div>
-                      <div class="wfield"><span class="lb">Importe</span><div class="wfinput ro">350,00</div></div>
-                      <div class="del"><svg><use href="#i-trash"/></svg></div>
+                    <div class="lineblock">
+                      <div class="lhead"><span>Concepto 2</span><span class="del"><svg><use href="#i-trash"/></svg></span></div>
+                      <div class="wfinput area focus">Desmontaje del armario existente y retirada de escombros a punto limpio.<span class="caret"></span></div>
+                      <div class="lnums">
+                        <div class="wfield"><span class="lb">Cantidad</span><div class="wfinput">1</div></div>
+                        <div class="wfield"><span class="lb">Unidad</span><div class="wfinput">ud</div></div>
+                        <div class="wfield"><span class="lb">Precio</span><div class="wfinput">195,00</div></div>
+                        <div class="wfield"><span class="lb">Importe</span><div class="wfinput ro">195,00</div></div>
+                      </div>
                     </div>
-                    <div><span class="cbtn"><svg><use href="#i-plus"/></svg>Añadir línea</span></div>
+                    <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+                      <span class="cbtn"><svg><use href="#i-plus"/></svg>Añadir concepto</span>
+                      <span class="hint">Escribe libremente. Se te sugiere lo que ya has escrito otras veces, pero nunca hay que elegir de una lista.</span>
+                    </div>
                   </div>
                 </div>
 
                 <aside style="display:grid;gap:12px">
                   <div class="sumcard">
-                    <div class="srow"><span>Base imponible</span><span>690,00 €</span></div>
-                    <div class="srow"><span>IVA 21 %</span><span>144,90 €</span></div>
-                    <div class="srow"><span>IRPF −15 %</span><span>−103,50 €</span></div>
-                    <div class="srow tot"><span>Total</span><b>731,40 €</b></div>
+                    <div class="srow"><span>Base imponible</span><span>1.435,00 €</span></div>
+                    <div class="srow"><span>IVA 21 %</span><span>301,35 €</span></div>
+                    <div class="srow tot"><span>Total</span><b>1.736,35 €</b></div>
                   </div>
                   <div class="sect" style="gap:9px">
                     <div class="wfield"><span class="lb">Fecha de emisión</span><div class="wfinput">13/09/2026</div></div>
@@ -779,7 +814,7 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
             </main>
           </div>
         </div>
-        <p class="caption"><b>02</b> <span>Editor · el total se ve mientras escribes, con IVA e IRPF desglosados. Los datos fiscales del cliente pasan a solo lectura: hoy son editables y lo que escribes ahí se descarta al guardar.</span></p>
+        <p class="caption"><b>02</b> <span>Editor · cada concepto es un bloque de texto libre donde escribes el trabajo entero, con su cantidad, unidad y precio. El total se actualiza mientras escribes. Los datos fiscales del cliente pasan a solo lectura: hoy son editables y lo que escribes ahí se descarta al guardar.</span></p>
       </div>
 
       <!-- Pantalla 3 · oscuro -->
@@ -795,7 +830,6 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
               <div class="nitem"><svg><use href="#i-doc"/></svg>Facturas</div>
               <div class="nitem on"><svg><use href="#i-tag"/></svg>Presupuestos</div>
               <div class="nitem"><svg><use href="#i-people"/></svg>Clientes</div>
-              <div class="nitem"><svg><use href="#i-tag"/></svg>Servicios</div>
               <div class="nitem"><svg><use href="#i-chart"/></svg>Resumen IVA</div>
               <div class="navspacer"></div>
               <div class="naccount"><span class="avatar">CG</span><span>Carlos García<br><span style="font-size:11px">12345678A</span></span></div>
@@ -840,8 +874,8 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
   <div class="wrap">
     <div class="sechead">
       <span class="eyebrow">04 · El documento</span>
-      <h2>Presupuesto y factura, sin marcas de agua</h2>
-      <p class="note">Una sola plantilla con dos cabeceras. El presupuesto lleva el acento azul y su condición de validez; la factura va en negro y añade el vencimiento. Ni logotipo de la aplicación, ni trama de fondo, ni pie de marca: quien recibe el documento solo ve los datos del autónomo.</p>
+      <h2>Presupuesto y factura, con la plantilla que te gustó</h2>
+      <p class="note">Aquí no entra Fluent: el papel se queda con el lenguaje de la primera propuesta — monocromo, retícula limpia y los números en tipografía matricial. Funciona bien impreso en blanco y negro y no compite con el contenido. Una plantilla, dos cabeceras. Sin marcas de agua, sin logotipo de la aplicación y <strong>sin IRPF</strong>.</p>
     </div>
 
     <div class="grid2" style="gap:18px">
@@ -860,12 +894,13 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
                 </div>
               </div>
               <div class="docmeta">
-                Número <b>P-2025-011</b><br>
+                Nº <b>P-2025-011</b><br>
                 Fecha <b>04/09/2025</b><br>
-                Válido hasta <b>19/09/2025</b>
+                Validez <b>19/09/2025</b>
               </div>
             </div>
-            <div class="docrule acc"></div>
+            <div class="docrule"></div>
+            <div class="docstrip"><span>Presupuesto sin valor contable</span><span>15 días de validez</span></div>
 
             <div class="docto">
               <div class="lb">Para</div>
@@ -875,26 +910,34 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
             </div>
 
             <table class="doctable">
-              <thead><tr><th>Concepto</th><th class="r">Uds.</th><th class="r">Precio</th><th class="r">Importe</th></tr></thead>
+              <thead><tr><th>Concepto</th><th class="r">Cant.</th><th class="r">Precio</th><th class="r">Importe</th></tr></thead>
               <tbody>
-                <tr><td>Instalación de fontanería<div class="d2">Por hora de trabajo</div></td><td class="r">4</td><td class="r">85,00</td><td class="r">340,00</td></tr>
-                <tr><td>Pintura interior m²<div class="d2">Precio por metro cuadrado</div></td><td class="r">28</td><td class="r">12,50</td><td class="r">350,00</td></tr>
+                <tr>
+                  <td class="desc">Suministro y montaje de armario empotrado de dos módulos con puerta corredera, acabado en blanco lacado. Medidas 2,00 × 2,40 m. Incluye herrajes, guía inferior de aluminio y dos baldas interiores.</td>
+                  <td class="r">1 ud</td><td class="r">1.240,00</td><td class="r">1.240,00</td>
+                </tr>
+                <tr>
+                  <td class="desc">Desmontaje del armario existente y retirada de escombros a punto limpio.</td>
+                  <td class="r">1 ud</td><td class="r">195,00</td><td class="r">195,00</td>
+                </tr>
               </tbody>
             </table>
 
             <div class="doctot">
-              <div class="row"><span>Base imponible</span><span>690,00 €</span></div>
-              <div class="row"><span>IVA 21 %</span><span>144,90 €</span></div>
-              <div class="row"><span>Retención IRPF 15 %</span><span>−103,50 €</span></div>
-              <div class="row t acc"><span>Total presupuestado</span><b>731,40 €</b></div>
+              <div class="row"><span>Base imponible</span><span>1.435,00 €</span></div>
+              <div class="row"><span>IVA 21 %</span><span>301,35 €</span></div>
+              <div class="row t"><span>Total</span><b>1.736,35 €</b></div>
             </div>
 
-            <div class="docnote">Presupuesto sin valor contable. La aceptación por escrito genera la factura correspondiente. Plazo estimado de ejecución: 5 días laborables desde la aceptación.</div>
+            <div class="docnote">
+              <div class="lb">Condiciones</div>
+              Plazo estimado de ejecución: 5 días laborables desde la aceptación. La aceptación por escrito de este presupuesto genera la factura correspondiente.
+            </div>
 
-            <div class="docfoot"><span>Página 1 de 1</span><span>P-2025-011</span></div>
+            <div class="docfoot"><span>P-2025-011</span><span>Página 1 de 1</span></div>
           </div>
         </div>
-        <p class="caption"><b>PRESUPUESTO</b> <span>Cabecera en azul, validez en la esquina y la nota de que no tiene valor contable.</span></p>
+        <p class="caption"><b>PRESUPUESTO</b> <span>El concepto ocupa el ancho que necesite: se escribe entero, no se elige de ninguna lista.</span></p>
       </div>
 
       <div>
@@ -902,7 +945,7 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
           <div class="sheet">
             <div class="dochead">
               <div>
-                <div class="kind inv">Factura</div>
+                <div class="kind">Factura</div>
                 <div class="who">
                   <b>Carlos García López</b><br>
                   NIF 12345678A<br>
@@ -911,12 +954,13 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
                 </div>
               </div>
               <div class="docmeta">
-                Número <b>2025-004</b><br>
+                Nº <b>2025-004</b><br>
                 Fecha <b>14/02/2025</b><br>
-                Vencimiento <b>16/03/2025</b>
+                Vence <b>16/03/2025</b>
               </div>
             </div>
             <div class="docrule"></div>
+            <div class="docstrip"><span>Serie 2025 · factura 004</span><span>Pago a 30 días</span></div>
 
             <div class="docto">
               <div class="lb">Cliente</div>
@@ -926,28 +970,45 @@ a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offs
             </div>
 
             <table class="doctable">
-              <thead><tr><th>Concepto</th><th class="r">Uds.</th><th class="r">Precio</th><th class="r">Importe</th></tr></thead>
+              <thead><tr><th>Concepto</th><th class="r">Cant.</th><th class="r">Precio</th><th class="r">Importe</th></tr></thead>
               <tbody>
-                <tr><td>Instalación de fontanería<div class="d2">Reforma baño principal</div></td><td class="r">2</td><td class="r">85,00</td><td class="r">170,00</td></tr>
-                <tr><td>Pintura interior m²</td><td class="r">15</td><td class="r">12,50</td><td class="r">187,50</td></tr>
-                <tr><td>Mano de obra general</td><td class="r">4</td><td class="r">45,00</td><td class="r">180,00</td></tr>
+                <tr>
+                  <td class="desc">Instalación de fontanería en baño principal: sustitución de llaves de paso, montaje de grifería monomando y conexión de desagües.</td>
+                  <td class="r">2 h</td><td class="r">85,00</td><td class="r">170,00</td>
+                </tr>
+                <tr>
+                  <td class="desc">Pintura interior de dormitorio y pasillo, dos manos de plástico mate en blanco roto.</td>
+                  <td class="r">15 m²</td><td class="r">12,50</td><td class="r">187,50</td>
+                </tr>
+                <tr>
+                  <td class="desc">Mano de obra general de apoyo y limpieza de la zona de trabajo.</td>
+                  <td class="r">4 h</td><td class="r">45,00</td><td class="r">180,00</td>
+                </tr>
               </tbody>
             </table>
 
             <div class="doctot">
               <div class="row"><span>Base imponible</span><span>537,50 €</span></div>
               <div class="row"><span>IVA 21 %</span><span>112,88 €</span></div>
-              <div class="row t"><span>Total a pagar</span><b>650,38 €</b></div>
+              <div class="row t"><span>Total</span><b>650,38 €</b></div>
             </div>
 
-            <div class="docnote">Forma de pago: transferencia a ES12 3456 7890 1234 5678 9012. Indique el número de factura en el concepto.</div>
+            <div class="docnote">
+              <div class="lb">Forma de pago</div>
+              Transferencia a ES12 3456 7890 1234 5678 9012. Indique el número de factura en el concepto.
+            </div>
 
-            <div class="docfoot"><span>Página 1 de 1</span><span>2025-004</span></div>
+            <div class="docfoot"><span>2025-004</span><span>Página 1 de 1</span></div>
           </div>
         </div>
-        <p class="caption"><b>FACTURA</b> <span>Misma retícula en negro, con los datos de pago y el número de serie repetido en el pie de cada página.</span></p>
+        <p class="caption"><b>FACTURA</b> <span>Misma retícula, con los datos de pago y el número repetido en el pie de cada página.</span></p>
       </div>
 
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3 style="font-size:15px;margin-bottom:9px">Sobre el IRPF</h3>
+      <p class="note">Lo había metido porque muchos autónomos que facturan a empresas tienen que aplicar una retención del 15&nbsp;% que la empresa ingresa por ellos. <strong>No es tu caso ni es obligatorio</strong>, así que fuera: los documentos llevan base, IVA y total, nada más. Si algún día te hiciera falta, es una casilla en «Mis datos» que añade la línea solo cuando esté marcada — pero de partida no existe.</p>
     </div>
   </div>
 </section>
@@ -995,8 +1056,26 @@ app.setStyleSheet(QSS_TEMPLATE.format(**LIGHT))</pre>
         <div class="d"><code>QTableView</code> + <code>QAbstractTableModel</code> + <code>QSortFilterProxyModel</code>, con un delegado que pinta las píldoras de estado. Es el mismo cambio que ya pedía la auditoría por rendimiento: aquí además resuelve el diseño.</div>
       </div>
       <div class="irow">
+        <div class="t">Adiós al catálogo</div>
+        <div class="d">Las líneas dejan de apuntar a un servicio y guardan su propio texto. Desaparecen la tabla <code>Servicio</code>, la pantalla «Crear Servicio» (238 líneas) y las comprobaciones de «servicio en uso»; el modelo se simplifica en lugar de crecer.
+          <pre class="snip">CREATE TABLE linea (
+    documento_id  INTEGER NOT NULL,
+    orden         INTEGER NOT NULL,
+    <span class="k">descripcion   TEXT    NOT NULL</span>,  <span class="c">-- lo que escribe el usuario</span>
+    cantidad      REAL    NOT NULL,
+    <span class="k">unidad        TEXT    NOT NULL</span>,  <span class="c">-- ud · h · m² · m</span>
+    precio_ud     REAL    NOT NULL,
+    PRIMARY KEY (documento_id, orden)
+);</pre>
+        </div>
+      </div>
+      <div class="irow">
+        <div class="t">Sugerencias, no listas</div>
+        <div class="d">Un <code>QCompleter</code> sobre los conceptos ya escritos: al teclear «arma…» ofrece el armario que facturaste el mes pasado. Se acepta con Tab o se ignora escribiendo. Nunca bloquea ni obliga a dar nada de alta antes.</div>
+      </div>
+      <div class="irow">
         <div class="t">Documentos</div>
-        <div class="d"><code>documents/</code> genera presupuesto y factura desde <em>una</em> plantilla con un parámetro <code>tipo</code>, usando <code>platypus</code> para que pagine de verdad. Los colores salen del mismo <code>tokens.py</code>, así que el papel y la pantalla no se desincronizan.</div>
+        <div class="d"><code>documents/</code> genera presupuesto y factura desde <em>una</em> plantilla con un parámetro <code>tipo</code>, usando <code>platypus</code> para que pagine de verdad — necesario ahora que un concepto puede ocupar cuatro líneas. La plantilla mantiene el diseño de la primera propuesta: <code>Doto</code> incrustada para los rótulos y las cifras, el resto en la fuente del cuerpo.</div>
       </div>
     </div>
   </div>

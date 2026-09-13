@@ -262,6 +262,17 @@ billease/
 
 ## 6. Rediseño de interfaz
 
+> **Decisiones de producto (v2.1).**
+> — **Los conceptos se escriben, no se eligen.** Desaparecen el catálogo de servicios, la tabla
+>   `Servicio` y la pantalla «Crear Servicio» (238 líneas). Cada línea guarda su propio texto,
+>   su cantidad y su unidad (`ud`, `h`, `m²`), de modo que se puede describir un trabajo entero:
+>   *«Suministro y montaje de armario empotrado de dos módulos con puerta corredera, acabado en
+>   blanco lacado. Medidas 2,00 × 2,40 m…»*. Un `QCompleter` sugiere lo ya escrito, pero nunca obliga.
+> — **Sin IRPF.** Los documentos llevan base imponible, IVA y total. La retención queda como
+>   casilla opcional en «Mis datos», desactivada de partida.
+> — **El papel conserva la plantilla v1** (monocromo y matricial); Fluent se aplica solo a la
+>   aplicación.
+
 > **Dirección definitiva: Fluent (Windows 11).** La propuesta v2 está en
 > [`rediseno-fluent.html`](rediseno-fluent.html): superficies en capas, esquinas de 8 px,
 > Segoe UI Variable y azul de acento, con maquetas de la aplicación en claro y oscuro y de los
