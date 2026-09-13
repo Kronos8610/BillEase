@@ -260,7 +260,15 @@ billease/
 
 ---
 
-## 6. Rediseño de interfaz — Nothing adaptado al escritorio
+## 6. Rediseño de interfaz
+
+> **Dirección definitiva: Fluent (Windows 11).** La propuesta v2 está en
+> [`rediseno-fluent.html`](rediseno-fluent.html): superficies en capas, esquinas de 8 px,
+> Segoe UI Variable y azul de acento, con maquetas de la aplicación en claro y oscuro y de los
+> documentos impresos —presupuesto y factura— **sin marcas de agua**.
+> Lo que sigue es la primera propuesta (Nothing), que se conserva como registro.
+
+### v1 · Nothing adaptado al escritorio
 
 El lenguaje de Nothing (monocromo, rejilla de puntos, un único rojo, tipografía matricial)
 encaja bien con un programa de facturación: es un dominio de cifras y estados, no de color.

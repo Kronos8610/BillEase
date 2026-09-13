@@ -1,0 +1,1010 @@
+<title>BillEase en Fluent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+/* ═══════════════════════════════════════════════
+   BillEase · propuesta Fluent (Windows 11)
+   Tokens con los valores reales del sistema Fluent 2.
+   Página en claro por defecto, como Windows.
+   ═══════════════════════════════════════════════ */
+:root{
+  --mica:#F3F3F3;
+  --mica-tint:#EEF1F5;
+  --layer:#FFFFFF;
+  --layer-alt:#FAFAFA;
+  --control:#FDFDFD;
+  --stroke:#E5E5E5;
+  --stroke-strong:#D2D2D2;
+  --stroke-divider:#EBEBEB;
+  --text:#1A1A1A;
+  --text-2:#5C5C5C;
+  --text-3:#8A8A8A;
+  --accent:#0F6CBD;
+  --accent-hover:#115EA3;
+  --accent-soft:#EFF6FC;
+  --success:#0F7B0F;
+  --success-soft:#E9F5E9;
+  --caution:#9D5D00;
+  --caution-soft:#FDF6E3;
+  --danger:#C42B1C;
+  --danger-soft:#FDEDEC;
+  --elev-2:0 1px 2px rgba(0,0,0,.06), 0 0 1px rgba(0,0,0,.08);
+  --elev-8:0 4px 12px rgba(0,0,0,.08), 0 0 2px rgba(0,0,0,.06);
+
+  --f-ui:"Segoe UI Variable Display","Segoe UI","Source Sans 3",system-ui,sans-serif;
+  --f-txt:"Segoe UI Variable Text","Segoe UI","Source Sans 3",system-ui,sans-serif;
+  --f-mono:"Cascadia Mono",Consolas,"IBM Plex Mono",ui-monospace,monospace;
+
+  --r-card:8px;
+  --r-ctrl:4px;
+  --wrap:1140px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --mica:#202020;
+    --mica-tint:#1E2126;
+    --layer:#2B2B2B;
+    --layer-alt:#272727;
+    --control:#323232;
+    --stroke:#3A3A3A;
+    --stroke-strong:#4A4A4A;
+    --stroke-divider:#333333;
+    --text:#FFFFFF;
+    --text-2:#C5C5C5;
+    --text-3:#969696;
+    --accent:#60CDFF;
+    --accent-hover:#8FDBFF;
+    --accent-soft:#1B2B36;
+    --success:#6CCB5F;
+    --success-soft:#1D2A1C;
+    --caution:#FCE100;
+    --caution-soft:#2E2A14;
+    --danger:#FF99A4;
+    --danger-soft:#331F22;
+    --elev-2:0 1px 2px rgba(0,0,0,.28), 0 0 1px rgba(0,0,0,.4);
+    --elev-8:0 4px 14px rgba(0,0,0,.4), 0 0 2px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --mica:#202020;
+  --mica-tint:#1E2126;
+  --layer:#2B2B2B;
+  --layer-alt:#272727;
+  --control:#323232;
+  --stroke:#3A3A3A;
+  --stroke-strong:#4A4A4A;
+  --stroke-divider:#333333;
+  --text:#FFFFFF;
+  --text-2:#C5C5C5;
+  --text-3:#969696;
+  --accent:#60CDFF;
+  --accent-hover:#8FDBFF;
+  --accent-soft:#1B2B36;
+  --success:#6CCB5F;
+  --success-soft:#1D2A1C;
+  --caution:#FCE100;
+  --caution-soft:#2E2A14;
+  --danger:#FF99A4;
+  --danger-soft:#331F22;
+  --elev-2:0 1px 2px rgba(0,0,0,.28), 0 0 1px rgba(0,0,0,.4);
+  --elev-8:0 4px 14px rgba(0,0,0,.4), 0 0 2px rgba(0,0,0,.5);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--mica);
+  background-image:
+    radial-gradient(1100px 520px at 12% -8%, var(--mica-tint), transparent 62%),
+    radial-gradient(900px 460px at 96% 4%, var(--accent-soft), transparent 58%);
+  background-attachment:fixed;
+  color:var(--text);
+  font-family:var(--f-txt);
+  font-size:15px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:var(--wrap);margin:0 auto;padding-inline:24px}
+
+h1,h2,h3,h4{margin:0;font-family:var(--f-ui);font-weight:600;line-height:1.2;text-wrap:balance}
+p{margin:0}
+a{color:var(--accent)}
+.eyebrow{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text-2);
+}
+.lead{font-size:18.5px;line-height:1.55;max-width:64ch;color:var(--text)}
+.note{color:var(--text-2);font-size:14.5px;max-width:68ch}
+code{
+  font-family:var(--f-mono);font-size:.87em;background:var(--layer-alt);
+  border:1px solid var(--stroke);border-radius:3px;padding:.08em .34em;
+}
+
+/* ── hero ── */
+.hero .wrap{padding-block:60px 44px;display:grid;gap:20px}
+h1{font-size:clamp(38px,6.2vw,62px);font-weight:600;letter-spacing:-.02em}
+.hero .badge{
+  display:inline-flex;align-items:center;gap:8px;background:var(--layer);
+  border:1px solid var(--stroke);border-bottom-color:var(--stroke-strong);
+  border-radius:99px;padding:5px 13px 5px 9px;font-size:12.5px;color:var(--text-2);
+  box-shadow:var(--elev-2);width:max-content;
+}
+.hero .badge .d{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+
+/* ── secciones ── */
+section > .wrap{padding-block:48px}
+.sechead{display:grid;gap:9px;margin-bottom:28px;max-width:70ch}
+.sechead h2{font-size:clamp(22px,3.2vw,29px);letter-spacing:-.015em}
+
+/* ── tarjetas Fluent ── */
+.card{
+  background:var(--layer);border:1px solid var(--stroke);border-bottom-color:var(--stroke-strong);
+  border-radius:var(--r-card);padding:20px;box-shadow:var(--elev-2);
+}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.stack{display:grid;gap:18px}
+
+.principle h3{font-size:16px;margin-bottom:7px;display:flex;align-items:center;gap:9px}
+.principle .ic{
+  width:30px;height:30px;border-radius:var(--r-ctrl);background:var(--accent-soft);
+  color:var(--accent);display:grid;place-items:center;flex:none;
+}
+.principle p{font-size:14px;color:var(--text-2)}
+
+/* ── comparativa ── */
+.compare{display:grid;grid-template-columns:150px 1fr 1fr;gap:0;font-size:14px}
+.compare > *{padding:11px 14px;border-bottom:1px solid var(--stroke-divider)}
+.compare .h{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text-2);border-bottom:1px solid var(--stroke-strong);
+}
+.compare .k{color:var(--text-2);font-size:13.5px}
+.compare .old{color:var(--text-3)}
+.compare .new{font-weight:600}
+
+/* ── tokens de color ── */
+.tokens{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tok{border:1px solid var(--stroke);border-radius:6px;overflow:hidden;background:var(--layer)}
+.tok .sw{height:46px;display:flex}
+.tok .sw i{flex:1}
+.tok .m{padding:9px 11px;font-size:12px;line-height:1.55}
+.tok .m b{display:block;font-weight:600;font-size:12.5px}
+.tok .m span{font-family:var(--f-mono);font-size:10.5px;color:var(--text-2)}
+
+/* ── muestrario de componentes ── */
+.gallery{display:grid;gap:18px}
+.galrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.gallabel{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text-2);width:100%;
+}
+.fbtn{
+  font-family:var(--f-ui);font-size:14px;padding:6px 15px;border-radius:var(--r-ctrl);
+  border:1px solid var(--stroke-strong);background:var(--control);color:var(--text);
+  box-shadow:0 1px 0 rgba(0,0,0,.04);display:inline-flex;align-items:center;gap:7px;
+}
+.fbtn.acc{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+:root[data-theme="dark"] .fbtn.acc,
+:root:not([data-theme="light"]) .fbtn.acc{color:#06283D}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .fbtn.acc{color:#fff}}
+.fbtn.sub{background:transparent;border-color:transparent;color:var(--accent)}
+.ftext{
+  border:1px solid var(--stroke-strong);border-bottom-width:2px;border-radius:var(--r-ctrl);
+  background:var(--control);padding:6px 11px;font-size:14px;color:var(--text-3);min-width:190px;
+}
+.ftext.focus{border-bottom-color:var(--accent);color:var(--text)}
+.pill{
+  font-size:12px;padding:3px 10px;border-radius:99px;border:1px solid;display:inline-flex;gap:6px;align-items:center;
+}
+.pill i{width:6px;height:6px;border-radius:50%;background:currentColor;display:block}
+.pill.ok{color:var(--success);border-color:var(--success);background:var(--success-soft)}
+.pill.warn{color:var(--caution);border-color:var(--caution);background:var(--caution-soft)}
+.pill.dang{color:var(--danger);border-color:var(--danger);background:var(--danger-soft)}
+
+/* ═══════════════════════════════════════
+   MAQUETAS · ventana Windows 11
+   Cada maqueta fija sus colores para no
+   depender del tema del visor.
+   ═══════════════════════════════════════ */
+.win{
+  --w-mica:#F0F3F7; --w-layer:#FFFFFF; --w-alt:#F9F9F9; --w-ctrl:#FDFDFD;
+  --w-stroke:#E3E3E3; --w-stroke2:#D0D0D0; --w-div:#EDEDED;
+  --w-text:#1A1A1A; --w-text2:#5C5C5C; --w-text3:#8A8A8A;
+  --w-acc:#0F6CBD; --w-acc-soft:#EFF6FC; --w-on-acc:#FFFFFF;
+  --w-ok:#0F7B0F; --w-ok-s:#E9F5E9; --w-warn:#9D5D00; --w-warn-s:#FDF6E3;
+  --w-dang:#C42B1C; --w-dang-s:#FDEDEC;
+  background:var(--w-mica);color:var(--w-text);
+  border:1px solid var(--w-stroke2);border-radius:10px;overflow:hidden;
+  box-shadow:0 18px 48px rgba(0,0,0,.14);font-size:13px;font-family:var(--f-txt);
+}
+.win.dark{
+  --w-mica:#1F2226; --w-layer:#2B2B2B; --w-alt:#272727; --w-ctrl:#323232;
+  --w-stroke:#3A3A3A; --w-stroke2:#454545; --w-div:#333333;
+  --w-text:#FFFFFF; --w-text2:#C5C5C5; --w-text3:#969696;
+  --w-acc:#60CDFF; --w-acc-soft:#1B2B36; --w-on-acc:#06283D;
+  --w-ok:#6CCB5F; --w-ok-s:#1D2A1C; --w-warn:#FCE100; --w-warn-s:#2E2A14;
+  --w-dang:#FF99A4; --w-dang-s:#331F22;
+  border-color:#101012;
+}
+.win *{box-sizing:border-box}
+.wtitle{
+  display:flex;align-items:center;gap:9px;height:34px;padding:0 0 0 13px;
+  background:var(--w-mica);border-bottom:1px solid var(--w-div);
+}
+.wtitle .app{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--w-text)}
+.wtitle .logo{
+  width:15px;height:15px;border-radius:3px;background:var(--w-acc);display:grid;place-items:center;
+  color:var(--w-on-acc);font-size:8.5px;font-weight:700;font-family:var(--f-ui);
+}
+.wtitle .caps{margin-left:auto;display:flex;height:100%}
+.wtitle .caps span{
+  width:44px;display:grid;place-items:center;color:var(--w-text2);font-size:10px;font-family:var(--f-mono);
+}
+.wbody{display:grid;grid-template-columns:216px 1fr;min-height:430px}
+
+/* NavigationView */
+.nav{padding:6px 5px;display:flex;flex-direction:column;gap:1px;border-right:1px solid var(--w-div)}
+.navburger{display:flex;align-items:center;gap:12px;padding:9px 11px;color:var(--w-text2);margin-bottom:4px}
+.nitem{
+  display:flex;align-items:center;gap:12px;padding:9px 11px;border-radius:var(--r-ctrl);
+  color:var(--w-text);position:relative;font-size:13px;
+}
+.nitem svg{width:16px;height:16px;flex:none;color:var(--w-text2)}
+.nitem.on{background:var(--w-layer);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.nitem.on::before{
+  content:"";position:absolute;left:-1px;top:50%;transform:translateY(-50%);
+  width:3px;height:16px;border-radius:2px;background:var(--w-acc);
+}
+.nitem.on svg{color:var(--w-acc)}
+.navspacer{flex:1}
+.naccount{
+  display:flex;align-items:center;gap:10px;padding:9px 11px;border-top:1px solid var(--w-div);
+  margin-top:6px;font-size:12px;color:var(--w-text2);
+}
+.avatar{
+  width:26px;height:26px;border-radius:50%;background:var(--w-acc);color:var(--w-on-acc);
+  display:grid;place-items:center;font-size:11px;font-weight:700;flex:none;font-family:var(--f-ui);
+}
+
+/* Contenido */
+.wmain{padding:16px 20px 20px;display:grid;gap:14px;align-content:start;min-width:0}
+.pagehead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pagehead h4{font-family:var(--f-ui);font-size:23px;font-weight:600;margin:0;letter-spacing:-.01em}
+.pagehead .sub{color:var(--w-text2);font-size:12px}
+.cmdbar{margin-left:auto;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.cbtn{
+  display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:5px 11px;
+  border-radius:var(--r-ctrl);border:1px solid var(--w-stroke2);background:var(--w-ctrl);color:var(--w-text);
+}
+.cbtn svg{width:14px;height:14px;color:var(--w-text2)}
+.cbtn.acc{background:var(--w-acc);border-color:var(--w-acc);color:var(--w-on-acc);font-weight:600}
+.cbtn.acc svg{color:var(--w-on-acc)}
+.wsearch{
+  display:flex;align-items:center;gap:7px;border:1px solid var(--w-stroke2);border-bottom-width:2px;
+  border-radius:var(--r-ctrl);padding:5px 10px;background:var(--w-ctrl);color:var(--w-text3);font-size:12.5px;min-width:180px;
+}
+.wsearch svg{width:14px;height:14px}
+
+.wcards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.wcard{
+  background:var(--w-layer);border:1px solid var(--w-stroke);border-bottom-color:var(--w-stroke2);
+  border-radius:var(--r-card);padding:13px 15px;
+}
+.wcard .k{font-size:11.5px;color:var(--w-text2);display:flex;align-items:center;gap:6px}
+.wcard .k svg{width:13px;height:13px}
+.wcard .v{font-family:var(--f-ui);font-size:24px;font-weight:600;line-height:1.3;font-variant-numeric:tabular-nums}
+.wcard .v small{font-size:13px;font-weight:400;color:var(--w-text2)}
+.wcard .delta{font-size:11.5px;color:var(--w-ok)}
+.wcard.warn .v{color:var(--w-warn)}
+
+.wtablecard{
+  background:var(--w-layer);border:1px solid var(--w-stroke);border-bottom-color:var(--w-stroke2);
+  border-radius:var(--r-card);overflow:hidden;
+}
+.wtable{width:100%;border-collapse:collapse;font-size:12.5px}
+.wtable th{
+  text-align:left;font-weight:600;font-size:11.5px;color:var(--w-text2);
+  padding:10px 14px;background:var(--w-alt);border-bottom:1px solid var(--w-div);white-space:nowrap;
+}
+.wtable td{padding:10px 14px;border-bottom:1px solid var(--w-div);vertical-align:middle}
+.wtable tr:last-child td{border-bottom:0}
+.wtable tr.sel td{background:var(--w-acc-soft)}
+.wtable .r{text-align:right;font-variant-numeric:tabular-nums}
+.wtable .mut{color:var(--w-text2)}
+.wtable .id{font-family:var(--f-mono);font-size:12px}
+.wpill{
+  font-size:11px;padding:2px 9px;border-radius:99px;border:1px solid;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;
+}
+.wpill i{width:5px;height:5px;border-radius:50%;background:currentColor;display:block}
+.wpill.ok{color:var(--w-ok);border-color:var(--w-ok);background:var(--w-ok-s)}
+.wpill.warn{color:var(--w-warn);border-color:var(--w-warn);background:var(--w-warn-s)}
+.wpill.dang{color:var(--w-dang);border-color:var(--w-dang);background:var(--w-dang-s)}
+.racts{display:flex;gap:4px;justify-content:flex-end;color:var(--w-text2)}
+.racts span{border:1px solid var(--w-stroke);border-radius:3px;padding:2px 5px;display:grid;place-items:center}
+.racts svg{width:13px;height:13px;display:block}
+
+/* Editor */
+.editgrid{display:grid;grid-template-columns:1fr 252px;gap:14px;align-items:start}
+.wfield{display:grid;gap:4px}
+.wfield .lb{font-size:11.5px;color:var(--w-text2)}
+.wfinput{
+  border:1px solid var(--w-stroke2);border-bottom-width:2px;border-radius:var(--r-ctrl);
+  background:var(--w-ctrl);padding:5px 10px;font-size:12.5px;color:var(--w-text);
+}
+.wfinput.ph{color:var(--w-text3)}
+.wfinput.focus{border-bottom-color:var(--w-acc)}
+.wfinput.ro{background:var(--w-alt);color:var(--w-text2);border-bottom-width:1px}
+.lrow{display:grid;grid-template-columns:1fr 54px 74px 80px 26px;gap:8px;align-items:end}
+.lrow .del{
+  border:1px solid var(--w-stroke);border-radius:3px;height:27px;display:grid;place-items:center;color:var(--w-text2);
+}
+.lrow .del svg{width:13px;height:13px}
+.sect{
+  background:var(--w-layer);border:1px solid var(--w-stroke);border-bottom-color:var(--w-stroke2);
+  border-radius:var(--r-card);padding:14px 15px;display:grid;gap:11px;
+}
+.sect .lg{font-size:13px;font-weight:600;font-family:var(--f-ui);display:flex;align-items:center;gap:8px}
+.sect .lg svg{width:15px;height:15px;color:var(--w-acc)}
+.sumcard{
+  background:var(--w-layer);border:1px solid var(--w-stroke);border-bottom-color:var(--w-stroke2);
+  border-radius:var(--r-card);padding:15px;display:grid;gap:9px;
+}
+.srow{display:flex;justify-content:space-between;font-size:12.5px;color:var(--w-text2);font-variant-numeric:tabular-nums}
+.srow.tot{border-top:1px solid var(--w-div);padding-top:10px;color:var(--w-text);align-items:baseline}
+.srow.tot b{font-family:var(--f-ui);font-size:22px;font-weight:600}
+.hint{font-size:11px;color:var(--w-text3)}
+.infobar{
+  display:flex;gap:9px;align-items:flex-start;background:var(--w-acc-soft);
+  border:1px solid var(--w-acc);border-radius:var(--r-ctrl);padding:9px 12px;font-size:12px;color:var(--w-text);
+}
+.infobar svg{width:15px;height:15px;color:var(--w-acc);flex:none;margin-top:1px}
+
+/* ── documento impreso ── */
+.docshell{background:var(--layer-alt);border:1px solid var(--stroke);border-radius:var(--r-card);padding:22px;box-shadow:var(--elev-2)}
+.sheet{
+  background:#fff;color:#1A1A1A;border-radius:3px;padding:30px 32px;
+  font-family:var(--f-txt);font-size:11.5px;line-height:1.5;display:grid;gap:18px;
+  box-shadow:0 2px 14px rgba(0,0,0,.10);max-width:620px;margin:0 auto;
+}
+.dochead{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
+.dochead .kind{
+  font-family:var(--f-ui);font-size:25px;font-weight:600;letter-spacing:-.01em;line-height:1;color:#0F6CBD;
+}
+.dochead .kind.inv{color:#1A1A1A}
+.dochead .who{margin-top:10px;font-size:10.5px;line-height:1.6;color:#3A3A3A}
+.dochead .who b{color:#1A1A1A}
+.docmeta{text-align:right;font-size:10px;line-height:1.9;color:#6A6A6A;font-variant-numeric:tabular-nums;white-space:nowrap}
+.docmeta b{color:#1A1A1A;font-size:11px}
+.docrule{height:2px;background:#1A1A1A}
+.docrule.acc{background:#0F6CBD}
+.docto{font-size:10.5px;line-height:1.65}
+.docto .lb{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#8A8A8A;margin-bottom:4px;font-family:var(--f-mono)}
+.docto b{font-size:12px}
+.doctable{width:100%;border-collapse:collapse;font-size:10.5px}
+.doctable th{
+  text-align:left;font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:#8A8A8A;
+  font-weight:400;font-family:var(--f-mono);padding:0 0 7px;border-bottom:1px solid #1A1A1A;
+}
+.doctable td{padding:8px 0;border-bottom:1px solid #EDEDED;font-variant-numeric:tabular-nums}
+.doctable .r{text-align:right}
+.doctable .d2{color:#6A6A6A;font-size:9.5px}
+.doctot{margin-left:auto;width:238px;display:grid;gap:5px;font-size:10.5px;font-variant-numeric:tabular-nums}
+.doctot .row{display:flex;justify-content:space-between;color:#5C5C5C}
+.doctot .row.t{
+  border-top:2px solid #1A1A1A;margin-top:4px;padding-top:8px;color:#1A1A1A;align-items:baseline;
+}
+.doctot .row.t b{font-family:var(--f-ui);font-size:19px;font-weight:600}
+.doctot .row.t.acc{border-top-color:#0F6CBD}
+.doctot .row.t.acc b{color:#0F6CBD}
+.docnote{background:#F7F7F5;border-left:3px solid #DADAD6;padding:9px 12px;font-size:9.5px;color:#5C5C5C;line-height:1.6}
+.docfoot{border-top:1px solid #EDEDED;padding-top:9px;display:flex;justify-content:space-between;gap:14px;font-size:8.5px;color:#8A8A8A;font-family:var(--f-mono)}
+
+.caption{
+  font-size:12.5px;color:var(--text-2);margin-top:12px;display:flex;gap:9px;align-items:baseline;
+}
+.caption b{color:var(--text);font-weight:600;font-family:var(--f-mono);font-size:11px;letter-spacing:.1em}
+
+/* ── implementación ── */
+.impl{display:grid;gap:0;border-top:1px solid var(--stroke)}
+.irow{
+  display:grid;grid-template-columns:190px 1fr;gap:20px;padding:15px 0;
+  border-bottom:1px solid var(--stroke-divider);align-items:start;
+}
+.irow .t{font-weight:600;font-size:14.5px;font-family:var(--f-ui)}
+.irow .d{color:var(--text-2);font-size:14px}
+pre.snip{
+  font-family:var(--f-mono);font-size:12px;line-height:1.7;background:var(--layer-alt);
+  border:1px solid var(--stroke);border-radius:var(--r-ctrl);padding:12px 14px;overflow-x:auto;margin:8px 0 0;
+  white-space:pre;color:var(--text);
+}
+pre.snip .c{color:var(--text-3)}
+pre.snip .k{color:var(--accent)}
+
+footer{border-top:1px solid var(--stroke);margin-top:20px}
+footer .wrap{padding-block:28px;color:var(--text-2);font-size:13px;display:flex;gap:14px;justify-content:space-between;flex-wrap:wrap}
+
+@media (max-width:900px){
+  .grid2,.grid4{grid-template-columns:1fr}
+  .wbody{grid-template-columns:1fr}
+  .nav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--w-div);align-items:center}
+  .navburger,.navspacer,.naccount{display:none}
+  .nitem{white-space:nowrap}
+  .nitem.on::before{left:50%;top:auto;bottom:-6px;transform:translateX(-50%);width:16px;height:3px}
+  .wcards{grid-template-columns:1fr}
+  .editgrid{grid-template-columns:1fr}
+  .compare{grid-template-columns:1fr;gap:0}
+  .compare .h:first-child{display:none}
+  .irow{grid-template-columns:1fr;gap:6px}
+  .lrow{grid-template-columns:1fr 1fr}
+  .lrow .del{display:none}
+}
+@media (max-width:560px){
+  .sheet{padding:20px}
+  .dochead{flex-direction:column;gap:12px}
+  .docmeta{text-align:left}
+}
+a:focus-visible,.fbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="i-doc" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 2.5h5l3 3v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z"/><path d="M9 2.5v3h3"/><path d="M5.5 9h5M5.5 11.5h3"/>
+    </g>
+    <g id="i-people" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="6" cy="5.5" r="2.5"/><path d="M1.5 13.5c0-2.2 2-3.8 4.5-3.8s4.5 1.6 4.5 3.8"/><path d="M10.8 3.4a2.4 2.4 0 0 1 0 4.3M12 9.9c1.5.5 2.5 1.8 2.5 3.6"/>
+    </g>
+    <g id="i-tag" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2.5 7.6V3a.5.5 0 0 1 .5-.5h4.6a1 1 0 0 1 .7.3l5 5a1 1 0 0 1 0 1.4l-4.3 4.3a1 1 0 0 1-1.4 0l-5-5a1 1 0 0 1-.1-.9z"/><circle cx="5.6" cy="5.6" r="1.1"/>
+    </g>
+    <g id="i-chart" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2.5 13.5v-4M6.2 13.5v-8M9.8 13.5v-5.5M13.5 13.5v-10"/>
+    </g>
+    <g id="i-user" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8" cy="5.2" r="2.8"/><path d="M2.8 13.8c0-2.6 2.3-4.4 5.2-4.4s5.2 1.8 5.2 4.4"/>
+    </g>
+    <g id="i-search" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <circle cx="7" cy="7" r="4.3"/><path d="M10.2 10.2 14 14"/>
+    </g>
+    <g id="i-plus" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+      <path d="M8 3.2v9.6M3.2 8h9.6"/>
+    </g>
+    <g id="i-edit" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11.2 2.6 13.4 4.8 5.6 12.6 2.6 13.4l.8-3z"/>
+    </g>
+    <g id="i-pdf" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 2v7.5"/><path d="M5 7l3 2.8L11 7"/><path d="M2.8 12.2v1a.8.8 0 0 0 .8.8h8.8a.8.8 0 0 0 .8-.8v-1"/>
+    </g>
+    <g id="i-trash" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2.8 4.2h10.4M6 4.2V3a.8.8 0 0 1 .8-.8h2.4A.8.8 0 0 1 10 3v1.2"/><path d="M4.2 4.2 4.8 13a.8.8 0 0 0 .8.8h4.8a.8.8 0 0 0 .8-.8l.6-8.8"/>
+    </g>
+    <g id="i-menu" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <path d="M2.5 4h11M2.5 8h11M2.5 12h11"/>
+    </g>
+    <g id="i-info" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8" cy="8" r="6"/><path d="M8 7.4v3.4M8 5.2v.1"/>
+    </g>
+    <g id="i-euro" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11.5 4.2a4.4 4.4 0 0 0-6.4 1.6 5.6 5.6 0 0 0 0 4.4 4.4 4.4 0 0 0 6.4 1.6"/><path d="M3 6.8h5.6M3 9.2h5.6"/>
+    </g>
+    <g id="i-clock" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8" cy="8" r="5.8"/><path d="M8 4.6V8l2.4 1.6"/>
+    </g>
+  </defs>
+</svg>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="badge"><span class="d"></span> Propuesta v2 · sustituye a la dirección Nothing</span>
+    <h1>BillEase en Fluent</h1>
+    <p class="lead">Misma estructura, otro carácter. Dejamos el monocromo por el sistema de diseño de Windows&nbsp;11: superficies en capas, esquinas de 8&nbsp;px, tipografía Segoe y un azul de acento que hace de guía en lugar de decorar. Se parece a las aplicaciones que el usuario ya tiene abiertas — y eso, en una herramienta de trabajo, se nota.</p>
+    <p class="note">Los documentos impresos —presupuesto y factura— <strong>van sin ninguna marca de agua</strong>: sin logotipo de la aplicación, sin fondos tramados, sin pie de marca. Solo los datos del autónomo y del cliente.</p>
+  </div>
+</header>
+
+<!-- ═══ 01 ═══ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <span class="eyebrow">01 · La dirección</span>
+      <h2>Cuatro decisiones que definen el nuevo aspecto</h2>
+    </div>
+
+    <div class="grid4">
+      <div class="card principle">
+        <h3><span class="ic"><svg width="16" height="16"><use href="#i-doc"/></svg></span>Capas</h3>
+        <p>Un fondo Mica tintado, tarjetas blancas encima y controles sobre ellas. La profundidad se consigue con tres tonos y un borde inferior un punto más oscuro, no con sombras fuertes.</p>
+      </div>
+      <div class="card principle">
+        <h3><span class="ic"><svg width="16" height="16"><use href="#i-tag"/></svg></span>Un azul que guía</h3>
+        <p>El acento marca la sección activa, el botón principal y el campo con el foco. Nada más. El resto es gris: los datos ponen el color a través de los estados.</p>
+      </div>
+      <div class="card principle">
+        <h3><span class="ic"><svg width="16" height="16"><use href="#i-chart"/></svg></span>Densidad de trabajo</h3>
+        <p>Filas de 36&nbsp;px, tipografía de 13&nbsp;px en tablas, cifras tabulares. Caben 14 facturas sin desplazar la vista; hoy caben 7 y sin el importe.</p>
+      </div>
+      <div class="card principle">
+        <h3><span class="ic"><svg width="16" height="16"><use href="#i-user"/></svg></span>Familiar</h3>
+        <p>NavigationView a la izquierda, barra de comandos arriba, InfoBar para los avisos. Controles que el usuario ya sabe usar porque son los del sistema.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="compare">
+        <div class="h"></div><div class="h">Nothing (v1)</div><div class="h">Fluent (v2)</div>
+        <div class="k">Fondo</div><div class="old">Negro absoluto con rejilla de puntos</div><div class="new">Mica claro tintado · oscuro #202020</div>
+        <div class="k">Acento</div><div class="old">Rojo #D71921, dos variantes por contraste</div><div class="new">Azul #0F6CBD · #60CDFF en oscuro</div>
+        <div class="k">Tipografía</div><div class="old">Doto matricial + grotesca</div><div class="new">Segoe UI Variable, un solo sistema</div>
+        <div class="k">Geometría</div><div class="old">Filetes de 1&nbsp;px, casi sin radios</div><div class="new">8&nbsp;px en tarjetas, 4&nbsp;px en controles</div>
+        <div class="k">Carácter</div><div class="old">Objeto de diseño, declaración estética</div><div class="new">Herramienta: se aparta y deja ver los datos</div>
+        <div class="k">Documentos</div><div class="old">Rótulo BILLEASE bajo el título</div><div class="new">Sin marca de agua ni logotipo de la app</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 02 ═══ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <span class="eyebrow">02 · El sistema</span>
+      <h2>Fichas de color, tipografía y controles</h2>
+      <p class="note">Los valores son los de Fluent&nbsp;2, no aproximaciones: así la aplicación encaja con el resto del escritorio cuando el usuario cambia de tema.</p>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:14px">Color · claro / oscuro</h3>
+        <div class="tokens">
+          <div class="tok"><div class="sw"><i style="background:#F3F3F3"></i><i style="background:#202020"></i></div><div class="m"><b>Fondo Mica</b><span>#F3F3F3 · #202020</span></div></div>
+          <div class="tok"><div class="sw"><i style="background:#FFFFFF"></i><i style="background:#2B2B2B"></i></div><div class="m"><b>Capa tarjeta</b><span>#FFFFFF · #2B2B2B</span></div></div>
+          <div class="tok"><div class="sw"><i style="background:#E3E3E3"></i><i style="background:#3A3A3A"></i></div><div class="m"><b>Borde</b><span>#E3E3E3 · #3A3A3A</span></div></div>
+          <div class="tok"><div class="sw"><i style="background:#1A1A1A"></i><i style="background:#FFFFFF"></i></div><div class="m"><b>Texto</b><span>#1A1A1A · #FFFFFF</span></div></div>
+          <div class="tok"><div class="sw"><i style="background:#5C5C5C"></i><i style="background:#C5C5C5"></i></div><div class="m"><b>Texto 2º</b><span>#5C5C5C · #C5C5C5</span></div></div>
+          <div class="tok"><div class="sw"><i style="background:#0F6CBD"></i><i style="background:#60CDFF"></i></div><div class="m"><b>Acento</b><span>#0F6CBD · #60CDFF</span></div></div>
+          <div class="tok"><div class="sw"><i style="background:#0F7B0F"></i><i style="background:#6CCB5F"></i></div><div class="m"><b>Cobrado</b><span>#0F7B0F · #6CCB5F</span></div></div>
+          <div class="tok"><div class="sw"><i style="background:#9D5D00"></i><i style="background:#FCE100"></i></div><div class="m"><b>Pendiente</b><span>#9D5D00 · #FCE100</span></div></div>
+          <div class="tok"><div class="sw"><i style="background:#C42B1C"></i><i style="background:#FF99A4"></i></div><div class="m"><b>Vencido</b><span>#C42B1C · #FF99A4</span></div></div>
+        </div>
+        <p class="note" style="margin-top:13px;font-size:13.5px">Texto sobre tarjeta, <strong>16,1:1</strong>; texto secundario, <strong>6,5:1</strong>; azul sobre blanco, <strong>5,1:1</strong>. Todo por encima del 4,5:1 de la norma AA — frente al <strong>1,49:1</strong> del menú lateral actual.</p>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3 style="font-size:15px;margin-bottom:12px">Tipografía</h3>
+          <p class="note" style="margin-bottom:12px"><strong>Segoe UI Variable</strong>, la fuente del sistema, en sus tres tamaños ópticos: <em>Display</em> para títulos, <em>Text</em> para el cuerpo, <em>Small</em> para etiquetas. Sin descargar nada: ya está en Windows&nbsp;10 y 11.</p>
+          <div style="display:grid;gap:9px;border-top:1px solid var(--stroke-divider);padding-top:12px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-family:var(--f-ui);font-size:26px;font-weight:600;letter-spacing:-.01em">Facturas</span><span class="eyebrow">Título · 26/600</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-family:var(--f-ui);font-size:16px;font-weight:600">Construcciones Pérez S.L.</span><span class="eyebrow">Subtítulo · 16/600</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-size:13px">Instalación de fontanería</span><span class="eyebrow">Cuerpo · 13/400</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><span style="font-size:13px;font-variant-numeric:tabular-nums;font-feature-settings:'tnum'">1.718,20 €</span><span class="eyebrow">Cifras · tabulares</span></div>
+          </div>
+        </div>
+
+        <div class="card gallery">
+          <h3 style="font-size:15px">Controles</h3>
+          <div>
+            <span class="gallabel">Botones</span>
+            <div class="galrow" style="margin-top:8px">
+              <span class="fbtn acc"><svg width="14" height="14"><use href="#i-plus"/></svg>Nueva factura</span>
+              <span class="fbtn">Exportar PDF</span>
+              <span class="fbtn sub">Cancelar</span>
+            </div>
+          </div>
+          <div>
+            <span class="gallabel">Campos · reposo y foco</span>
+            <div class="galrow" style="margin-top:8px">
+              <span class="ftext">Buscar cliente…</span>
+              <span class="ftext focus">Construcciones Pérez S.L.</span>
+            </div>
+          </div>
+          <div>
+            <span class="gallabel">Estado de cobro</span>
+            <div class="galrow" style="margin-top:8px">
+              <span class="pill ok"><i></i>Cobrada</span>
+              <span class="pill warn"><i></i>Pendiente</span>
+              <span class="pill dang"><i></i>Vencida</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 03 ═══ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <span class="eyebrow">03 · Las pantallas</span>
+      <h2>Cómo queda la aplicación</h2>
+    </div>
+
+    <div class="stack" style="gap:34px">
+
+      <!-- Pantalla 1 -->
+      <div>
+        <div class="win">
+          <div class="wtitle">
+            <span class="app"><span class="logo">B</span>BillEase</span>
+            <span class="caps"><span>—</span><span>▢</span><span>✕</span></span>
+          </div>
+          <div class="wbody">
+            <nav class="nav">
+              <div class="navburger"><svg width="16" height="16"><use href="#i-menu"/></svg></div>
+              <div class="nitem on"><svg><use href="#i-doc"/></svg>Facturas</div>
+              <div class="nitem"><svg><use href="#i-tag"/></svg>Presupuestos</div>
+              <div class="nitem"><svg><use href="#i-people"/></svg>Clientes</div>
+              <div class="nitem"><svg><use href="#i-tag"/></svg>Servicios</div>
+              <div class="nitem"><svg><use href="#i-chart"/></svg>Resumen IVA</div>
+              <div class="navspacer"></div>
+              <div class="naccount"><span class="avatar">CG</span><span>Carlos García<br><span style="font-size:11px">12345678A</span></span></div>
+            </nav>
+            <main class="wmain">
+              <div class="pagehead">
+                <div>
+                  <h4>Facturas</h4>
+                  <div class="sub">Ejercicio 2025 · 7 documentos</div>
+                </div>
+                <div class="cmdbar">
+                  <span class="wsearch"><svg><use href="#i-search"/></svg>Buscar…</span>
+                  <span class="cbtn acc"><svg><use href="#i-plus"/></svg>Nueva</span>
+                  <span class="cbtn"><svg><use href="#i-pdf"/></svg>PDF</span>
+                </div>
+              </div>
+
+              <div class="wcards">
+                <div class="wcard">
+                  <div class="k"><svg><use href="#i-euro"/></svg>Facturado 2025</div>
+                  <div class="v">4.559,89 <small>€</small></div>
+                  <div class="delta">base 3.768,50 € + IVA</div>
+                </div>
+                <div class="wcard">
+                  <div class="k"><svg><use href="#i-chart"/></svg>IVA repercutido</div>
+                  <div class="v">791,39 <small>€</small></div>
+                  <div class="delta" style="color:var(--w-text2)">1.º trim. · a liquidar</div>
+                </div>
+                <div class="wcard warn">
+                  <div class="k"><svg><use href="#i-clock"/></svg>Pendiente de cobro</div>
+                  <div class="v">350,90 <small>€</small></div>
+                  <div class="delta" style="color:var(--w-dang)">133,10 € vencidos</div>
+                </div>
+              </div>
+
+              <div class="wtablecard">
+                <table class="wtable">
+                  <thead><tr><th>Número</th><th>Fecha</th><th>Cliente</th><th>Estado</th><th class="r">Base</th><th class="r">Total</th><th></th></tr></thead>
+                  <tbody>
+                    <tr><td class="id">2025-007</td><td class="mut">25/03/2025</td><td>María Fernández Ruiz</td><td><span class="wpill warn"><i></i>Pendiente</span></td><td class="r mut">180,00</td><td class="r">217,80</td><td><div class="racts"><span><svg><use href="#i-pdf"/></svg></span><span><svg><use href="#i-edit"/></svg></span><span><svg><use href="#i-trash"/></svg></span></div></td></tr>
+                    <tr class="sel"><td class="id">2025-006</td><td class="mut">10/03/2025</td><td>Logística Sur S.L.</td><td><span class="wpill ok"><i></i>Cobrada</span></td><td class="r mut">830,00</td><td class="r">1.004,30</td><td><div class="racts"><span><svg><use href="#i-pdf"/></svg></span><span><svg><use href="#i-edit"/></svg></span><span><svg><use href="#i-trash"/></svg></span></div></td></tr>
+                    <tr><td class="id">2025-005</td><td class="mut">28/02/2025</td><td>Antonio Martínez Soto</td><td><span class="wpill dang"><i></i>Vencida</span></td><td class="r mut">110,00</td><td class="r">133,10</td><td><div class="racts"><span><svg><use href="#i-pdf"/></svg></span><span><svg><use href="#i-edit"/></svg></span><span><svg><use href="#i-trash"/></svg></span></div></td></tr>
+                    <tr><td class="id">2025-004</td><td class="mut">14/02/2025</td><td>Construcciones Pérez S.L.</td><td><span class="wpill ok"><i></i>Cobrada</span></td><td class="r mut">537,50</td><td class="r">650,38</td><td><div class="racts"><span><svg><use href="#i-pdf"/></svg></span><span><svg><use href="#i-edit"/></svg></span><span><svg><use href="#i-trash"/></svg></span></div></td></tr>
+                    <tr><td class="id">2025-003</td><td class="mut">03/02/2025</td><td>Reformas Norte S.A.</td><td><span class="wpill ok"><i></i>Cobrada</span></td><td class="r mut">1.420,00</td><td class="r">1.718,20</td><td><div class="racts"><span><svg><use href="#i-pdf"/></svg></span><span><svg><use href="#i-edit"/></svg></span><span><svg><use href="#i-trash"/></svg></span></div></td></tr>
+                    <tr><td class="id">2025-002</td><td class="mut">22/01/2025</td><td>María Fernández Ruiz</td><td><span class="wpill ok"><i></i>Cobrada</span></td><td class="r mut">211,00</td><td class="r">255,31</td><td><div class="racts"><span><svg><use href="#i-pdf"/></svg></span><span><svg><use href="#i-edit"/></svg></span><span><svg><use href="#i-trash"/></svg></span></div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </main>
+          </div>
+        </div>
+        <p class="caption"><b>01</b> <span>Listado · el total con IVA vuelve a la tabla, el estado de cobro se lee de un vistazo y aparece «Presupuestos» como sección propia. La fila seleccionada usa el tinte del acento, no un color inventado.</span></p>
+      </div>
+
+      <!-- Pantalla 2 -->
+      <div>
+        <div class="win">
+          <div class="wtitle">
+            <span class="app"><span class="logo">B</span>BillEase — Factura 2025-008</span>
+            <span class="caps"><span>—</span><span>▢</span><span>✕</span></span>
+          </div>
+          <div class="wbody">
+            <nav class="nav">
+              <div class="navburger"><svg width="16" height="16"><use href="#i-menu"/></svg></div>
+              <div class="nitem on"><svg><use href="#i-doc"/></svg>Facturas</div>
+              <div class="nitem"><svg><use href="#i-tag"/></svg>Presupuestos</div>
+              <div class="nitem"><svg><use href="#i-people"/></svg>Clientes</div>
+              <div class="nitem"><svg><use href="#i-tag"/></svg>Servicios</div>
+              <div class="nitem"><svg><use href="#i-chart"/></svg>Resumen IVA</div>
+              <div class="navspacer"></div>
+              <div class="naccount"><span class="avatar">CG</span><span>Carlos García<br><span style="font-size:11px">12345678A</span></span></div>
+            </nav>
+            <main class="wmain">
+              <div class="pagehead">
+                <div>
+                  <h4>Factura 2025-008</h4>
+                  <div class="sub">Borrador · sin emitir</div>
+                </div>
+                <div class="cmdbar">
+                  <span class="cbtn">Guardar borrador</span>
+                  <span class="cbtn acc">Emitir factura</span>
+                </div>
+              </div>
+
+              <div class="infobar">
+                <svg><use href="#i-info"/></svg>
+                <span>Al emitirla se asignará el número <strong>2025-008</strong> y los datos fiscales del cliente quedarán congelados en el documento.</span>
+              </div>
+
+              <div class="editgrid">
+                <div style="display:grid;gap:12px;min-width:0">
+                  <div class="sect">
+                    <div class="lg"><svg><use href="#i-people"/></svg>Cliente</div>
+                    <div class="wfield">
+                      <span class="lb">Cliente</span>
+                      <div class="wfinput">Construcciones Pérez S.L. — B12345678</div>
+                    </div>
+                    <div class="wfield">
+                      <span class="lb">Datos fiscales</span>
+                      <div class="wfinput ro">C/ Industria 44 · 08020 Barcelona · 932 110 044</div>
+                    </div>
+                    <div class="hint">Solo lectura. Para corregirlos, abre la ficha del cliente.</div>
+                  </div>
+
+                  <div class="sect">
+                    <div class="lg"><svg><use href="#i-doc"/></svg>Conceptos</div>
+                    <div class="lrow">
+                      <div class="wfield"><span class="lb">Servicio</span><div class="wfinput">Instalación de fontanería</div></div>
+                      <div class="wfield"><span class="lb">Uds.</span><div class="wfinput">4</div></div>
+                      <div class="wfield"><span class="lb">Precio</span><div class="wfinput">85,00</div></div>
+                      <div class="wfield"><span class="lb">Importe</span><div class="wfinput ro">340,00</div></div>
+                      <div class="del"><svg><use href="#i-trash"/></svg></div>
+                    </div>
+                    <div class="lrow">
+                      <div class="wfield"><span class="lb">Servicio</span><div class="wfinput focus">Pintura interior m²</div></div>
+                      <div class="wfield"><span class="lb">Uds.</span><div class="wfinput">28</div></div>
+                      <div class="wfield"><span class="lb">Precio</span><div class="wfinput">12,50</div></div>
+                      <div class="wfield"><span class="lb">Importe</span><div class="wfinput ro">350,00</div></div>
+                      <div class="del"><svg><use href="#i-trash"/></svg></div>
+                    </div>
+                    <div><span class="cbtn"><svg><use href="#i-plus"/></svg>Añadir línea</span></div>
+                  </div>
+                </div>
+
+                <aside style="display:grid;gap:12px">
+                  <div class="sumcard">
+                    <div class="srow"><span>Base imponible</span><span>690,00 €</span></div>
+                    <div class="srow"><span>IVA 21 %</span><span>144,90 €</span></div>
+                    <div class="srow"><span>IRPF −15 %</span><span>−103,50 €</span></div>
+                    <div class="srow tot"><span>Total</span><b>731,40 €</b></div>
+                  </div>
+                  <div class="sect" style="gap:9px">
+                    <div class="wfield"><span class="lb">Fecha de emisión</span><div class="wfinput">13/09/2026</div></div>
+                    <div class="wfield"><span class="lb">Vencimiento</span><div class="wfinput">30 días — 13/10/2026</div></div>
+                  </div>
+                </aside>
+              </div>
+            </main>
+          </div>
+        </div>
+        <p class="caption"><b>02</b> <span>Editor · el total se ve mientras escribes, con IVA e IRPF desglosados. Los datos fiscales del cliente pasan a solo lectura: hoy son editables y lo que escribes ahí se descarta al guardar.</span></p>
+      </div>
+
+      <!-- Pantalla 3 · oscuro -->
+      <div>
+        <div class="win dark">
+          <div class="wtitle">
+            <span class="app"><span class="logo">B</span>BillEase</span>
+            <span class="caps"><span>—</span><span>▢</span><span>✕</span></span>
+          </div>
+          <div class="wbody" style="min-height:330px">
+            <nav class="nav">
+              <div class="navburger"><svg width="16" height="16"><use href="#i-menu"/></svg></div>
+              <div class="nitem"><svg><use href="#i-doc"/></svg>Facturas</div>
+              <div class="nitem on"><svg><use href="#i-tag"/></svg>Presupuestos</div>
+              <div class="nitem"><svg><use href="#i-people"/></svg>Clientes</div>
+              <div class="nitem"><svg><use href="#i-tag"/></svg>Servicios</div>
+              <div class="nitem"><svg><use href="#i-chart"/></svg>Resumen IVA</div>
+              <div class="navspacer"></div>
+              <div class="naccount"><span class="avatar">CG</span><span>Carlos García<br><span style="font-size:11px">12345678A</span></span></div>
+            </nav>
+            <main class="wmain">
+              <div class="pagehead">
+                <div>
+                  <h4>Presupuestos</h4>
+                  <div class="sub">3 abiertos · 1 aceptado este mes</div>
+                </div>
+                <div class="cmdbar">
+                  <span class="wsearch"><svg><use href="#i-search"/></svg>Buscar…</span>
+                  <span class="cbtn acc"><svg><use href="#i-plus"/></svg>Nuevo</span>
+                </div>
+              </div>
+              <div class="wtablecard">
+                <table class="wtable">
+                  <thead><tr><th>Número</th><th>Fecha</th><th>Cliente</th><th>Validez</th><th>Estado</th><th class="r">Total</th><th></th></tr></thead>
+                  <tbody>
+                    <tr><td class="id">P-2025-012</td><td class="mut">11/09/2025</td><td>Reformas Norte S.A.</td><td class="mut">30 días</td><td><span class="wpill warn"><i></i>Enviado</span></td><td class="r">2.480,50</td><td><div class="racts"><span><svg><use href="#i-pdf"/></svg></span><span><svg><use href="#i-edit"/></svg></span></div></td></tr>
+                    <tr><td class="id">P-2025-011</td><td class="mut">04/09/2025</td><td>Construcciones Pérez S.L.</td><td class="mut">15 días</td><td><span class="wpill ok"><i></i>Aceptado</span></td><td class="r">731,40</td><td><div class="racts"><span><svg><use href="#i-pdf"/></svg></span><span><svg><use href="#i-edit"/></svg></span></div></td></tr>
+                    <tr><td class="id">P-2025-010</td><td class="mut">21/08/2025</td><td>Antonio Martínez Soto</td><td class="mut">caducado</td><td><span class="wpill dang"><i></i>Sin respuesta</span></td><td class="r">412,90</td><td><div class="racts"><span><svg><use href="#i-pdf"/></svg></span><span><svg><use href="#i-edit"/></svg></span></div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="infobar">
+                <svg><use href="#i-info"/></svg>
+                <span>Un presupuesto aceptado se convierte en factura con un clic: se copian líneas, importes y datos del cliente, y se le asigna número de la serie de facturación.</span>
+              </div>
+            </main>
+          </div>
+        </div>
+        <p class="caption"><b>03</b> <span>Tema oscuro y sección de presupuestos · mismos tokens invertidos, con el acento claro que usa Windows sobre fondo oscuro. Los presupuestos llevan su propia serie (P-) y su fecha de validez.</span></p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 04 ═══ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <span class="eyebrow">04 · El documento</span>
+      <h2>Presupuesto y factura, sin marcas de agua</h2>
+      <p class="note">Una sola plantilla con dos cabeceras. El presupuesto lleva el acento azul y su condición de validez; la factura va en negro y añade el vencimiento. Ni logotipo de la aplicación, ni trama de fondo, ni pie de marca: quien recibe el documento solo ve los datos del autónomo.</p>
+    </div>
+
+    <div class="grid2" style="gap:18px">
+
+      <div>
+        <div class="docshell">
+          <div class="sheet">
+            <div class="dochead">
+              <div>
+                <div class="kind">Presupuesto</div>
+                <div class="who">
+                  <b>Carlos García López</b><br>
+                  NIF 12345678A<br>
+                  Calle Mayor 12, 2ºA · 28001 Madrid<br>
+                  612 345 678 · carlos.garcia@billease.es
+                </div>
+              </div>
+              <div class="docmeta">
+                Número <b>P-2025-011</b><br>
+                Fecha <b>04/09/2025</b><br>
+                Válido hasta <b>19/09/2025</b>
+              </div>
+            </div>
+            <div class="docrule acc"></div>
+
+            <div class="docto">
+              <div class="lb">Para</div>
+              <b>Construcciones Pérez S.L.</b><br>
+              CIF B12345678<br>
+              C/ Industria 44 · 08020 Barcelona
+            </div>
+
+            <table class="doctable">
+              <thead><tr><th>Concepto</th><th class="r">Uds.</th><th class="r">Precio</th><th class="r">Importe</th></tr></thead>
+              <tbody>
+                <tr><td>Instalación de fontanería<div class="d2">Por hora de trabajo</div></td><td class="r">4</td><td class="r">85,00</td><td class="r">340,00</td></tr>
+                <tr><td>Pintura interior m²<div class="d2">Precio por metro cuadrado</div></td><td class="r">28</td><td class="r">12,50</td><td class="r">350,00</td></tr>
+              </tbody>
+            </table>
+
+            <div class="doctot">
+              <div class="row"><span>Base imponible</span><span>690,00 €</span></div>
+              <div class="row"><span>IVA 21 %</span><span>144,90 €</span></div>
+              <div class="row"><span>Retención IRPF 15 %</span><span>−103,50 €</span></div>
+              <div class="row t acc"><span>Total presupuestado</span><b>731,40 €</b></div>
+            </div>
+
+            <div class="docnote">Presupuesto sin valor contable. La aceptación por escrito genera la factura correspondiente. Plazo estimado de ejecución: 5 días laborables desde la aceptación.</div>
+
+            <div class="docfoot"><span>Página 1 de 1</span><span>P-2025-011</span></div>
+          </div>
+        </div>
+        <p class="caption"><b>PRESUPUESTO</b> <span>Cabecera en azul, validez en la esquina y la nota de que no tiene valor contable.</span></p>
+      </div>
+
+      <div>
+        <div class="docshell">
+          <div class="sheet">
+            <div class="dochead">
+              <div>
+                <div class="kind inv">Factura</div>
+                <div class="who">
+                  <b>Carlos García López</b><br>
+                  NIF 12345678A<br>
+                  Calle Mayor 12, 2ºA · 28001 Madrid<br>
+                  612 345 678 · carlos.garcia@billease.es
+                </div>
+              </div>
+              <div class="docmeta">
+                Número <b>2025-004</b><br>
+                Fecha <b>14/02/2025</b><br>
+                Vencimiento <b>16/03/2025</b>
+              </div>
+            </div>
+            <div class="docrule"></div>
+
+            <div class="docto">
+              <div class="lb">Cliente</div>
+              <b>Construcciones Pérez S.L.</b><br>
+              CIF B12345678<br>
+              C/ Industria 44 · 08020 Barcelona
+            </div>
+
+            <table class="doctable">
+              <thead><tr><th>Concepto</th><th class="r">Uds.</th><th class="r">Precio</th><th class="r">Importe</th></tr></thead>
+              <tbody>
+                <tr><td>Instalación de fontanería<div class="d2">Reforma baño principal</div></td><td class="r">2</td><td class="r">85,00</td><td class="r">170,00</td></tr>
+                <tr><td>Pintura interior m²</td><td class="r">15</td><td class="r">12,50</td><td class="r">187,50</td></tr>
+                <tr><td>Mano de obra general</td><td class="r">4</td><td class="r">45,00</td><td class="r">180,00</td></tr>
+              </tbody>
+            </table>
+
+            <div class="doctot">
+              <div class="row"><span>Base imponible</span><span>537,50 €</span></div>
+              <div class="row"><span>IVA 21 %</span><span>112,88 €</span></div>
+              <div class="row t"><span>Total a pagar</span><b>650,38 €</b></div>
+            </div>
+
+            <div class="docnote">Forma de pago: transferencia a ES12 3456 7890 1234 5678 9012. Indique el número de factura en el concepto.</div>
+
+            <div class="docfoot"><span>Página 1 de 1</span><span>2025-004</span></div>
+          </div>
+        </div>
+        <p class="caption"><b>FACTURA</b> <span>Misma retícula en negro, con los datos de pago y el número de serie repetido en el pie de cada página.</span></p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 05 ═══ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <span class="eyebrow">05 · Implementación</span>
+      <h2>Cómo se lleva esto a PyQt6</h2>
+      <p class="note">Nada de lo anterior necesita bibliotecas externas ni dibujar controles a mano: es QSS sobre widgets estándar, más dos llamadas al API de Windows.</p>
+    </div>
+
+    <div class="impl">
+      <div class="irow">
+        <div class="t">Una hoja, no 84</div>
+        <div class="d">Los tokens viven en <code>theme/tokens.py</code> y se inyectan en <code>theme/app.qss</code> al arrancar. Cambiar de claro a oscuro es volver a cargar la hoja con el otro diccionario.
+          <pre class="snip"><span class="c"># theme/tokens.py — sin dependencias, también lo usa el PDF</span>
+LIGHT = {<span class="k">"mica"</span>: <span class="k">"#F3F3F3"</span>, <span class="k">"layer"</span>: <span class="k">"#FFFFFF"</span>,
+         <span class="k">"accent"</span>: <span class="k">"#0F6CBD"</span>, <span class="k">"text"</span>: <span class="k">"#1A1A1A"</span>, ...}
+DARK  = {<span class="k">"mica"</span>: <span class="k">"#202020"</span>, <span class="k">"layer"</span>: <span class="k">"#2B2B2B"</span>,
+         <span class="k">"accent"</span>: <span class="k">"#60CDFF"</span>, <span class="k">"text"</span>: <span class="k">"#FFFFFF"</span>, ...}
+
+app.setStyleSheet(QSS_TEMPLATE.format(**LIGHT))</pre>
+        </div>
+      </div>
+      <div class="irow">
+        <div class="t">Fondo Mica real</div>
+        <div class="d">En Windows 11 se activa con <code>DwmSetWindowAttribute</code> sobre el identificador de la ventana; en Windows 10 o si falla, se queda el color liso y no pasa nada.
+          <pre class="snip">ctypes.windll.dwmapi.DwmSetWindowAttribute(
+    hwnd, <span class="c">38</span>,  <span class="c"># DWMWA_SYSTEMBACKDROP_TYPE</span>
+    ctypes.byref(ctypes.c_int(<span class="c">2</span>)), <span class="c">4</span>)  <span class="c"># 2 = Mica</span></pre>
+        </div>
+      </div>
+      <div class="irow">
+        <div class="t">Seguir el tema del sistema</div>
+        <div class="d">Leer <code>AppsUseLightTheme</code> del registro al arrancar y responder a <code>QEvent.Type.ThemeChange</code>: si el usuario cambia Windows a oscuro, la aplicación le sigue sin reiniciar.</div>
+      </div>
+      <div class="irow">
+        <div class="t">Navegación</div>
+        <div class="d">Un <code>QListWidget</code> sin borde con delegado propio para la píldora del acento, junto al <code>QStackedWidget</code> que ya existe. El menú lateral actual se reemplaza entero, incluidos los emojis: los iconos pasan a SVG del propio proyecto.</div>
+      </div>
+      <div class="irow">
+        <div class="t">Tabla</div>
+        <div class="d"><code>QTableView</code> + <code>QAbstractTableModel</code> + <code>QSortFilterProxyModel</code>, con un delegado que pinta las píldoras de estado. Es el mismo cambio que ya pedía la auditoría por rendimiento: aquí además resuelve el diseño.</div>
+      </div>
+      <div class="irow">
+        <div class="t">Documentos</div>
+        <div class="d"><code>documents/</code> genera presupuesto y factura desde <em>una</em> plantilla con un parámetro <code>tipo</code>, usando <code>platypus</code> para que pagine de verdad. Los colores salen del mismo <code>tokens.py</code>, así que el papel y la pantalla no se desincronizan.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>BillEase · propuesta de rediseño v2 — Fluent (Windows 11)</span>
+    <span class="eyebrow">sustituye la sección 06 de la auditoría</span>
+  </div>
+</footer>
