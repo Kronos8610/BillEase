@@ -1,0 +1,1251 @@
+<title>Radiografía de BillEase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@400;600;800&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+/* ─────────────────────────────────────────────
+   TOKENS · dark-first (lenguaje Nothing)
+   ───────────────────────────────────────────── */
+:root{
+  --ground:#0B0B0C;
+  --surface:#141416;
+  --surface-2:#1B1B1E;
+  --line:#26262B;
+  --line-soft:#1D1D21;
+  --text:#EDEDEF;
+  --muted:#8B8B93;
+  --dim:#5E5E66;
+  --accent:#D71921;
+  --accent-soft:rgba(215,25,33,.14);
+  --amber:#E0A040;
+  --amber-soft:rgba(224,160,64,.13);
+  --ok:#5FA97C;
+  --ok-soft:rgba(95,169,124,.13);
+  --dot:rgba(255,255,255,.055);
+  --shadow:0 1px 0 rgba(255,255,255,.03) inset;
+
+  --f-display:"Doto","Courier New",monospace;
+  --f-body:"Archivo","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono","Consolas",ui-monospace,monospace;
+
+  --wrap:1120px;
+  --r:4px;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --ground:#EFEFEB;
+    --surface:#FFFFFF;
+    --surface-2:#F6F6F2;
+    --line:#D9D9D1;
+    --line-soft:#E6E6DF;
+    --text:#131315;
+    --muted:#66666E;
+    --dim:#8E8E96;
+    --accent:#C4121A;
+    --accent-soft:rgba(196,18,26,.09);
+    --amber:#9A6408;
+    --amber-soft:rgba(154,100,8,.10);
+    --ok:#2F7350;
+    --ok-soft:rgba(47,115,80,.10);
+    --dot:rgba(0,0,0,.07);
+    --shadow:0 1px 0 rgba(0,0,0,.02) inset;
+  }
+}
+:root[data-theme="light"]{
+  --ground:#EFEFEB;
+  --surface:#FFFFFF;
+  --surface-2:#F6F6F2;
+  --line:#D9D9D1;
+  --line-soft:#E6E6DF;
+  --text:#131315;
+  --muted:#66666E;
+  --dim:#8E8E96;
+  --accent:#C4121A;
+  --accent-soft:rgba(196,18,26,.09);
+  --amber:#9A6408;
+  --amber-soft:rgba(154,100,8,.10);
+  --ok:#2F7350;
+  --ok-soft:rgba(47,115,80,.10);
+  --dot:rgba(0,0,0,.07);
+  --shadow:0 1px 0 rgba(0,0,0,.02) inset;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  background-image:radial-gradient(var(--dot) 1px, transparent 1px);
+  background-size:22px 22px;
+  color:var(--text);
+  font-family:var(--f-body);
+  font-size:15.5px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:var(--wrap);margin:0 auto;padding-inline:24px;padding-block:0}
+
+/* ── tipografía base ── */
+h1,h2,h3,h4{margin:0;text-wrap:balance;line-height:1.15;font-weight:600}
+p{margin:0}
+a{color:var(--text);text-decoration-color:var(--accent);text-underline-offset:3px}
+.eyebrow{
+  font-family:var(--f-mono);font-size:11px;font-weight:500;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+}
+.lead{font-size:19px;line-height:1.55;color:var(--text);max-width:62ch}
+.note{color:var(--muted);font-size:14px;max-width:66ch}
+.mono{font-family:var(--f-mono)}
+strong{font-weight:600}
+code{
+  font-family:var(--f-mono);font-size:.88em;
+  background:var(--surface-2);border:1px solid var(--line-soft);
+  border-radius:3px;padding:.1em .35em;
+}
+
+/* ── cabecera ── */
+.masthead{border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--surface) 0%,transparent 100%)}
+.masthead .wrap{padding-block:56px 40px;display:grid;gap:26px}
+.brandline{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.reddot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none}
+h1{
+  font-family:var(--f-display);
+  font-size:clamp(40px,8vw,82px);
+  font-weight:800;letter-spacing:.01em;line-height:.98;
+}
+.metrics{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+  border-top:1px solid var(--line);
+}
+.metric{padding:18px 18px 18px 0;border-right:1px solid var(--line-soft)}
+.metric:last-child{border-right:0}
+.metric .n{
+  font-family:var(--f-display);font-size:30px;font-weight:800;line-height:1;
+  display:block;font-variant-numeric:tabular-nums;
+}
+.metric .k{display:block;margin-top:7px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.metric.bad .n{color:var(--accent)}
+
+/* ── secciones ── */
+section{border-bottom:1px solid var(--line)}
+section > .wrap{padding-block:56px}
+.sechead{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:start;margin-bottom:34px}
+.secnum{
+  font-family:var(--f-display);font-size:46px;font-weight:800;line-height:.85;
+  color:var(--dim);font-variant-numeric:tabular-nums;
+}
+.sechead h2{font-size:clamp(23px,3.4vw,31px);letter-spacing:-.01em}
+.sechead .eyebrow{display:block;margin-bottom:8px}
+.sechead .sub{color:var(--muted);margin-top:10px;max-width:64ch;font-size:15px}
+
+/* ── bloques genéricos ── */
+.stack{display:grid;gap:20px}
+.panel{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  padding:22px;box-shadow:var(--shadow);
+}
+.panel h3{font-size:16px;margin-bottom:10px}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+
+/* ── bloque de evidencia (terminal) ── */
+.ev{
+  font-family:var(--f-mono);font-size:12.4px;line-height:1.7;
+  background:var(--surface-2);border:1px solid var(--line);border-left:2px solid var(--accent);
+  border-radius:0 var(--r) var(--r) 0;
+  padding:14px 16px;overflow-x:auto;white-space:pre;color:var(--text);
+  margin:0;
+}
+.ev .c{color:var(--muted)}
+.ev .r{color:var(--accent)}
+.ev .g{color:var(--ok)}
+.evcap{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dim);margin-bottom:7px;
+}
+
+/* ── diagrama de flujo ── */
+.flow{width:100%;height:auto;display:block}
+.flow text{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.06em}
+
+/* ── tabla de esquema ── */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:13.6px}
+th{
+  text-align:left;font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);font-weight:500;
+  padding:12px 14px;border-bottom:1px solid var(--line);white-space:nowrap;
+}
+td{padding:11px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.t{font-family:var(--f-mono);font-size:12.4px;color:var(--muted);white-space:nowrap}
+td.name{font-family:var(--f-mono);font-size:12.6px;font-weight:500}
+.verdict{font-size:13px}
+.verdict.bad{color:var(--accent)}
+
+/* ── registro de defectos ── */
+.reg{display:grid;gap:14px;counter-reset:none}
+.find{
+  display:grid;grid-template-columns:auto 1fr;gap:0;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  overflow:hidden;
+}
+.rail{width:4px;background:var(--dim)}
+.find.sev-1 .rail{background:var(--accent)}
+.find.sev-2 .rail{background:var(--amber)}
+.find.sev-3 .rail{background:var(--dim)}
+.findbody{padding:20px 22px;display:grid;gap:13px;min-width:0}
+.findtop{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.fid{
+  font-family:var(--f-display);font-weight:800;font-size:19px;line-height:1;
+  color:var(--dim);font-variant-numeric:tabular-nums;
+}
+.find.sev-1 .fid{color:var(--accent)}
+.find.sev-2 .fid{color:var(--amber)}
+.findtop h3{font-size:17px;flex:1 1 280px;letter-spacing:-.005em}
+.chip{
+  font-family:var(--f-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  padding:4px 8px;border-radius:2px;white-space:nowrap;border:1px solid transparent;
+}
+.chip.c1{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.chip.c2{background:var(--amber-soft);color:var(--amber);border-color:var(--amber)}
+.chip.c3{background:var(--surface-2);color:var(--muted);border-color:var(--line)}
+.chip.file{background:transparent;color:var(--muted);border-color:var(--line-soft);text-transform:none;letter-spacing:.02em}
+.fix{
+  display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;
+  border-top:1px dashed var(--line);padding-top:12px;font-size:14px;
+}
+.fix .lbl{
+  font-family:var(--f-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ok);padding-top:4px;white-space:nowrap;
+}
+
+/* ── árboles de ficheros ── */
+.tree{
+  font-family:var(--f-mono);font-size:12.5px;line-height:1.85;white-space:pre;
+  overflow-x:auto;margin:0;color:var(--muted);
+}
+.tree b{color:var(--text);font-weight:500}
+.tree .add{color:var(--ok)}
+.tree .del{color:var(--accent)}
+.treehead{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:14px;display:flex;gap:8px;align-items:center;
+}
+
+/* ── lista de medidas ── */
+.measures{display:grid;gap:0;border-top:1px solid var(--line)}
+.measure{
+  display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) auto;gap:20px;
+  padding:16px 0;border-bottom:1px solid var(--line-soft);align-items:baseline;
+}
+.measure .what{font-weight:600;font-size:15px}
+.measure .how{color:var(--muted);font-size:14px}
+.measure .gain{
+  font-family:var(--f-mono);font-size:11.5px;color:var(--ok);white-space:nowrap;
+  text-align:right;font-variant-numeric:tabular-nums;
+}
+
+/* ── paleta del rediseño ── */
+.swatches{display:grid;grid-template-columns:repeat(auto-fit,minmax(124px,1fr));gap:12px}
+.sw{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface)}
+.sw .chipc{height:56px}
+.sw .meta{padding:9px 11px;font-family:var(--f-mono);font-size:10.5px;line-height:1.6}
+.sw .meta b{display:block;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--text)}
+.sw .meta span{color:var(--muted)}
+
+/* ═════════════════════════════════════════════
+   MAQUETAS · la app rediseñada
+   Escenario cerrado en negro Nothing, sin depender
+   del tema del visor.
+   ═════════════════════════════════════════════ */
+.mock{
+  --m-bg:#0A0A0B; --m-panel:#131315; --m-line:#232327; --m-line2:#1A1A1D;
+  --m-text:#F2F2F4; --m-muted:#8A8A92; --m-dim:#5A5A62; --m-accent:#D71921;
+  --m-ok:#5FA97C; --m-amber:#E0A040; --m-accent-txt:#E8393F;
+  background:var(--m-bg);color:var(--m-text);
+  border:1px solid var(--m-line);border-radius:8px;overflow:hidden;
+  font-size:13px;box-shadow:0 24px 60px rgba(0,0,0,.35);
+}
+.mock *{box-sizing:border-box}
+.titlebar{
+  display:flex;align-items:center;gap:10px;padding:9px 13px;
+  border-bottom:1px solid var(--m-line);background:#0E0E10;
+}
+.titlebar .dotred{width:7px;height:7px;border-radius:50%;background:var(--m-accent)}
+.titlebar .t{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--m-muted)}
+.titlebar .wc{margin-left:auto;display:flex;gap:16px;color:var(--m-dim);font-size:11px;font-family:var(--f-mono)}
+.mockbody{display:grid;grid-template-columns:186px 1fr;min-height:400px}
+.rail-nav{border-right:1px solid var(--m-line);padding:18px 0;display:flex;flex-direction:column;gap:2px}
+.rail-nav .wordmark{
+  font-family:var(--f-display);font-weight:800;font-size:20px;letter-spacing:.02em;
+  padding:0 18px 18px;display:flex;align-items:center;gap:8px;
+}
+.navitem{
+  display:flex;align-items:center;gap:11px;padding:9px 18px;color:var(--m-muted);
+  font-size:13px;border-left:2px solid transparent;
+}
+.navitem .gi{
+  width:16px;height:16px;border:1.4px solid currentColor;border-radius:3px;flex:none;
+}
+.navitem .gi.round{border-radius:50%}
+.navitem .gi.half{border-radius:50%;border-style:solid;border-color:currentColor transparent currentColor currentColor}
+.navitem.on{color:var(--m-text);border-left-color:var(--m-accent);background:linear-gradient(90deg,rgba(215,25,33,.10),transparent 70%)}
+.navsep{height:1px;background:var(--m-line2);margin:14px 18px}
+.navfoot{margin-top:auto;padding:0 18px;font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;color:var(--m-dim);line-height:1.7}
+.mockmain{padding:22px 24px;display:grid;gap:18px;align-content:start;min-width:0}
+.mockhead{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.mockhead h4{
+  font-family:var(--f-display);font-weight:800;font-size:26px;line-height:1;margin:0;letter-spacing:.01em;
+}
+.mockhead .cnt{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--m-muted);padding-bottom:3px}
+.mocktools{margin-left:auto;display:flex;gap:8px;align-items:center}
+.search{
+  display:flex;align-items:center;gap:8px;border:1px solid var(--m-line);border-radius:3px;
+  padding:6px 11px;color:var(--m-dim);font-size:12px;min-width:170px;background:#0E0E10;
+}
+.btn{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  padding:7px 13px;border-radius:3px;border:1px solid var(--m-line);color:var(--m-text);background:transparent;
+}
+.btn.primary{background:var(--m-accent);border-color:var(--m-accent);color:#fff;font-weight:500}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--m-line);border-radius:4px;overflow:hidden}
+.kpi{padding:14px 16px;border-right:1px solid var(--m-line2)}
+.kpi:last-child{border-right:0}
+.kpi .k{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--m-muted)}
+.kpi .v{font-family:var(--f-display);font-weight:800;font-size:23px;line-height:1.25;font-variant-numeric:tabular-nums}
+.kpi .v small{font-family:var(--f-body);font-size:12px;font-weight:400;color:var(--m-muted);letter-spacing:0}
+.mocktable{width:100%;border-collapse:collapse;font-size:12.6px;min-width:0}
+.mocktable th{
+  font-family:var(--f-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--m-muted);font-weight:400;padding:0 10px 9px;border-bottom:1px solid var(--m-line);text-align:left;
+}
+.mocktable td{padding:11px 10px;border-bottom:1px solid var(--m-line2);color:var(--m-text)}
+.mocktable tr:last-child td{border-bottom:0}
+.mocktable .num{font-family:var(--f-display);font-weight:800;font-size:15px;color:var(--m-text);font-variant-numeric:tabular-nums}
+.mocktable .r{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--f-mono)}
+.mocktable .muted{color:var(--m-muted)}
+.state{
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  padding:3px 7px;border-radius:2px;border:1px solid;white-space:nowrap;
+}
+.state.pagada{color:var(--m-ok);border-color:rgba(95,169,124,.45);background:rgba(95,169,124,.10)}
+.state.pend{color:var(--m-amber);border-color:rgba(224,160,64,.45);background:rgba(224,160,64,.10)}
+.state.venc{color:var(--m-accent-txt);border-color:rgba(232,57,63,.5);background:rgba(215,25,33,.12)}
+.rowacts{display:flex;gap:7px;justify-content:flex-end;color:var(--m-dim);font-family:var(--f-mono);font-size:10px}
+.rowacts span{border:1px solid var(--m-line);border-radius:2px;padding:2px 6px}
+
+/* maqueta 2 · formulario */
+.formgrid{display:grid;grid-template-columns:1fr 260px;gap:20px;align-items:start}
+.fieldset{border:1px solid var(--m-line);border-radius:4px;padding:16px;display:grid;gap:13px}
+.fieldset .legend{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--m-muted)}
+.field{display:grid;gap:5px}
+.field .lab{font-size:11px;color:var(--m-muted)}
+.inp{
+  border:0;border-bottom:1px solid var(--m-line);padding:6px 0;color:var(--m-text);
+  font-size:13px;background:transparent;
+}
+.inp.filled{border-bottom-color:var(--m-dim)}
+.inp.focus{border-bottom-color:var(--m-accent)}
+.linerow{display:grid;grid-template-columns:1fr 58px 78px 84px;gap:10px;align-items:end}
+.summary{border:1px solid var(--m-line);border-radius:4px;padding:16px;display:grid;gap:11px;position:sticky;top:0}
+.sumrow{display:flex;justify-content:space-between;font-size:12.5px;color:var(--m-muted);font-variant-numeric:tabular-nums}
+.sumrow.total{
+  border-top:1px solid var(--m-line);padding-top:11px;color:var(--m-text);align-items:baseline;
+}
+.sumrow.total b{font-family:var(--f-display);font-size:25px;font-weight:800;line-height:1}
+.mini{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--m-dim)}
+
+/* maqueta 3 · PDF */
+.pdfsheet{
+  background:#fff;color:#111;border-radius:3px;padding:26px 28px;
+  font-family:var(--f-body);font-size:11.5px;line-height:1.5;display:grid;gap:16px;
+}
+.pdfhead{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:12px;gap:16px}
+.pdfhead .ttl{font-family:var(--f-display);font-weight:800;font-size:26px;line-height:1;letter-spacing:.02em}
+.pdfhead .meta{text-align:right;font-family:var(--f-mono);font-size:10px;line-height:1.8;color:#444}
+.pdfhead .meta b{color:#111}
+.pdfparties{display:grid;grid-template-columns:1fr 1fr;gap:22px;font-size:10.5px;line-height:1.65}
+.pdfparties .plab{font-family:var(--f-mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:#888;margin-bottom:4px}
+.pdftable{width:100%;border-collapse:collapse;font-size:10.5px}
+.pdftable th{font-family:var(--f-mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:#888;text-align:left;padding:0 0 6px;border-bottom:1px solid #111;font-weight:400}
+.pdftable td{padding:7px 0;border-bottom:1px solid #E6E6E0;font-variant-numeric:tabular-nums}
+.pdftable .r{text-align:right}
+.pdftotals{margin-left:auto;width:230px;display:grid;gap:6px;font-size:10.5px;font-variant-numeric:tabular-nums}
+.pdftotals .row{display:flex;justify-content:space-between;color:#555}
+.pdftotals .row.t{border-top:2px solid #111;padding-top:7px;color:#111;align-items:baseline}
+.pdftotals .row.t b{font-family:var(--f-display);font-weight:800;font-size:19px}
+.pdffoot{border-top:1px solid #E6E6E0;padding-top:10px;font-size:9px;color:#777;display:flex;justify-content:space-between;gap:12px;font-family:var(--f-mono)}
+
+.caption{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);margin-top:11px;display:flex;gap:8px;align-items:center;
+}
+.caption .n{color:var(--accent);font-weight:700}
+
+/* ── fases ── */
+.phases{display:grid;gap:0;border-top:1px solid var(--line)}
+.phase{
+  display:grid;grid-template-columns:78px 1fr auto;gap:22px;
+  padding:20px 0;border-bottom:1px solid var(--line-soft);align-items:start;
+}
+.phase .pn{font-family:var(--f-display);font-weight:800;font-size:15px;color:var(--accent);letter-spacing:.1em;padding-top:2px}
+.phase h3{font-size:16px;margin-bottom:7px}
+.phase ul{margin:0;padding-left:17px;color:var(--muted);font-size:14px;line-height:1.75}
+.phase .cost{font-family:var(--f-mono);font-size:11px;color:var(--muted);white-space:nowrap;text-align:right}
+
+footer{padding-block:38px;color:var(--muted);font-size:13px}
+footer .wrap{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+
+/* ── responsive ── */
+@media (max-width:880px){
+  .cols2,.cols3{grid-template-columns:1fr}
+  .mockbody{grid-template-columns:1fr}
+  .rail-nav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--m-line);padding:10px;gap:4px;align-items:center}
+  .rail-nav .wordmark{padding:0 14px 0 6px}
+  .navitem{border-left:0;border-bottom:2px solid transparent;padding:7px 11px;white-space:nowrap}
+  .navitem.on{border-left:0;border-bottom-color:var(--m-accent)}
+  .navsep,.navfoot{display:none}
+  .formgrid{grid-template-columns:1fr}
+  .measure{grid-template-columns:1fr;gap:5px}
+  .measure .gain{text-align:left}
+  .phase{grid-template-columns:1fr;gap:8px}
+  .phase .cost{text-align:left}
+  .kpis{grid-template-columns:1fr}
+  .kpi{border-right:0;border-bottom:1px solid var(--m-line2)}
+}
+@media (max-width:560px){
+  .sechead{grid-template-columns:1fr;gap:8px}
+  .secnum{font-size:32px}
+  .metric{border-right:0;border-bottom:1px solid var(--line-soft)}
+  .linerow{grid-template-columns:1fr 1fr}
+}
+@media (prefers-reduced-motion:no-preference){
+  a:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+}
+</style>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="brandline">
+      <span class="reddot"></span>
+      <span class="eyebrow">Auditoría técnica &amp; propuesta de rediseño</span>
+    </div>
+    <h1>Radiografía<br>de BillEase</h1>
+    <p class="lead">Revisión línea a línea de los <strong>3.987 renglones</strong> de código del repositorio: cómo funciona hoy, qué está roto de verdad (con la prueba al lado), cómo debería quedar ordenado y qué aspecto tendría la aplicación vestida con el lenguaje visual de Nothing.</p>
+    <div class="metrics">
+      <div class="metric"><span class="n">3.987</span><span class="k">líneas de código</span></div>
+      <div class="metric bad"><span class="n">981</span><span class="k">líneas de QSS repetido</span></div>
+      <div class="metric bad"><span class="n">22</span><span class="k">conexiones SQLite</span></div>
+      <div class="metric bad"><span class="n">84</span><span class="k">setStyleSheet</span></div>
+      <div class="metric bad"><span class="n">0</span><span class="k">tests automáticos</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════ 01 · CÓMO FUNCIONA ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <div class="secnum">01</div>
+      <div>
+        <span class="eyebrow">El programa por dentro</span>
+        <h2>Qué hace BillEase cuando pulsas «ejecutar»</h2>
+        <p class="sub">Tres capas reales: un arranque que decide por la existencia de un fichero, una carpeta de pantallas que hablan directamente con SQL, y un módulo de base de datos que abre y cierra una conexión por cada pregunta.</p>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="panel">
+        <svg class="flow" viewBox="0 0 900 268" role="img" aria-label="Diagrama del flujo de arranque y navegación de BillEase">
+          <defs>
+            <marker id="ar" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,0 L7,3.5 L0,7 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <g fill="none" stroke="currentColor" stroke-width="1" opacity=".45" marker-end="url(#ar)">
+            <path d="M112 44 H188"/>
+            <path d="M300 44 H364"/>
+            <path d="M232 62 V96"/>
+            <path d="M300 110 H364"/>
+            <path d="M472 62 V96"/>
+            <path d="M472 128 V162"/>
+            <path d="M540 180 H636"/>
+            <path d="M748 198 V232"/>
+          </g>
+
+          <g font-family="JetBrains Mono, monospace">
+            <rect x="12" y="28" width="100" height="32" rx="3" fill="none" stroke="currentColor" opacity=".85"/>
+            <text x="62" y="48" text-anchor="middle" fill="currentColor">main_start.py</text>
+
+            <rect x="188" y="28" width="112" height="32" rx="3" fill="none" stroke="currentColor" opacity=".85"/>
+            <text x="244" y="44" text-anchor="middle" fill="currentColor">¿existe</text>
+            <text x="244" y="55" text-anchor="middle" fill="currentColor">BillEase.db?</text>
+
+            <rect x="364" y="28" width="216" height="32" rx="3" fill="none" stroke="currentColor" opacity=".85"/>
+            <text x="472" y="44" text-anchor="middle" fill="currentColor">NO → login_ui.RegisterWindow</text>
+            <text x="472" y="55" text-anchor="middle" fill="currentColor" opacity=".6">alta del autónomo + CREATE TABLE</text>
+
+            <rect x="364" y="96" width="216" height="32" rx="3" fill="none" stroke="currentColor" opacity=".85"/>
+            <text x="472" y="112" text-anchor="middle" fill="currentColor">SÍ → aplication.MainWindow</text>
+            <text x="472" y="123" text-anchor="middle" fill="currentColor" opacity=".6">sin pantalla de acceso</text>
+
+            <rect x="364" y="162" width="176" height="36" rx="3" fill="none" stroke="currentColor" opacity=".85"/>
+            <text x="452" y="178" text-anchor="middle" fill="currentColor">QStackedWidget</text>
+            <text x="452" y="190" text-anchor="middle" fill="currentColor" opacity=".6">4 páginas instanciadas a la vez</text>
+
+            <rect x="636" y="150" width="224" height="60" rx="3" fill="none" stroke="currentColor" opacity=".85"/>
+            <text x="748" y="168" text-anchor="middle" fill="currentColor">homePage · crearFactura</text>
+            <text x="748" y="182" text-anchor="middle" fill="currentColor">crearCliente · crearServicio</text>
+            <text x="748" y="198" text-anchor="middle" fill="currentColor" opacity=".6">+ editarFactura (QDialog modal)</text>
+
+            <rect x="636" y="232" width="224" height="30" rx="3" fill="none" stroke="#D71921" opacity=".9"/>
+            <text x="748" y="251" text-anchor="middle" fill="#D71921">database/db.py → SQLite</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="cols2">
+        <div class="panel">
+          <h3>El arranque decide por un fichero</h3>
+          <p class="note"><code>main_start.py</code> comprueba si existe <code>BillEase.db</code> en el directorio de trabajo. Si no existe, abre el formulario de alta y crea las tablas; si existe, entra directo a la ventana principal. Como la ruta es relativa, <strong>ejecutar la app desde otra carpeta crea una base de datos nueva y vacía</strong> sin avisar de nada.</p>
+        </div>
+        <div class="panel">
+          <h3>No hay sesión, ni control de acceso</h3>
+          <p class="note">El README publica un usuario y una contraseña, pero la función <code>login()</code> de <code>db.py</code> <strong>no se invoca desde ningún sitio</strong>. Quien abra la carpeta abre la contabilidad. La contraseña se guarda además en claro.</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="evcap">Comprobación · funciones de db.py sin ninguna llamada en el resto del proyecto</div>
+        <pre class="ev"><span class="c">$ grep de referencias sobre las 22 funciones públicas de database/db.py</span>
+   NUNCA USADA -> <span class="r">login</span>                  <span class="c"># la app nunca pide credenciales</span>
+   NUNCA USADA -> <span class="r">obtener_datos_autonomo</span> <span class="c"># además está rota, ver defecto 06</span>
+   NUNCA USADA -> <span class="r">register_cliente</span>       <span class="c"># duplicado de agregar_cliente</span></pre>
+      </div>
+
+      <div class="panel">
+        <h3>Cada pantalla es su propia isla</h3>
+        <p class="note">Las cuatro páginas y el diálogo de edición construyen su interfaz entera dentro de <code>__init__</code>, importan <code>database.db</code> <em>dentro</em> de los métodos (20 importaciones locales repartidas por el proyecto) y repiten sus propios ayudantes: <code>create_styled_input</code> aparece cuatro veces, <code>show_error_message</code> dos, <code>create_section_box</code> dos. No hay ninguna capa entre la interfaz y el SQL: los widgets desempaquetan tuplas por índice — <code>cliente[2]</code> es el nombre, <code>cliente[6]</code> el NIF — de modo que <strong>añadir una columna a una tabla rompe pantallas a distancia</strong>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 02 · MODELO DE DATOS ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <div class="secnum">02</div>
+      <div>
+        <span class="eyebrow">Modelo de datos</span>
+        <h2>El esquema donde empiezan la mitad de los problemas</h2>
+        <p class="sub">Cinco tablas. Los tipos elegidos para códigos postales, teléfonos y claves ajenas son la causa raíz de errores que luego aparecen impresos en el PDF del cliente.</p>
+      </div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Columna</th><th>Tipo declarado</th><th>Qué pasa en la práctica</th></tr></thead>
+        <tbody>
+          <tr><td class="name">Autonomo.codigo_postal<br>Cliente.cod_postal</td><td class="t">REAL / TEXT</td><td class="verdict bad">El del autónomo es REAL: «08001» se guarda como <code>8001.0</code>. Se pierde el cero inicial y el PDF imprime «CP: 28001.0».</td></tr>
+          <tr><td class="name">Autonomo.telefono<br>Cliente.telefono</td><td class="t">REAL</td><td class="verdict bad">«+34612345678» se convierte en <code>34612345678.0</code>. Desaparece el prefijo y aparece un decimal en la factura.</td></tr>
+          <tr><td class="name">Factura.fecha</td><td class="t">DATE</td><td class="verdict bad">SQLite no tiene tipo fecha; se guarda el texto «15/01/2025». Imposible ordenar por fecha, filtrar un trimestre o sacar un resumen anual.</td></tr>
+          <tr><td class="name">Factura.total</td><td class="t">REAL</td><td class="verdict bad">Guarda la <strong>base imponible</strong>, no el total. El PDF imprime base × 1,21. La aplicación y el papel no dicen lo mismo.</td></tr>
+          <tr><td class="name">Factura.Cod_cliente</td><td class="t">REAL</td><td class="verdict bad">Clave ajena en coma flotante apuntando a un INTEGER. Funciona por la conversión laxa de SQLite, no por diseño.</td></tr>
+          <tr><td class="name">Detalle_linea.*</td><td class="t">REAL</td><td class="verdict bad">Clave primaria compuesta <code>(Num_Factura, Num_Linea)</code> en REAL. Números de línea con decimales.</td></tr>
+          <tr><td class="name">Autonomo.contrasena</td><td class="t">TEXT</td><td class="verdict bad">Texto plano. «Pass1234» se lee tal cual abriendo el fichero.</td></tr>
+          <tr><td class="name">Autonomo (tabla)</td><td class="t">—</td><td class="verdict">Sin clave primaria. Nada impide dos autónomos; el resto del código asume <code>LIMIT 1</code>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="stack" style="margin-top:20px">
+      <div>
+        <div class="evcap">Prueba · las claves ajenas están declaradas pero SQLite no las aplica</div>
+        <pre class="ev"><span class="c">$ python3 -c "comprobación sobre una copia de BillEase.db"</span>
+foreign_keys por defecto: <span class="r">0</span>
+INSERT con Num_Factura=9999 (inexistente):  <span class="r">ACEPTADO</span>   <span class="c"># línea huérfana admitida</span>
+Facturas del cliente 1 antes de borrarlo: 2 -> despues: <span class="r">2</span>   <span class="c"># el ON DELETE CASCADE no se ejecuta</span></pre>
+      </div>
+      <p class="note">SQLite arranca con <code>PRAGMA foreign_keys = OFF</code> en cada conexión nueva y el proyecto abre 22 conexiones sin activarlo nunca. Las restricciones del <code>CREATE TABLE</code> son, hoy, documentación decorativa: la integridad depende por completo de comprobaciones manuales escritas en la capa de interfaz.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 03 · DEFECTOS ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <div class="secnum">03</div>
+      <div>
+        <span class="eyebrow">Registro de defectos · 16 hallazgos verificados</span>
+        <h2>Lo que está roto, ordenado por lo que cuesta</h2>
+        <p class="sub">Todos reproducidos contra la base de datos incluida en el repositorio. Los tres primeros afectan al documento que sale por la impresora y llega a Hacienda.</p>
+      </div>
+    </div>
+
+    <div class="reg">
+
+      <article class="find sev-1">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">01</span>
+            <h3>El total guardado y el total impreso no coinciden</h3>
+            <span class="chip c1">Crítico</span>
+            <span class="chip file">crearFactura.py · homePage.py</span>
+          </div>
+          <p><code>handle_guardar_factura</code> guarda en <code>Factura.total</code> la suma de líneas <strong>sin IVA</strong>. <code>generar_factura_pdf</code> recalcula el subtotal, le añade un 21 % fijo y lo imprime como TOTAL. La misma factura vale dos cifras distintas según dónde la mires, y la lista de la aplicación ni siquiera muestra la columna.</p>
+          <div>
+            <div class="evcap">Las 7 facturas de la base de datos de ejemplo</div>
+            <pre class="ev">Nº | total en BD | suma líneas |  total del PDF
+ 7 |      180,00 |      180,00 |   <span class="r">217,80</span>
+ 6 |      830,00 |      830,00 |  <span class="r">1004,30</span>
+ 3 |     1420,00 |     1420,00 |  <span class="r">1718,20</span>   <span class="c">← 298,20 € de diferencia</span></pre>
+          </div>
+          <div class="fix"><span class="lbl">Arreglo</span><p>Guardar <code>base</code>, <code>tipo_iva</code> e <code>importe_total</code> como columnas separadas y calcular una sola vez en el dominio. El tipo debe ser un dato de la línea, no una constante escondida en el generador de PDF: hoy no se puede emitir nada al 10 %, al 4 % ni exento.</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-1">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">02</span>
+            <h3>El PDF se sale del papel a partir de ~25 conceptos</h3>
+            <span class="chip c1">Crítico</span>
+            <span class="chip file">homePage.py · generar_factura_pdf</span>
+          </div>
+          <p>El generador dibuja con coordenadas absolutas y va restando 20 puntos por línea. No hay <code>showPage()</code> intermedio ni control del margen inferior: cuando la <em>y</em> llega a cero sigue dibujando fuera de la hoja. Los conceptos desaparecen <strong>y con ellos el cuadro de totales</strong>, pero la aplicación anuncia «PDF generado correctamente».</p>
+          <div>
+            <div class="evcap">Factura de prueba con 30 líneas · instrumentando canvas.drawString</div>
+            <pre class="ev">Textos dibujados con coordenada Y NEGATIVA (fuera del papel): <span class="r">21</span>
+    y=   -13,1  'Servicio 27'
+    y=   -33,1  'Servicio 28'
+    ...
+Y mínima alcanzada: <span class="r">-243,1</span>
+Páginas del PDF resultante: <span class="r">1</span></pre>
+          </div>
+          <div class="fix"><span class="lbl">Arreglo</span><p>Sustituir el dibujo manual por <code>platypus</code> (<code>SimpleDocTemplate</code> + <code>Table</code> con <code>repeatRows=1</code>): pagina solo, repite la cabecera y permite numerar «página 1 de N».</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-1">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">03</span>
+            <h3>Contraseña en claro y base de datos real versionada en Git</h3>
+            <span class="chip c1">Crítico</span>
+            <span class="chip file">db.py · repositorio</span>
+          </div>
+          <p><code>BillEase.db</code> está bajo control de versiones con el registro del autónomo dentro; la contraseña se almacena sin cifrar y el README la publica. El fichero contiene además NIF, direcciones, teléfonos y correos de cinco clientes: datos personales de categoría ordinaria bajo el RGPD, en un repositorio público.</p>
+          <div>
+            <div class="evcap">Lectura directa del fichero versionado</div>
+            <pre class="ev">('12345678A', 'Carlos', 'García López', 'Calle Mayor 12, 2ºA',
+ 28001.0, 612345678.0, 'carlos.garcia@billease.es', <span class="r">'Pass1234'</span>)</pre>
+          </div>
+          <div class="fix"><span class="lbl">Arreglo</span><p>Hash con <code>argon2</code> o <code>bcrypt</code>; sacar el <code>.db</code> del repositorio y sustituirlo por un <code>seed_demo.py</code> que genere datos ficticios; guardar la base real en <code>%LOCALAPPDATA%\BillEase\</code>, no junto al código.</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-1">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">04</span>
+            <h3>Los códigos postales y teléfonos se corrompen al guardarse</h3>
+            <span class="chip c1">Crítico</span>
+            <span class="chip file">db.py · CREATE TABLE</span>
+          </div>
+          <p>Declarar <code>codigo_postal REAL</code> y <code>telefono REAL</code> obliga a SQLite a convertir la cadena en número. El resultado se imprime literalmente en cada factura emitida.</p>
+          <div>
+            <div class="evcap">Conversión real al insertar</div>
+            <pre class="ev">'08001'        → <span class="r">8001.0</span>          <span class="c"># Barcelona pierde el cero inicial</span>
+'+34612345678' → <span class="r">34612345678.0</span>  <span class="c"># desaparece el prefijo</span>
+
+<span class="c">y lo que acaba dibujado en el PDF del emisor:</span>
+   'CP: <span class="r">28001.0</span>'   'Teléfono: <span class="r">612345678.0</span>'</pre>
+          </div>
+          <div class="fix"><span class="lbl">Arreglo</span><p><code>TEXT</code> con <code>CHECK(length(cp)=5)</code>. Es una migración de una línea por columna y arregla un error visible en cada documento.</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-1">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">05</span>
+            <h3>La numeración de facturas no es una serie fiscal</h3>
+            <span class="chip c1">Crítico</span>
+            <span class="chip file">db.py · Factura</span>
+          </div>
+          <p>El número de factura es el <code>AUTOINCREMENT</code> de SQLite. Borrar una factura desde la papelera de la lista deja <strong>un hueco permanente en la serie</strong> — el reglamento de facturación exige numeración correlativa y sin saltos —, no existe prefijo ni ejercicio (<code>2025-001</code>), y no hay ningún rastro de la factura eliminada. Una factura emitida no se borra: se rectifica.</p>
+          <div class="fix"><span class="lbl">Arreglo</span><p>Serie configurable (<code>serie</code>, <code>ejercicio</code>, <code>numero</code>) con índice único, contador propio por ejercicio, y sustituir «eliminar» por «anular» con factura rectificativa.</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-2">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">06</span>
+            <h3>Los datos del cliente que escribes en «Crear Factura» se tiran a la basura</h3>
+            <span class="chip c2">Alto</span>
+            <span class="chip file">crearFactura.py</span>
+          </div>
+          <p>La sección «Datos del Cliente» son seis campos editables que se rellenan al elegir un cliente del desplegable. Al guardar, <code>handle_guardar_factura</code> usa exclusivamente <code>cliente_datos[0]</code>, el identificador. Todo lo que el usuario haya corregido ahí — una dirección nueva, un teléfono actualizado — <strong>se descarta en silencio</strong> y la factura sale con los datos antiguos.</p>
+          <div class="fix"><span class="lbl">Arreglo</span><p>O son de solo lectura con un enlace «editar ficha del cliente», o se guardan. Y la factura debe congelar los datos fiscales del cliente en el momento de emisión, no leerlos en vivo: hoy, cambiar la dirección de un cliente reescribe retroactivamente todas sus facturas antiguas.</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-2">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">07</span>
+            <h3><code>obtener_datos_autonomo()</code> consulta columnas que no existen</h3>
+            <span class="chip c2">Alto</span>
+            <span class="chip file">db.py:~500</span>
+          </div>
+          <p>Pide <code>CP</code> y <code>Tel</code>; las columnas se llaman <code>codigo_postal</code> y <code>telefono</code>. La excepción se traga con un <code>print</code> y la función devuelve <code>None</code> siempre. No se nota porque nadie la llama: el PDF repite la consulta a mano con los nombres correctos.</p>
+          <div>
+            <div class="evcap">Ejecución de la función tal cual está</div>
+            <pre class="ev">Error al obtener datos del autónomo: <span class="r">no such column: CP</span>
+resultado: <span class="r">None</span></pre>
+          </div>
+          <div class="fix"><span class="lbl">Arreglo</span><p>Corregir la consulta, usarla desde el generador de PDF y dejar de tragarse excepciones con <code>print</code>: 22 funciones devuelven <code>None</code>/<code>False</code> ante cualquier fallo, así que la interfaz nunca sabe <em>por qué</em> algo no se guardó.</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-2">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">08</span>
+            <h3>Las fechas son texto «dd/mm/aaaa»</h3>
+            <span class="chip c2">Alto</span>
+            <span class="chip file">crearFactura.py · editarFactura.py</span>
+          </div>
+          <p>Se guarda lo que haya escrito el usuario en un <code>QLineEdit</code>, sin validar. Ordenar por fecha ordena alfabéticamente («03/02» antes que «15/01»), y el resumen trimestral del IVA — la razón por la que un autónomo usa un programa de facturación — es directamente imposible.</p>
+          <div class="fix"><span class="lbl">Arreglo</span><p>Guardar ISO-8601 (<code>2025-01-15</code>), mostrar en formato español, y sustituir el <code>QLineEdit</code> + <code>QCalendarWidget</code> manual por un <code>QDateEdit</code> con calendario desplegable.</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-2">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">09</span>
+            <h3>Una conexión SQLite por pregunta, y N+1 para pintar la lista</h3>
+            <span class="chip c2">Alto</span>
+            <span class="chip file">db.py · homePage.py</span>
+          </div>
+          <p>Las 22 funciones de <code>db.py</code> abren y cierran su propia conexión. Para pintar la pantalla de inicio se pide la lista de facturas y después, <strong>una consulta por fila</strong>, el nombre del cliente.</p>
+          <div>
+            <div class="evcap">Medición sobre la base de ejemplo</div>
+            <pre class="ev">Facturas: 7  →  conexiones sqlite abiertas: <span class="r">8</span>
+<span class="c">con 500 facturas serían 501 conexiones por cada refresco</span></pre>
+          </div>
+          <div class="fix"><span class="lbl">Arreglo</span><p>Una conexión por proceso con <code>row_factory = sqlite3.Row</code> (adiós a los índices mágicos) y un <code>JOIN</code> que traiga factura y cliente de una vez.</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-2">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">10</span>
+            <h3>La lista se construye con widgets: no escala</h3>
+            <span class="chip c2">Alto</span>
+            <span class="chip file">homePage.py</span>
+          </div>
+          <p>Cada fila es un <code>QWidget</code> con seis hijos y tres hojas de estilo propias, creado en un bucle y destruido entero en cada refresco. Con 1.000 facturas son <strong>~7.000 widgets vivos</strong>, sin ordenación, sin filtro, sin paginación y sin búsqueda.</p>
+          <div class="fix"><span class="lbl">Arreglo</span><p><code>QTableView</code> + <code>QAbstractTableModel</code> + <code>QSortFilterProxyModel</code>: reciclado de celdas, ordenación por columna y búsqueda instantánea salen de serie, y el código de la pantalla baja de 952 a unas 200 líneas.</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-2">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">11</span>
+            <h3>El menú lateral es prácticamente ilegible</h3>
+            <span class="chip c2">Alto</span>
+            <span class="chip file">aplication.py · utils/globals.py</span>
+          </div>
+          <p>Los botones de navegación se pintan en <code>#950952</code> sobre un fondo declarado <code>#66023C</code>. Además, el fondo del menú <strong>nunca llega a dibujarse</strong>: un <code>QWidget</code> plano ignora <code>background-color</code> del QSS salvo que se active <code>WA_StyledBackground</code>, así que lo que se ve no es lo que el código pide (se aprecia en la propia captura del README).</p>
+          <div>
+            <div class="evcap">Contraste WCAG · navegación principal</div>
+            <pre class="ev">Texto botones menú   #950952 sobre #66023C   <span class="r">1,49:1</span>  ✘ FALLA (AA pide 4,5:1)
+Título «BillEase»    #F3E0EC sobre #66023C  <span class="g">10,18:1</span>  ✔ pasa</pre>
+          </div>
+          <div class="fix"><span class="lbl">Arreglo</span><p>Ver la sección 06: paleta nueva con contraste comprobado y una hoja de estilo única en lugar de 84 sueltas.</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-2">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">12</span>
+            <h3>Los validadores rechazan NIF y CIF perfectamente válidos</h3>
+            <span class="chip c2">Alto</span>
+            <span class="chip file">validators/Validator.py</span>
+          </div>
+          <p>El <code>NIFValidator</code> solo acepta el patrón «8 dígitos + letra»: <strong>un cliente con NIE no se puede dar de alta</strong>. El <code>CIFValidator</code> obliga a dígito de control numérico en los tipos C, D, F, G, J, U y V, cuando la AEAT admite ahí las dos formas.</p>
+          <div>
+            <div class="evcap">Casos reales rechazados</div>
+            <pre class="ev">NIE  X1234567L (residente extranjero)  → <span class="r">False</span>
+CIF  G2866715B (asociación, control letra) → <span class="r">False</span>
+CIF  G28667152 (mismo NIF, control cifra)  → <span class="g">True</span>
+Tel  '612 34 56 78' (con espacios)      → <span class="r">False</span></pre>
+          </div>
+          <div class="fix"><span class="lbl">Arreglo</span><p>Añadir NIE (X/Y/Z → 0/1/2 antes del módulo 23), permitir letra de control en los tipos que la admiten, y normalizar el teléfono (quitar espacios y guiones) antes de validar en lugar de rechazarlo.</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-3">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">13</span>
+            <h3>El mensaje «no hay elementos» se sale del layout</h3>
+            <span class="chip c3">Medio</span>
+            <span class="chip file">homePage.py · limpiar_items()</span>
+          </div>
+          <p><code>takeAt(0)</code> saca el contenedor del layout pero <em>no</em> le quita el padre, así que la comprobación <code>if self.no_items_container.parent() is None</code> nunca es cierta y el contenedor no se vuelve a añadir. En una instalación recién creada —sin facturas todavía— el aviso se muestra sin geometría gestionada.</p>
+          <div class="fix"><span class="lbl">Arreglo</span><p>Desaparece solo al migrar a <code>QTableView</code>, que tiene estado vacío propio.</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-3">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">14</span>
+            <h3>Los colores viven en un módulo que importa PyQt6</h3>
+            <span class="chip c3">Medio</span>
+            <span class="chip file">utils/globals.py</span>
+          </div>
+          <p>Once líneas: cinco colores y tres <code>QFont</code>. Como define fuentes, <strong>importa Qt</strong>, y como el generador de PDF importa los colores de ahí, la generación de facturas arrastra toda la biblioteca gráfica. Probar el PDF sin entorno gráfico es imposible sin trucos.</p>
+          <div class="fix"><span class="lbl">Arreglo</span><p>Separar <code>theme/tokens.py</code> (solo cadenas, sin dependencias) de <code>theme/fonts.py</code> (Qt).</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-3">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">15</span>
+            <h3>981 líneas de estilo copiadas y pegadas</h3>
+            <span class="chip c3">Medio</span>
+            <span class="chip file">todo ui/</span>
+          </div>
+          <p>84 llamadas a <code>setStyleSheet</code> con f-strings multilínea. El bloque del botón rojo de borrar aparece idéntico tres veces en el mismo fichero. <strong>Una de cada cuatro líneas del proyecto es CSS repetido</strong>, y cambiar un color obliga a tocar siete ficheros.</p>
+          <div class="fix"><span class="lbl">Arreglo</span><p>Una hoja <code>theme/app.qss</code> cargada en <code>QApplication.setStyleSheet()</code>, con selectores por <code>objectName</code> y propiedades dinámicas (<code>btn[variant="danger"]</code>).</p></div>
+        </div>
+      </article>
+
+      <article class="find sev-3">
+        <div class="rail"></div>
+        <div class="findbody">
+          <div class="findtop">
+            <span class="fid">16</span>
+            <h3>Higiene del repositorio</h3>
+            <span class="chip c3">Medio</span>
+            <span class="chip file">raíz del proyecto</span>
+          </div>
+          <p>28 ficheros <code>.pyc</code> versionados (de dos versiones distintas de Python), sin <code>.gitignore</code> — se borró en el commit <code>01bd34e</code> —, sin <code>requirements.txt</code> pese a que el README manda instalar a mano, sin tests. <code>test.py</code> no es una prueba: es un script que <strong>inserta un autónomo ficticio</strong> en la base de datos real. Y el README documenta un <code>seed_db.py</code> que no existe en el repositorio.</p>
+          <div class="fix"><span class="lbl">Arreglo</span><p><code>git rm -r --cached __pycache__ BillEase.db</code>, <code>.gitignore</code> de Python, <code>requirements.txt</code> con versiones fijadas y <code>tools/seed_demo.py</code> con el papel que hoy hace <code>test.py</code>.</p></div>
+        </div>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 04 · ORGANIZACIÓN ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <div class="secnum">04</div>
+      <div>
+        <span class="eyebrow">Organización de ficheros</span>
+        <h2>De cinco carpetas planas a cuatro capas con una dirección</h2>
+        <p class="sub">La regla: la interfaz no escribe SQL, el dominio no sabe que existe Qt, y el PDF se puede generar desde una terminal sin pantalla.</p>
+      </div>
+    </div>
+
+    <div class="cols2">
+      <div class="panel">
+        <div class="treehead"><span class="reddot" style="width:6px;height:6px"></span> Hoy</div>
+        <pre class="tree">BillEase/
+├── <span class="del">BillEase.db</span>          <b>datos reales versionados</b>
+├── <span class="del">__pycache__/</span>         <b>28 .pyc en git</b>
+├── <span class="del">test.py</span>              <b>no es un test</b>
+├── main_start.py
+├── ui/
+│   ├── aplication.py     130
+│   ├── login_ui.py       312
+│   ├── <b>homePage.py</b>       <span class="del">952</span>  <b>lista + PDF</b>
+│   ├── <b>crearFactura.py</b>   <span class="del">738</span>
+│   ├── editarFactura.py  438  <b>~70 % igual</b>
+│   ├── crearCliente.py   288
+│   └── crearServicio.py  238
+├── database/db.py        555  <b>22 conexiones</b>
+├── validators/Validator.py
+└── utils/globals.py      <b>importa PyQt6</b></pre>
+      </div>
+
+      <div class="panel">
+        <div class="treehead"><span class="reddot" style="width:6px;height:6px;background:var(--ok)"></span> Propuesta</div>
+        <pre class="tree">billease/
+├── <span class="add">app.py</span>                 arranque, DI, tema
+├── <span class="add">config.py</span>              rutas %LOCALAPPDATA%
+├── <span class="add">core/</span>                  <b>sin Qt, sin SQL</b>
+│   ├── models.py         dataclasses
+│   ├── numbering.py      serie fiscal
+│   ├── taxes.py          IVA, retención IRPF
+│   └── validators/       nif.py cif.py iban.py
+├── <span class="add">data/</span>                  <b>único sitio con SQL</b>
+│   ├── connection.py     1 conexión + PRAGMAs
+│   ├── migrations/       001_init … 004_iva
+│   └── repositories/     facturas.py clientes.py
+├── <span class="add">documents/</span>             <b>sin Qt: testeable</b>
+│   └── invoice_pdf.py    platypus + paginación
+├── <span class="add">ui/</span>
+│   ├── shell.py          ventana + navegación
+│   ├── models/           QAbstractTableModel
+│   ├── widgets/          <b>controles compartidos</b>
+│   └── views/            facturas/ clientes/ servicios/
+├── <span class="add">theme/</span>
+│   ├── tokens.py         color y espaciado
+│   └── app.qss           <b>1 hoja, no 84</b>
+└── <span class="add">tests/</span>                 pytest + pytest-qt</pre>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:20px">
+      <h3>Qué gana cada movimiento</h3>
+      <div class="measures">
+        <div class="measure"><div class="what">Sacar el PDF de <code>homePage.py</code></div><div class="how">Pasa a <code>documents/invoice_pdf.py</code>, recibe un objeto <code>Factura</code> y no toca la base de datos.</div><div class="gain">952 → ~200 líneas</div></div>
+        <div class="measure"><div class="what">Fusionar crear y editar factura</div><div class="how">Una sola vista <code>InvoiceEditor(modo=nuevo|edición)</code>: hoy son 1.176 líneas casi idénticas.</div><div class="gain">−480 líneas</div></div>
+        <div class="measure"><div class="what">Repositorios en lugar de funciones sueltas</div><div class="how"><code>FacturaRepository</code> devuelve objetos, no tuplas; se acaban los <code>cliente[6]</code>.</div><div class="gain">0 índices mágicos</div></div>
+        <div class="measure"><div class="what">Migraciones numeradas</div><div class="how">Corregir los tipos REAL de CP y teléfono sin que nadie pierda su base de datos.</div><div class="gain">actualizable</div></div>
+        <div class="measure"><div class="what">Núcleo sin Qt</div><div class="how">IVA, numeración y validadores se prueban con <code>pytest</code> en milisegundos y sin pantalla.</div><div class="gain">CI posible</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 05 · OPTIMIZACIÓN ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <div class="secnum">05</div>
+      <div>
+        <span class="eyebrow">Optimización</span>
+        <h2>Siete cambios con efecto medible</h2>
+        <p class="sub">Ordenados por relación entre esfuerzo y resultado. Los cuatro primeros son de una tarde.</p>
+      </div>
+    </div>
+
+    <div class="measures">
+      <div class="measure"><div class="what">Conexión única + <code>row_factory</code></div><div class="how">Abrir una vez al arrancar, activar <code>foreign_keys</code> y <code>journal_mode=WAL</code>, y acceder por nombre de columna.</div><div class="gain">501 → 1 conexión</div></div>
+      <div class="measure"><div class="what"><code>JOIN</code> en el listado</div><div class="how">Traer factura, cliente y suma de líneas en una consulta en lugar de una por fila.</div><div class="gain">N+1 → 1</div></div>
+      <div class="measure"><div class="what">Índices que faltan</div><div class="how"><code>Factura(Cod_cliente)</code>, <code>Factura(fecha)</code>, <code>Detalle_linea(cod_servicio)</code>: hoy todo filtro es un recorrido completo.</div><div class="gain">3 índices</div></div>
+      <div class="measure"><div class="what">Modelo/vista en lugar de widgets por fila</div><div class="how"><code>QTableView</code> recicla celdas: pinta solo lo visible y aporta orden y filtro.</div><div class="gain">7.000 → ~40 widgets</div></div>
+      <div class="measure"><div class="what">Una hoja de estilo global</div><div class="how">Qt reanaliza el QSS en cada <code>setStyleSheet</code>; 84 llamadas es trabajo repetido en cada construcción de pantalla.</div><div class="gain">−981 líneas</div></div>
+      <div class="measure"><div class="what">Páginas perezosas</div><div class="how">Hoy las cuatro pantallas se instancian al arrancar y consultan la base de datos aunque no se abran. Crear bajo demanda.</div><div class="gain">arranque −4 consultas</div></div>
+      <div class="measure"><div class="what">Empaquetado</div><div class="how"><code>PyInstaller</code> + icono + instalador MSI, y la base en <code>%LOCALAPPDATA%</code>: hoy la ruta relativa hace que la app «pierda» los datos según desde dónde se ejecute.</div><div class="gain">.exe distribuible</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 06 · REDISEÑO ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <div class="secnum">06</div>
+      <div>
+        <span class="eyebrow">Rediseño de interfaz</span>
+        <h2>Nothing, adaptado a un escritorio de trabajo</h2>
+        <p class="sub">Tu idea funciona, con un matiz. El lenguaje de Nothing —monocromo, rejilla de puntos, un único rojo, tipografía matricial— encaja sorprendentemente bien con un programa de facturación: es un dominio de cifras y estados, no de color. El matiz: la tipografía de puntos es preciosa en titulares y catastrófica en una tabla de importes. La propuesta la usa donde brilla (números grandes, el logotipo, los rótulos) y deja los datos en una grotesca legible.</p>
+      </div>
+    </div>
+
+    <div class="stack">
+
+      <div class="cols2">
+        <div class="panel">
+          <h3>Principios</h3>
+          <p class="note" style="margin-bottom:12px"><strong>Monocromo con un solo acento.</strong> Negro, blancos y grises. El rojo <code>#D71921</code> se reserva para tres cosas: el punto de la marca, la sección activa y lo que está vencido. Si todo es rojo, nada lo es.</p>
+          <p class="note" style="margin-bottom:12px"><strong>El punto como unidad.</strong> Rejilla de puntos de fondo, iconos construidos con formas geométricas elementales —círculo, cuadrado, semicírculo—, cifras en matriz de puntos. Sin emojis: los cuatro actuales (🏠 📄 ➕ 🔧) se ven distintos en cada Windows.</p>
+          <p class="note"><strong>La línea antes que la caja.</strong> Hoy todo es una tarjeta blanca con borde y esquinas redondeadas, así que nada destaca. Aquí separan filetes de un píxel; la caja se reserva para el resumen de la factura, que sí es un objeto aparte.</p>
+        </div>
+        <div class="panel">
+          <h3>Tipografía</h3>
+          <p class="note" style="margin-bottom:14px"><strong>Doto</strong> (matricial, Google Fonts) para el logotipo, los números de factura y los importes destacados. Es el gesto Nothing y está disponible libremente.<br><strong>Archivo</strong> o <strong>Segoe UI Variable</strong> para el texto: neutra, densa, nativa en Windows 11.<br><strong>JetBrains Mono</strong> para rótulos en versalitas, NIF e importes en tabla, con <code>tabular-nums</code> para que las columnas de euros se alineen por la coma.</p>
+          <div class="swatches">
+            <div class="sw"><div class="chipc" style="background:#0A0A0B"></div><div class="meta"><b>Ground</b><span>#0A0A0B</span></div></div>
+            <div class="sw"><div class="chipc" style="background:#131315"></div><div class="meta"><b>Panel</b><span>#131315</span></div></div>
+            <div class="sw"><div class="chipc" style="background:#232327"></div><div class="meta"><b>Línea</b><span>#232327</span></div></div>
+            <div class="sw"><div class="chipc" style="background:#8A8A92"></div><div class="meta"><b>Apagado</b><span>#8A8A92</span></div></div>
+            <div class="sw"><div class="chipc" style="background:#F2F2F4"></div><div class="meta"><b>Texto</b><span>#F2F2F4</span></div></div>
+            <div class="sw"><div class="chipc" style="background:#D71921"></div><div class="meta"><b>Acento</b><span>#D71921</span></div></div>
+            <div class="sw"><div class="chipc" style="background:#E8393F"></div><div class="meta"><b>Acento txt</b><span>#E8393F</span></div></div>
+          </div>
+          <p class="note" style="margin-top:12px;font-size:13px">Texto sobre fondo, <strong>17,7:1</strong>; gris apagado, <strong>5,8:1</strong>. El rojo de marca da <strong>3,8:1</strong>: suficiente para rellenos, indicadores y cifras grandes (AA pide 3:1 ahí), pero no para texto pequeño — de ahí el segundo rojo, <strong>4,8:1</strong>, para etiquetas como «Vencida». Frente al <strong>1,49:1</strong> del menú actual.</p>
+        </div>
+      </div>
+
+      <!-- MAQUETA 1 -->
+      <div>
+        <div class="mock">
+          <div class="titlebar">
+            <span class="dotred"></span>
+            <span class="t">BillEase</span>
+            <span class="wc"><span>—</span><span>▢</span><span>✕</span></span>
+          </div>
+          <div class="mockbody">
+            <nav class="rail-nav">
+              <div class="wordmark"><span class="reddot" style="width:7px;height:7px"></span>BillEase</div>
+              <div class="navitem on"><span class="gi"></span>Facturas</div>
+              <div class="navitem"><span class="gi round"></span>Clientes</div>
+              <div class="navitem"><span class="gi half"></span>Servicios</div>
+              <div class="navsep"></div>
+              <div class="navitem"><span class="gi round"></span>Resumen IVA</div>
+              <div class="navitem"><span class="gi"></span>Mis datos</div>
+              <div class="navfoot">CARLOS G.<br>12345678A</div>
+            </nav>
+            <main class="mockmain">
+              <div class="mockhead">
+                <h4>Facturas</h4>
+                <span class="cnt">7 · ejercicio 2025</span>
+                <div class="mocktools">
+                  <div class="search"><span class="reddot" style="width:5px;height:5px;background:#5A5A62"></span>Buscar cliente o nº…</div>
+                  <button class="btn primary">+ Nueva</button>
+                </div>
+              </div>
+
+              <div class="kpis">
+                <div class="kpi"><div class="k">Facturado 2025</div><div class="v">3.768,50 <small>€</small></div></div>
+                <div class="kpi"><div class="k">IVA repercutido</div><div class="v">791,39 <small>€</small></div></div>
+                <div class="kpi"><div class="k">Pendiente de cobro</div><div class="v" style="color:#E0A040">350,90 <small>€</small></div></div>
+              </div>
+
+              <table class="mocktable">
+                <thead><tr><th>Nº</th><th>Fecha</th><th>Cliente</th><th>Estado</th><th class="r">Base</th><th class="r">Total</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td class="num">007</td><td class="muted">25/03/2025</td><td>María Fernández Ruiz</td><td><span class="state pend">Pendiente</span></td><td class="r muted">180,00</td><td class="r">217,80</td><td><div class="rowacts"><span>PDF</span><span>Editar</span></div></td></tr>
+                  <tr><td class="num">006</td><td class="muted">10/03/2025</td><td>Logística Sur S.L.</td><td><span class="state pagada">Pagada</span></td><td class="r muted">830,00</td><td class="r">1.004,30</td><td><div class="rowacts"><span>PDF</span><span>Editar</span></div></td></tr>
+                  <tr><td class="num">005</td><td class="muted">28/02/2025</td><td>Antonio Martínez Soto</td><td><span class="state venc">Vencida</span></td><td class="r muted">110,00</td><td class="r">133,10</td><td><div class="rowacts"><span>PDF</span><span>Editar</span></div></td></tr>
+                  <tr><td class="num">004</td><td class="muted">14/02/2025</td><td>Construcciones Pérez S.L.</td><td><span class="state pagada">Pagada</span></td><td class="r muted">537,50</td><td class="r">650,38</td><td><div class="rowacts"><span>PDF</span><span>Editar</span></div></td></tr>
+                  <tr><td class="num">003</td><td class="muted">03/02/2025</td><td>Reformas Norte S.A.</td><td><span class="state pagada">Pagada</span></td><td class="r muted">1.420,00</td><td class="r">1.718,20</td><td><div class="rowacts"><span>PDF</span><span>Editar</span></div></td></tr>
+                </tbody>
+              </table>
+            </main>
+          </div>
+        </div>
+        <div class="caption"><span class="n">01</span> Facturas · el total con IVA vuelve a la lista, el estado se lee de un vistazo y la búsqueda deja de ser un botón de «actualizar»</div>
+      </div>
+
+      <!-- MAQUETA 2 -->
+      <div>
+        <div class="mock">
+          <div class="titlebar">
+            <span class="dotred"></span>
+            <span class="t">BillEase · Nueva factura 008</span>
+            <span class="wc"><span>—</span><span>▢</span><span>✕</span></span>
+          </div>
+          <div class="mockbody">
+            <nav class="rail-nav">
+              <div class="wordmark"><span class="reddot" style="width:7px;height:7px"></span>BillEase</div>
+              <div class="navitem on"><span class="gi"></span>Facturas</div>
+              <div class="navitem"><span class="gi round"></span>Clientes</div>
+              <div class="navitem"><span class="gi half"></span>Servicios</div>
+              <div class="navsep"></div>
+              <div class="navitem"><span class="gi round"></span>Resumen IVA</div>
+              <div class="navitem"><span class="gi"></span>Mis datos</div>
+              <div class="navfoot">CARLOS G.<br>12345678A</div>
+            </nav>
+            <main class="mockmain">
+              <div class="mockhead">
+                <h4>008</h4>
+                <span class="cnt">Borrador · serie 2025</span>
+                <div class="mocktools">
+                  <button class="btn">Descartar</button>
+                  <button class="btn primary">Emitir</button>
+                </div>
+              </div>
+
+              <div class="formgrid">
+                <div style="display:grid;gap:16px;min-width:0">
+                  <div class="fieldset">
+                    <div class="legend">Cliente</div>
+                    <div class="field">
+                      <span class="lab">Buscar o crear</span>
+                      <div class="inp filled">Construcciones Pérez S.L. — B12345678</div>
+                    </div>
+                    <div class="mini">C/ Industria 44 · 08020 Barcelona · contacto@construccionesperez.es</div>
+                  </div>
+
+                  <div class="fieldset">
+                    <div class="legend">Conceptos</div>
+                    <div class="linerow">
+                      <div class="field"><span class="lab">Servicio</span><div class="inp filled">Instalación de fontanería</div></div>
+                      <div class="field"><span class="lab">Uds.</span><div class="inp filled">4</div></div>
+                      <div class="field"><span class="lab">Precio</span><div class="inp filled">85,00</div></div>
+                      <div class="field"><span class="lab">Importe</span><div class="inp" style="color:#F2F2F4">340,00</div></div>
+                    </div>
+                    <div class="linerow">
+                      <div class="field"><span class="lab">Servicio</span><div class="inp focus">Pintura interior m²</div></div>
+                      <div class="field"><span class="lab">Uds.</span><div class="inp filled">28</div></div>
+                      <div class="field"><span class="lab">Precio</span><div class="inp filled">12,50</div></div>
+                      <div class="field"><span class="lab">Importe</span><div class="inp" style="color:#F2F2F4">350,00</div></div>
+                    </div>
+                    <div class="mini" style="color:#E8393F">+ Añadir línea</div>
+                  </div>
+                </div>
+
+                <aside class="summary">
+                  <div class="mini">Resumen</div>
+                  <div class="sumrow"><span>Base imponible</span><span>690,00 €</span></div>
+                  <div class="sumrow"><span>IVA 21 %</span><span>144,90 €</span></div>
+                  <div class="sumrow"><span>IRPF −15 %</span><span>−103,50 €</span></div>
+                  <div class="sumrow total"><span class="mini">Total</span><b>731,40 €</b></div>
+                  <div class="mini" style="border-top:1px solid #232327;padding-top:11px">Fecha · 13/09/2026<br>Vencimiento · 30 días</div>
+                </aside>
+              </div>
+            </main>
+          </div>
+        </div>
+        <div class="caption"><span class="n">02</span> Nueva factura · el total se calcula a la vista mientras escribes, con IVA e IRPF explícitos — hoy no se ve ninguna cifra hasta abrir el PDF</div>
+      </div>
+
+      <!-- MAQUETA 3 -->
+      <div>
+        <div class="mock" style="padding:22px">
+          <div class="pdfsheet">
+            <div class="pdfhead">
+              <div>
+                <div class="ttl">FACTURA</div>
+                <div style="font-family:var(--f-mono);font-size:9px;letter-spacing:.2em;color:#888;margin-top:5px">BILLEASE</div>
+              </div>
+              <div class="meta">Nº <b>2025-004</b><br>Fecha <b>14/02/2025</b><br>Vencimiento <b>16/03/2025</b></div>
+            </div>
+            <div class="pdfparties">
+              <div>
+                <div class="plab">Emisor</div>
+                Carlos García López<br>NIF 12345678A<br>Calle Mayor 12, 2ºA<br><b>28001</b> Madrid · 612 345 678
+              </div>
+              <div>
+                <div class="plab">Cliente</div>
+                Construcciones Pérez S.L.<br>CIF B12345678<br>C/ Industria 44<br><b>08020</b> Barcelona
+              </div>
+            </div>
+            <table class="pdftable">
+              <thead><tr><th>Concepto</th><th class="r">Uds.</th><th class="r">Precio</th><th class="r">Importe</th></tr></thead>
+              <tbody>
+                <tr><td>Instalación de fontanería</td><td class="r">2</td><td class="r">85,00</td><td class="r">170,00</td></tr>
+                <tr><td>Pintura interior m²</td><td class="r">15</td><td class="r">12,50</td><td class="r">187,50</td></tr>
+                <tr><td>Mano de obra general</td><td class="r">4</td><td class="r">45,00</td><td class="r">180,00</td></tr>
+              </tbody>
+            </table>
+            <div class="pdftotals">
+              <div class="row"><span>Base imponible</span><span>537,50 €</span></div>
+              <div class="row"><span>IVA 21 %</span><span>112,88 €</span></div>
+              <div class="row t"><span style="font-family:var(--f-mono);font-size:9px;letter-spacing:.16em">TOTAL</span><b>650,38 €</b></div>
+            </div>
+            <div class="pdffoot"><span>Reforma baño principal</span><span>Página 1 de 1</span></div>
+          </div>
+        </div>
+        <div class="caption"><span class="n">03</span> La factura impresa · misma rejilla, sin decoración rosa, con paginación real y el CP sin decimales</div>
+      </div>
+
+      <div class="panel">
+        <h3>Lo que el rediseño arregla además de la estética</h3>
+        <p class="note">Un ancho máximo de contenido de ~1.100 px, para que un campo de código postal deje de medir 1.400 px en un monitor ancho. Un único desplazamiento vertical en lugar de los dos anidados de «Crear Factura». Estados vacíos con una acción en lugar de un «No se encontraron elementos» en cursiva. <code>Ctrl+N</code> para nueva factura, <code>Ctrl+F</code> para buscar, <code>Esc</code> para cerrar diálogos. Y tema claro además del oscuro: el mismo juego de variables, invertido, porque un autónomo que factura a mediodía junto a una ventana necesita fondo blanco.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 07 · PLAN ══════════ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <div class="secnum">07</div>
+      <div>
+        <span class="eyebrow">Plan de ejecución</span>
+        <h2>Cuatro fases, en este orden</h2>
+        <p class="sub">Primero lo que produce documentos incorrectos; el rediseño va después, cuando hay una hoja de estilo única sobre la que aplicarlo.</p>
+      </div>
+    </div>
+
+    <div class="phases">
+      <div class="phase">
+        <div class="pn">FASE 1</div>
+        <div>
+          <h3>Parar la hemorragia</h3>
+          <ul>
+            <li>Unificar el cálculo del total (defecto 01) y paginar el PDF (02)</li>
+            <li>Sacar <code>BillEase.db</code> y <code>__pycache__</code> de git; <code>.gitignore</code> + <code>requirements.txt</code></li>
+            <li>Hash de contraseña y base de datos en <code>%LOCALAPPDATA%</code></li>
+            <li>Migración 001: CP y teléfono a TEXT, fechas a ISO, <code>PRAGMA foreign_keys=ON</code></li>
+          </ul>
+        </div>
+        <div class="cost">~2 días</div>
+      </div>
+      <div class="phase">
+        <div class="pn">FASE 2</div>
+        <div>
+          <h3>Poner una estructura debajo</h3>
+          <ul>
+            <li>Nuevo árbol de carpetas y capa de repositorios con <code>sqlite3.Row</code></li>
+            <li><code>core/</code> sin Qt: IVA, serie de numeración, validadores (NIE y CIF incluidos)</li>
+            <li>Fusionar crear/editar factura en una sola vista</li>
+            <li>Primeros tests: cálculo de impuestos, validadores, generación de PDF de 40 líneas</li>
+          </ul>
+        </div>
+        <div class="cost">~1 semana</div>
+      </div>
+      <div class="phase">
+        <div class="pn">FASE 3</div>
+        <div>
+          <h3>Rediseñar</h3>
+          <ul>
+            <li><code>theme/tokens.py</code> + <code>app.qss</code>: eliminar las 84 hojas sueltas</li>
+            <li><code>QTableView</code> con búsqueda, orden y estado de cobro</li>
+            <li>Aplicar el lenguaje Nothing: navegación, tipografía, iconos geométricos</li>
+            <li>Tema claro y oscuro, atajos de teclado, estados vacíos</li>
+          </ul>
+        </div>
+        <div class="cost">~1 semana</div>
+      </div>
+      <div class="phase">
+        <div class="pn">FASE 4</div>
+        <div>
+          <h3>Lo que hace que se use</h3>
+          <ul>
+            <li>Resumen trimestral de IVA y anual de ingresos (ya es posible con fechas ISO)</li>
+            <li>Estados pagada / pendiente / vencida y logotipo propio en el PDF</li>
+            <li>Copia de seguridad automática y exportación a CSV</li>
+            <li>Empaquetado con PyInstaller e instalador para Windows</li>
+          </ul>
+        </div>
+        <div class="cost">~1 semana</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="eyebrow">BillEase · 3.987 líneas revisadas · 16 defectos verificados contra la base de datos del repositorio</span>
+    <span class="mono" style="font-size:11px;color:var(--dim)">rama claude/github-program-analysis-improvement-roa7pr</span>
+  </div>
+</footer>
