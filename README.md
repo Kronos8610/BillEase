@@ -57,6 +57,24 @@ python main_start.py
 
 La primera vez que arranques la aplicación, se mostrará un formulario de **configuración inicial** donde introducirás tus datos como autónomo (nombre, NIF, dirección, etc.). Esta información aparecerá en todas tus facturas.
 
+### ¿Dónde se guardan los datos?
+
+La base de datos vive en la carpeta de datos de tu usuario, no junto al programa:
+
+| Sistema | Ruta |
+|---------|------|
+| Windows | `%LOCALAPPDATA%\BillEase\billease.db` |
+| macOS | `~/Library/Application Support/BillEase/billease.db` |
+| Linux | `~/.local/share/BillEase/billease.db` |
+
+Así la aplicación encuentra tus datos la abras desde donde la abras. Si vienes de una
+versión anterior, el `BillEase.db` que tuvieras junto al programa se traslada solo la
+primera vez (el original se conserva renombrado, no se borra).
+
+Al arrancar se aplican las **migraciones** pendientes, guardando antes una copia de
+seguridad con la fecha en el nombre. La variable de entorno `BILLEASE_DB` permite apuntar
+a otro fichero, útil para pruebas.
+
 ---
 
 ## 🗂️ Base de datos de prueba (opcional)
@@ -69,7 +87,7 @@ base de demostración con datos ficticios:
 python tools/seed_demo.py
 ```
 
-Crea `BillEase.db` con 5 clientes, 8 servicios y 7 facturas. Para empezar de cero, borra
+Crea la base con 5 clientes, 8 servicios y 7 facturas. Para empezar de cero, borra
 el fichero y arranca la aplicación: te pedirá tus datos de autónomo.
 
 Las credenciales de la base de demostración son:
@@ -168,9 +186,12 @@ BillEase/
 ## 🧰 Desarrollo
 
 ```bash
-python tools/seed_demo.py            # base de demostración con datos ficticios
-python tools/verify.py               # comprueba los invariantes de la base
-pytest                               # pruebas automáticas
+python tools/seed_demo.py                 # base de demostración con datos ficticios
+python tools/seed_demo.py --sin-migrar    # …en el esquema original, para probar migraciones
+python -m data.migrations --dry-run       # qué migraciones faltan
+python -m data.migrations                 # aplicarlas (deja copia de seguridad)
+python tools/verify.py --totales --post-migracion
+pytest                                    # pruebas automáticas
 ```
 
 `tools/verify.py` compara la base contra `tests/fixtures/baseline.json` y devuelve 0 si

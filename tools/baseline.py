@@ -17,12 +17,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tools.inventario import BASE_POR_DEFECTO, FICHERO_BASELINE, formatear, leer
+from tools.inventario import FICHERO_BASELINE, formatear, leer
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
-    parser.add_argument("--base", default=BASE_POR_DEFECTO, help="base de datos a leer")
+    parser.add_argument("--base", default=None, help="base de datos a leer (por defecto, la de la aplicación)")
     parser.add_argument("--salida", default=FICHERO_BASELINE, help="fichero JSON a escribir")
     parser.add_argument(
         "--escribir", action="store_true", help="guarda el inventario en disco"

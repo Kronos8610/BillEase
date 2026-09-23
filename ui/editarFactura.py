@@ -254,7 +254,10 @@ class EditarFactura(QDialog):
             self.reject()
             return
 
-        fecha, total, cod_cliente, observaciones = factura[1], factura[2], factura[3], (factura[4] or "")
+        from core.fechas import a_espanol
+        fecha = a_espanol(factura["fecha"])
+        cod_cliente = factura["Cod_cliente"]
+        observaciones = factura["observaciones"] or ""
 
         # Seleccionar cliente en el combo y rellenar datos visuales
         cliente = obtener_cliente_por_id(cod_cliente)
@@ -284,12 +287,14 @@ class EditarFactura(QDialog):
                 item.widget().deleteLater()
 
         for det in detalles:
-            # det: (Num_Factura, Num_Linea, NumServicios, precioPorServicio, cod_servicio, descripcion)
+            cantidad = det["NumServicios"]
+            precio = det["precioPorServicio"]
             self.add_fila_concepto(prefill={
-                "cod_servicio": det[4],
-                "cantidad": str(det[2]),
-                "precio_ud": str(det[3]),
-                "total": f"{float(det[2]) * float(det[3]):.2f}"
+                "cod_servicio": det["cod_servicio"],
+                "descripcion": det["descripcion"],
+                "cantidad": str(cantidad),
+                "precio_ud": str(precio),
+                "total": f"{float(cantidad) * float(precio):.2f}"
             })
 
     def add_fila_concepto(self, prefill=None):
@@ -413,6 +418,7 @@ class EditarFactura(QDialog):
                 if cant > 0 and pu > 0:
                     detalles.append({
                         "cod_servicio": sdata[0],
+                        "descripcion": sdata[1],
                         "cantidad": cant,
                         "precio_ud": pu
                     })

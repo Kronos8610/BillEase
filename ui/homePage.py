@@ -7,6 +7,7 @@ import database.db as db
 import re
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
+from core.fechas import a_espanol as fecha_para_pantalla
 from core.taxes import calcular, desde_base, desde_detalles, formatear
 from documents.invoice_pdf import generar_documento_pdf
 from utils.globals import (
@@ -341,11 +342,12 @@ class HomePage(QWidget):
     def crear_factura_item(self, factura, alternate_color=False):
         """Crea un elemento de lista para una factura"""
         # Desempaquetar datos de la factura
-        # La columna `total` de la tabla guarda en realidad la base imponible
-        # (defecto 01). Se calcula el total con la MISMA función que usa el PDF,
-        # así no pueden discrepar. La fase 2 separa las columnas en la base.
-        num_factura, fecha, base_guardada, cod_cliente, observaciones = factura
-        totales = desde_base(base_guardada)
+        # Las filas se leen por nombre de columna: añadir una columna a la
+        # tabla ya no rompe esta pantalla.
+        num_factura = factura["Num_factura"]
+        cod_cliente = factura["Cod_cliente"]
+        etiqueta_numero = db.numero_completo(factura)
+        totales = desde_base(factura["base"], factura["tipo_iva"])
         
         # Obtener el nombre del cliente
         from database.db import obtener_cliente_por_id
@@ -363,8 +365,8 @@ class HomePage(QWidget):
         item_layout.setContentsMargins(10, 10, 10, 10)
         
         # Datos de la factura
-        num_label = QLabel(str(num_factura))
-        fecha_label = QLabel(fecha)
+        num_label = QLabel(etiqueta_numero)
+        fecha_label = QLabel(fecha_para_pantalla(factura["fecha"]))
         cliente_label = QLabel(nombre_cliente)
 
         base_label = QLabel(f"{formatear(totales.base)} €")
@@ -561,7 +563,7 @@ class HomePage(QWidget):
                 "hay nada que imprimir. Ábrela y añade al menos un concepto.")
             return
 
-        cliente = obtener_cliente_por_id(factura[3])
+        cliente = obtener_cliente_por_id(factura["Cod_cliente"])
         if not cliente:
             QMessageBox.warning(self, "Cliente no encontrado",
                 f"La factura #{num_factura} apunta a un cliente que ya no existe.")
@@ -588,8 +590,8 @@ class HomePage(QWidget):
 
         datos = {
             "tipo": "factura",
-            "numero": str(num_factura),
-            "fecha": factura[1],
+            "numero": db.numero_completo(factura),
+            "fecha": fecha_para_pantalla(factura["fecha"]),
             "emisor": {
                 "nombre": f"{autonomo[1]} {autonomo[2]}".strip(),
                 "nif": autonomo[0],
@@ -607,7 +609,7 @@ class HomePage(QWidget):
                 "email": cliente[8] if len(cliente) > 8 else "",
             },
             "lineas": lineas,
-            "nota": factura[4] or "",
+            "nota": factura["observaciones"] or "",
         }
 
         try:
@@ -620,7 +622,7 @@ class HomePage(QWidget):
 
         paginas = resultado["paginas"]
         QMessageBox.information(self, "PDF generado",
-            f"Factura #{num_factura} · {formatear(totales.total)} €\n"
+            f"Factura {db.numero_completo(factura)} · {formatear(totales.total)} €\n"
             f"{paginas} página{'s' if paginas != 1 else ''} en {file_path}")
 
     def eliminar_factura(self, num_factura):

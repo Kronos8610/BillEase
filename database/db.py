@@ -1,558 +1,418 @@
+"""
+Acceso a la base de datos.
+
+Reescrito en la fase 2. Lo que había antes abría y cerraba una conexión en
+cada una de sus veintidós funciones, nunca activaba las claves ajenas y se
+tragaba cualquier error con un `print`, de modo que la interfaz nunca sabía
+*por qué* algo no se había guardado.
+
+Ahora todo pasa por la conexión única de `data/connection.py`, con las claves
+ajenas aplicadas, y las consultas devuelven filas que se leen **por nombre de
+columna** en lugar de por índice: añadir una columna deja de romper pantallas
+a distancia.
+
+Las fechas entran y salen en formato español y se guardan en ISO; los
+importes se calculan siempre con `core.taxes`.
+
+La fase 3 sustituye este módulo por repositorios que devuelvan objetos del
+dominio. Hasta entonces sigue siendo el único sitio del programa con SQL.
+"""
+
 import sqlite3
 
-def crear_base_de_datos():
-    # Conexión a la base de datos (la crea si no existe)
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
+from core.fechas import a_espanol, a_iso, ejercicio_de
+from core.security import hashear, verificar
+from core.taxes import IVA_GENERAL, Linea, calcular
+from data.connection import conexion
 
-    # Crear tabla Autónomo 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS Autonomo (
-            DNI            TEXT NOT NULL UNIQUE,
-            nombre         TEXT NOT NULL,
-            apellido       TEXT NOT NULL,
-            direccion      TEXT,
-            codigo_postal  REAL,
-            telefono       REAL,
-            email          TEXT UNIQUE,
-            contrasena     TEXT NOT NULL     
-        );
-    """)
 
-    # Crear tabla Cliente
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS Cliente (
-            Cod_cliente           INTEGER PRIMARY KEY AUTOINCREMENT,
-            TIPO_CLIENTE          BOOLEAN, /* FALSE- JURIDICO, TRUE FISICO*/
-            nombre_o_razon_social TEXT NOT NULL,
-            direccion             TEXT,
-            telefono              REAL,
-            cod_postal            TEXT,
-            CIFNIF                TEXT NOT NULL UNIQUE,
-            observaciones         TEXT,
-            email                 TEXT
-        );
-    """)
+# ──────────────────────────── esquema ────────────────────────────
 
-    # Crear tabla Factura
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS Factura (
-            Num_factura    INTEGER PRIMARY KEY AUTOINCREMENT,
-            fecha          DATE NOT NULL,
-            total          REAL NOT NULL,
-            Cod_cliente    REAL NOT NULL,
-            observaciones  TEXT,
-            FOREIGN KEY (Cod_cliente) REFERENCES Cliente (Cod_cliente) ON DELETE CASCADE
-        );
-    """)
+ESQUEMA_INICIAL = (
+    """
+    CREATE TABLE IF NOT EXISTS Autonomo (
+        DNI            TEXT NOT NULL UNIQUE,
+        nombre         TEXT NOT NULL,
+        apellido       TEXT NOT NULL,
+        direccion      TEXT,
+        codigo_postal  REAL,
+        telefono       REAL,
+        email          TEXT UNIQUE,
+        contrasena     TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS Cliente (
+        Cod_cliente           INTEGER PRIMARY KEY AUTOINCREMENT,
+        TIPO_CLIENTE          BOOLEAN,
+        nombre_o_razon_social TEXT NOT NULL,
+        direccion             TEXT,
+        telefono              REAL,
+        cod_postal            TEXT,
+        CIFNIF                TEXT NOT NULL UNIQUE,
+        observaciones         TEXT,
+        email                 TEXT
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS Factura (
+        Num_factura    INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha          DATE NOT NULL,
+        total          REAL NOT NULL,
+        Cod_cliente    REAL NOT NULL,
+        observaciones  TEXT,
+        FOREIGN KEY (Cod_cliente) REFERENCES Cliente (Cod_cliente) ON DELETE CASCADE
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS Servicio (
+        Cod_servicio   INTEGER PRIMARY KEY AUTOINCREMENT,
+        descripcion    TEXT NOT NULL,
+        precio         REAL NOT NULL,
+        observaciones  TEXT
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS Detalle_linea (
+        Num_Factura         REAL,
+        Num_Linea           REAL,
+        NumServicios        REAL NOT NULL,
+        precioPorServicio   REAL NOT NULL,
+        cod_servicio        REAL NOT NULL,
+        PRIMARY KEY (Num_Factura, Num_Linea),
+        FOREIGN KEY (Num_Factura) REFERENCES Factura (Num_factura),
+        FOREIGN KEY (cod_servicio) REFERENCES Servicio (Cod_servicio)
+    )
+    """,
+)
 
-    # Crear tabla Servicio
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS Servicio (
-            Cod_servicio   INTEGER PRIMARY KEY AUTOINCREMENT,
-            descripcion    TEXT NOT NULL,
-            precio         REAL NOT NULL,
-            observaciones  TEXT
-        );
-    """)
 
-    # Crear tabla Detalle_linea
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS Detalle_linea (
-            Num_Factura         REAL,
-            Num_Linea           REAL,
-            NumServicios        REAL NOT NULL,
-            precioPorServicio   REAL NOT NULL,
-            cod_servicio        REAL NOT NULL,
-            PRIMARY KEY (Num_Factura, Num_Linea),
-            FOREIGN KEY (Num_Factura) REFERENCES Factura (Num_factura),
-            FOREIGN KEY (cod_servicio) REFERENCES Servicio (Cod_servicio)
-        );
-    """)
+def crear_base_de_datos(conn=None):
+    """
+    Crea el esquema de partida y lo pone al día con las migraciones.
 
-    # Confirmar cambios y cerrar conexión
+    El esquema que se crea aquí es el original, con sus defectos incluidos, y
+    las migraciones de `data/migrations/` lo llevan hasta la versión actual.
+    Así hay un único camino —el mismo que recorre la base de un usuario que
+    viene de una versión antigua— en lugar de dos definiciones que se separan
+    con el tiempo.
+    """
+    from data.migrations import migrar
+
+    conn = conn or conexion()
+    for sentencia in ESQUEMA_INICIAL:
+        conn.execute(sentencia)
     conn.commit()
-    conn.close()
-    print("Base de datos 'BillEase.db' creada correctamente con sus tablas.")
+    migrar(conn, registrar=lambda *_: None)
+    return conn
 
-def register_autonomo(dni, nombre, apellido, direccion, codigo_postal, telefono, email, contrasena):
-    """
-    Inserta un nuevo autónomo en la tabla Autonomo.
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
+
+# ──────────────────────────── autónomo ────────────────────────────
+
+def register_autonomo(dni, nombre, apellido, direccion, codigo_postal, telefono,
+                      email, contrasena):
+    """Da de alta al autónomo. La contraseña se guarda cifrada, nunca en claro."""
+    conn = conexion()
     try:
-        cursor.execute("""
-            INSERT INTO Autonomo (
-                DNI, nombre, apellido, direccion, codigo_postal, telefono, email, contrasena
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (dni, nombre, apellido, direccion, codigo_postal, telefono, email, contrasena))
+        conn.execute(
+            "INSERT INTO Autonomo (DNI, nombre, apellido, direccion, codigo_postal,"
+            " telefono, email, contrasena) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (dni, nombre, apellido, direccion, str(codigo_postal or ""),
+             str(telefono or ""), email, hashear(contrasena)),
+        )
         conn.commit()
-        print("Autónomo registrado correctamente.")
         return True
-    except Exception as e:
-        print(f"Error al registrar autónomo: {e}")
+    except sqlite3.IntegrityError:
+        conn.rollback()
         return False
-    finally:
-        conn.close()
+
 
 def login(email, contrasena):
     """
-    Verifica las credenciales de un autónomo en la base de datos.
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            SELECT * FROM Autonomo WHERE email = ? AND contrasena = ?
-        """, (email, contrasena))
-        usuario = cursor.fetchone()
-        if usuario:
-            print("Login exitoso.")
-            return True
-        return False
-    except Exception as e:
-        print(f"Error en login: {e}")
-        return False
-    finally:
-        conn.close()
-def register_cliente(tipo_cliente, nombre_o_razon_social, direccion, telefono, cod_postal, cifnif, observaciones=""):
-    """
-    Inserta un nuevo cliente en la tabla Cliente.
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            INSERT INTO Cliente (
-                TIPO_CLIENTE, nombre_o_razon_social, direccion, telefono, cod_postal, CIFNIF, observaciones
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (tipo_cliente, nombre_o_razon_social, direccion, telefono, cod_postal, cifnif, observaciones))
-        cliente_id = cursor.lastrowid
-        conn.commit()
-        print(f"Cliente {cliente_id} registrado correctamente.")
-        return cliente_id
-    except Exception as e:
-        print(f"Error al registrar cliente: {e}")
-        return None
-    finally:
-        conn.close()
+    Comprueba las credenciales del autónomo.
 
-def insertar_factura(fecha, total, cod_cliente, observaciones=""):
+    Acepta también las bases que aún guardan la contraseña en claro y, en ese
+    caso, la cifra al vuelo: nadie tiene que volver a registrarse.
     """
-    Inserta una nueva factura en la tabla Factura.
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            INSERT INTO Factura (
-                fecha, total, Cod_cliente, observaciones
-            ) VALUES (?, ?, ?, ?)
-        """, (fecha, total, cod_cliente, observaciones))
-        factura_id = cursor.lastrowid
-        conn.commit()
-        print(f"Factura {factura_id} registrada correctamente.")
-        return factura_id
-    except Exception as e:
-        print(f"Error al registrar factura: {e}")
-        return None
-    finally:
-        conn.close()
-
-def insertar_servicio(descripcion, precio, observaciones=""):
-    """
-    Inserta un nuevo servicio en la tabla Servicio.
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            INSERT INTO Servicio (
-                descripcion, precio, observaciones
-            ) VALUES (?, ?, ?)
-        """, (descripcion, precio, observaciones))
-        servicio_id = cursor.lastrowid
-        conn.commit()
-        print(f"Servicio {servicio_id} registrado correctamente.")
-        return servicio_id
-    except Exception as e:
-        print(f"Error al registrar servicio: {e}")
-        return None
-    finally:
-        conn.close()
-
-def insertar_detalle_linea(num_factura, num_linea, num_servicios, precio_por_servicio, cod_servicio):
-    """
-    Inserta un nuevo detalle de línea en la tabla Detalle_linea.
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            INSERT INTO Detalle_linea (
-                Num_Factura, Num_Linea, NumServicios, precioPorServicio, cod_servicio
-            ) VALUES (?, ?, ?, ?, ?)
-        """, (num_factura, num_linea, num_servicios, precio_por_servicio, cod_servicio))
-        conn.commit()
-        print("Detalle de línea registrado correctamente.")
-        return True
-    except Exception as e:
-        print(f"Error al registrar detalle de línea: {e}")
+    conn = conexion()
+    fila = conn.execute(
+        "SELECT DNI, contrasena FROM Autonomo WHERE email = ?", (email,)
+    ).fetchone()
+    if not fila:
         return False
-    finally:
-        conn.close()
+
+    correcta, recifrar = verificar(contrasena, fila["contrasena"])
+    if correcta and recifrar:
+        conn.execute(
+            "UPDATE Autonomo SET contrasena = ? WHERE DNI = ?",
+            (hashear(contrasena), fila["DNI"]),
+        )
+        conn.commit()
+    return correcta
+
+
+def obtener_datos_autonomo():
+    """Datos del emisor: (DNI, nombre, apellido, dirección, CP, teléfono, email)."""
+    fila = conexion().execute(
+        "SELECT DNI, nombre, apellido, direccion, codigo_postal, telefono, email"
+        " FROM Autonomo LIMIT 1"
+    ).fetchone()
+    return tuple(fila) if fila else None
+
+
+# ──────────────────────────── clientes ────────────────────────────
+
+def agregar_cliente(cifnif, nombre_o_razon_social, direccion, cod_postal, telefono,
+                    observaciones, tipo_cliente=True, email=""):
+    """Añade un cliente. Devuelve su identificador, o None si el NIF ya existe."""
+    conn = conexion()
+    try:
+        cur = conn.execute(
+            "INSERT INTO Cliente (TIPO_CLIENTE, nombre_o_razon_social, direccion,"
+            " telefono, cod_postal, CIFNIF, observaciones, email)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (int(bool(tipo_cliente)), nombre_o_razon_social, direccion,
+             str(telefono or ""), str(cod_postal or ""), cifnif, observaciones, email),
+        )
+        conn.commit()
+        return cur.lastrowid
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        return None
+
 
 def obtener_clientes():
-    """
-    Realiza un SELECT de todos los clientes en la tabla Cliente.
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT * FROM Cliente")
-        clientes = cursor.fetchall()
-        return clientes
-    except Exception as e:
-        print(f"Error al obtener clientes: {e}")
-        return []
-    finally:
-        conn.close()
+    return conexion().execute(
+        "SELECT * FROM Cliente ORDER BY nombre_o_razon_social"
+    ).fetchall()
 
-def obtener_facturas_cliente(cod_cliente):
-    """
-    Obtiene todas las facturas de un cliente específico.
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            SELECT * FROM Factura WHERE Cod_cliente = ?
-        """, (cod_cliente,))
-        facturas = cursor.fetchall()
-        return facturas
-    except Exception as e:
-        print(f"Error al obtener facturas: {e}")
-        return []
-    finally:
-        conn.close()
-
-def obtener_detalles_factura(num_factura):
-    """
-    Obtiene todos los detalles de una factura específica.
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            SELECT d.*, s.descripcion 
-            FROM Detalle_linea d
-            JOIN Servicio s ON d.cod_servicio = s.Cod_servicio
-            WHERE d.Num_Factura = ?
-        """, (num_factura,))
-        detalles = cursor.fetchall()
-        return detalles
-    except Exception as e:
-        print(f"Error al obtener detalles de factura: {e}")
-        return []
-    finally:
-        conn.close()
-
-def obtener_todas_facturas():
-    """
-    Obtiene todas las facturas de la base de datos ordenadas por número de factura descendente.
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            SELECT * FROM Factura
-            ORDER BY Num_factura DESC
-        """)
-        facturas = cursor.fetchall()
-        return facturas
-    except Exception as e:
-        print(f"Error al obtener facturas: {e}")
-        return []
-    finally:
-        conn.close()
 
 def obtener_cliente_por_id(cod_cliente):
-    """
-    Obtiene los datos de un cliente por su ID.
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            SELECT * FROM Cliente WHERE Cod_cliente = ?
-        """, (cod_cliente,))
-        cliente = cursor.fetchone()
-        return cliente
-    except Exception as e:
-        print(f"Error al obtener cliente: {e}")
-        return None
-    finally:
-        conn.close()
+    return conexion().execute(
+        "SELECT * FROM Cliente WHERE Cod_cliente = ?", (int(cod_cliente),)
+    ).fetchone()
 
-def agregar_cliente(cifnif, nombre_o_razon_social, direccion, cod_postal, telefono, observaciones, tipo_cliente=True, email=""):
-    """
-    Agrega un nuevo cliente a la base de datos
-    
-    Args:
-        cifnif (str): NIF o CIF del cliente
-        nombre_o_razon_social (str): Nombre o razón social del cliente
-        direccion (str): Dirección postal del cliente
-        cod_postal (str): Código postal
-        telefono (str): Número de teléfono
-        observaciones (str): Observaciones adicionales 
-        tipo_cliente (bool, optional): True para persona física, False para jurídica
-        
-    Returns:
-        int: ID del cliente añadido o None si falla
-    """
-    conn = None
-    try:
-        conn = sqlite3.connect('BillEase.db')
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            INSERT INTO Cliente (
-                TIPO_CLIENTE,
-                nombre_o_razon_social,
-                direccion,
-                telefono,
-                cod_postal,
-                CIFNIF,
-                observaciones,
-                email
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (tipo_cliente, nombre_o_razon_social, direccion, telefono, cod_postal, cifnif, observaciones, email))
-        
-        cliente_id = cursor.lastrowid
-        conn.commit()
-        print(f"Cliente {cliente_id} registrado correctamente.")
-        return cliente_id
-    except Exception as e:
-        print(f"Error al agregar cliente: {e}")
-        if conn:
-            conn.rollback()
-        return None
-    finally:
-        if conn:
-            conn.close()
-def obtener_factura_por_id(num_factura):
-    """
-    Obtiene una factura específica por su ID
-    
-    Args:
-        num_factura (int): ID de la factura a buscar
-        
-    Returns:
-        tuple: Datos de la factura o None si no se encuentra
-    """
-    import sqlite3
-    try:
-        conn = sqlite3.connect("BillEase.db")
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT * FROM Factura 
-            WHERE Num_factura = ?
-        """, (num_factura,))
-        
-        factura = cursor.fetchone()
-        conn.close()
-        
-        return factura
-    except Exception as e:
-        print(f"Error al obtener factura: {e}")
-        if 'conn' in locals():
-            conn.close()
-        return None
-
-def obtener_todos_servicios():
-    """
-    Obtiene todos los servicios disponibles en la base de datos.
-    
-    Returns:
-        list: Lista de tuplas con los datos de los servicios (Cod_servicio, descripcion, precio, observaciones)
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT * FROM Servicio ORDER BY descripcion")
-        servicios = cursor.fetchall()
-        return servicios
-    except Exception as e:
-        print(f"Error al obtener servicios: {e}")
-        return []
-    finally:
-        conn.close()
-
-def eliminar_factura(num_factura):
-    """
-    Elimina una factura y sus detalles de línea asociados de la base de datos.
-    
-    Args:
-        num_factura (int): ID de la factura a eliminar
-        
-    Returns:
-        bool: True si la eliminación fue exitosa, False en caso contrario
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        # Comenzar una transacción
-        conn.execute("BEGIN TRANSACTION")
-        
-        # Primero eliminar los detalles de línea asociados (por la restricción de clave foránea)
-        cursor.execute("DELETE FROM Detalle_linea WHERE Num_Factura = ?", (num_factura,))
-        
-        # Luego eliminar la factura
-        cursor.execute("DELETE FROM Factura WHERE Num_factura = ?", (num_factura,))
-        
-        # Confirmar la transacción
-        conn.commit()
-        return True
-    except Exception as e:
-        print(f"Error al eliminar factura: {e}")
-        conn.rollback()
-        return False
-    finally:
-        conn.close()
 
 def eliminar_cliente(cod_cliente):
     """
-    Elimina un cliente de la base de datos.
-    
-    Args:
-        cod_cliente (int): ID del cliente a eliminar
-        
-    Returns:
-        bool: True si la eliminación fue exitosa, False en caso contrario
+    Borra un cliente.
+
+    No se puede borrar uno que tenga facturas: la clave ajena lo impide, y así
+    debe ser, porque una factura emitida no puede quedarse sin destinatario.
     """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
+    conn = conexion()
     try:
-        cursor.execute("DELETE FROM Cliente WHERE Cod_cliente = ?", (cod_cliente,))
+        cur = conn.execute("DELETE FROM Cliente WHERE Cod_cliente = ?", (int(cod_cliente),))
         conn.commit()
-        return cursor.rowcount > 0  # Devuelve True si se eliminó al menos una fila
-    except Exception as e:
-        print(f"Error al eliminar cliente: {e}")
+        return cur.rowcount > 0
+    except sqlite3.IntegrityError:
         conn.rollback()
         return False
-    finally:
-        conn.close()
+
+
+def obtener_facturas_cliente(cod_cliente):
+    return conexion().execute(
+        "SELECT * FROM Factura WHERE Cod_cliente = ? ORDER BY fecha DESC",
+        (int(cod_cliente),),
+    ).fetchall()
+
+
+# ──────────────────────────── servicios ────────────────────────────
+# El catálogo sigue existiendo porque las pantallas de crear y editar factura
+# todavía lo usan. La fase 4 lo retira: los conceptos pasan a escribirse.
+
+def insertar_servicio(descripcion, precio, observaciones=""):
+    conn = conexion()
+    cur = conn.execute(
+        "INSERT INTO Servicio (descripcion, precio, observaciones) VALUES (?, ?, ?)",
+        (descripcion, precio, observaciones),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def obtener_todos_servicios():
+    return conexion().execute("SELECT * FROM Servicio ORDER BY descripcion").fetchall()
+
 
 def eliminar_servicio(cod_servicio):
-    """
-    Elimina un servicio de la base de datos.
-    
-    Args:
-        cod_servicio (int): ID del servicio a eliminar
-        
-    Returns:
-        bool: True si la eliminación fue exitosa, False en caso contrario
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("DELETE FROM Servicio WHERE Cod_servicio = ?", (cod_servicio,))
-        conn.commit()
-        return cursor.rowcount > 0  # Devuelve True si se eliminó al menos una fila
-    except Exception as e:
-        print(f"Error al eliminar servicio: {e}")
-        conn.rollback()
-        return False
-    finally:
-        conn.close()
+    conn = conexion()
+    cur = conn.execute("DELETE FROM Servicio WHERE Cod_servicio = ?", (int(cod_servicio),))
+    conn.commit()
+    return cur.rowcount > 0
+
 
 def verificar_servicio_en_uso(cod_servicio):
-    """
-    Verifica si un servicio está siendo utilizado en alguna factura.
-    
-    Args:
-        cod_servicio (int): ID del servicio a verificar
-        
-    Returns:
-        bool: True si el servicio está en uso, False en caso contrario
-    """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            SELECT COUNT(*) FROM Detalle_linea 
-            WHERE cod_servicio = ?
-        """, (cod_servicio,))
-        count = cursor.fetchone()[0]
-        return count > 0
-    except Exception as e:
-        print(f"Error al verificar servicio: {e}")
-        return True  # Por seguridad, si hay error asumimos que está en uso
-    finally:
-        conn.close()
+    fila = conexion().execute(
+        "SELECT COUNT(*) FROM Detalle_linea WHERE cod_servicio = ?", (int(cod_servicio),)
+    ).fetchone()
+    return fila[0] > 0
 
-def obtener_datos_autonomo():
+
+# ──────────────────────────── facturas ────────────────────────────
+
+def siguiente_numero(ejercicio, serie=""):
     """
-    Obtiene los datos del autónomo registrado en la base de datos.
-    
-    Returns:
-        tuple: Datos del autónomo o None si no se encuentra
+    Siguiente número de la serie para ese ejercicio.
+
+    Se calcula sobre el máximo existente, no sobre el AUTOINCREMENT de SQLite,
+    para que la serie sea correlativa por año como exige la facturación.
+    La fase 3 traslada esto a `core/numbering.py` junto con la anulación.
     """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
+    fila = conexion().execute(
+        "SELECT COALESCE(MAX(numero), 0) FROM Factura WHERE serie = ? AND ejercicio = ?",
+        (serie, ejercicio),
+    ).fetchone()
+    return fila[0] + 1
+
+
+def numero_completo(fila):
+    """«2025-004» a partir de una fila de Factura."""
+    serie = fila["serie"] or ""
+    prefijo = f"{serie}-" if serie else ""
+    if fila["ejercicio"] and fila["numero"]:
+        return f"{prefijo}{fila['ejercicio']}-{int(fila['numero']):03d}"
+    return str(fila["Num_factura"])
+
+
+def insertar_factura(fecha, base, cod_cliente, observaciones="", tipo_iva=IVA_GENERAL):
+    """
+    Crea una factura y le asigna su número de serie.
+
+    `fecha` llega en formato español y se guarda en ISO. `base` es la suma de
+    las líneas sin IVA; el total se calcula con `core.taxes`, que es la misma
+    función que usan el listado y el PDF.
+    """
+    conn = conexion()
+    iso = a_iso(fecha)
+    ejercicio = ejercicio_de(iso)
+    totales = calcular([Linea("", cantidad=1, precio_ud=base, tipo_iva=tipo_iva)])
     try:
-        cursor.execute(
-            "SELECT DNI, nombre, apellido, direccion, codigo_postal, telefono, email"
-            " FROM Autonomo LIMIT 1"
+        cur = conn.execute(
+            "INSERT INTO Factura (fecha, base, tipo_iva, importe_total, Cod_cliente,"
+            " observaciones, serie, ejercicio, numero)"
+            " VALUES (?, ?, ?, ?, ?, ?, '', ?, ?)",
+            (iso, float(totales.base), float(tipo_iva), float(totales.total),
+             int(cod_cliente), observaciones, ejercicio,
+             siguiente_numero(ejercicio)),
         )
-        autonomo = cursor.fetchone()
-        return autonomo
-    except Exception as e:
-        print(f"Error al obtener datos del autónomo: {e}")
-        return None
-    finally:
-        conn.close()
-
-def actualizar_factura(num_factura, fecha, total, cod_cliente, observaciones=""):
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            UPDATE Factura
-               SET fecha = ?, total = ?, Cod_cliente = ?, observaciones = ?
-             WHERE Num_factura = ?
-        """, (fecha, total, cod_cliente, observaciones, num_factura))
         conn.commit()
-        return cursor.rowcount > 0
-    except Exception as e:
-        print(f"Error al actualizar factura: {e}")
+        return cur.lastrowid
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        return None
+
+
+def obtener_todas_facturas():
+    return conexion().execute(
+        "SELECT * FROM Factura ORDER BY ejercicio DESC, numero DESC, Num_factura DESC"
+    ).fetchall()
+
+
+def obtener_factura_por_id(num_factura):
+    return conexion().execute(
+        "SELECT * FROM Factura WHERE Num_factura = ?", (int(num_factura),)
+    ).fetchone()
+
+
+def actualizar_factura(num_factura, fecha, base, cod_cliente, observaciones="",
+                       tipo_iva=IVA_GENERAL):
+    """Cambia la cabecera de una factura. El número de serie no se toca."""
+    conn = conexion()
+    totales = calcular([Linea("", cantidad=1, precio_ud=base, tipo_iva=tipo_iva)])
+    cur = conn.execute(
+        "UPDATE Factura SET fecha = ?, base = ?, tipo_iva = ?, importe_total = ?,"
+        " Cod_cliente = ?, observaciones = ? WHERE Num_factura = ?",
+        (a_iso(fecha), float(totales.base), float(tipo_iva), float(totales.total),
+         int(cod_cliente), observaciones, int(num_factura)),
+    )
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def eliminar_factura(num_factura):
+    """Borra una factura. Sus líneas caen con ella por la clave ajena."""
+    conn = conexion()
+    cur = conn.execute("DELETE FROM Factura WHERE Num_factura = ?", (int(num_factura),))
+    conn.commit()
+    return cur.rowcount > 0
+
+
+# ──────────────────────────── líneas ────────────────────────────
+
+def insertar_detalle_linea(num_factura, num_linea, num_servicios, precio_por_servicio,
+                           cod_servicio=None, descripcion="", unidad="ud"):
+    """
+    Añade una línea a una factura.
+
+    La descripción se guarda **en la línea**: si no se pasa y sí hay servicio,
+    se copia la del catálogo, para que cambiar el catálogo mañana no reescriba
+    las facturas de ayer.
+    """
+    conn = conexion()
+    if not descripcion and cod_servicio is not None:
+        fila = conn.execute(
+            "SELECT descripcion FROM Servicio WHERE Cod_servicio = ?", (int(cod_servicio),)
+        ).fetchone()
+        descripcion = fila["descripcion"] if fila else ""
+
+    try:
+        conn.execute(
+            "INSERT INTO Detalle_linea (Num_Factura, Num_Linea, descripcion,"
+            " NumServicios, unidad, precioPorServicio, cod_servicio)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (int(num_factura), int(num_linea), descripcion, float(num_servicios),
+             unidad, float(precio_por_servicio),
+             int(cod_servicio) if cod_servicio is not None else None),
+        )
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
         conn.rollback()
         return False
-    finally:
-        conn.close()
+
+
+def obtener_detalles_factura(num_factura):
+    return conexion().execute(
+        "SELECT * FROM Detalle_linea WHERE Num_Factura = ? ORDER BY Num_Linea",
+        (int(num_factura),),
+    ).fetchall()
+
 
 def reemplazar_detalles_factura(num_factura, detalles):
     """
-    Reemplaza todas las líneas de una factura.
-    detalles: lista de dicts con keys: cantidad, precio_ud, cod_servicio
+    Cambia de golpe todas las líneas de una factura.
+
+    `detalles` es una lista de diccionarios con `cantidad`, `precio_ud` y,
+    opcionalmente, `cod_servicio`, `descripcion` y `unidad`.
     """
-    conn = sqlite3.connect("BillEase.db")
-    cursor = conn.cursor()
+    conn = conexion()
     try:
         conn.execute("BEGIN")
-        cursor.execute("DELETE FROM Detalle_linea WHERE Num_Factura = ?", (num_factura,))
-        for i, det in enumerate(detalles, 1):
-            cursor.execute("""
-                INSERT INTO Detalle_linea (Num_Factura, Num_Linea, NumServicios, precioPorServicio, cod_servicio)
-                VALUES (?, ?, ?, ?, ?)
-            """, (num_factura, i, det["cantidad"], det["precio_ud"], det["cod_servicio"]))
-        conn.commit()
+        conn.execute("DELETE FROM Detalle_linea WHERE Num_Factura = ?", (int(num_factura),))
+        for orden, det in enumerate(detalles, 1):
+            descripcion = det.get("descripcion", "")
+            cod_servicio = det.get("cod_servicio")
+            if not descripcion and cod_servicio is not None:
+                fila = conn.execute(
+                    "SELECT descripcion FROM Servicio WHERE Cod_servicio = ?",
+                    (int(cod_servicio),),
+                ).fetchone()
+                descripcion = fila["descripcion"] if fila else ""
+            conn.execute(
+                "INSERT INTO Detalle_linea (Num_Factura, Num_Linea, descripcion,"
+                " NumServicios, unidad, precioPorServicio, cod_servicio)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (int(num_factura), orden, descripcion, float(det["cantidad"]),
+                 det.get("unidad", "ud"), float(det["precio_ud"]),
+                 int(cod_servicio) if cod_servicio is not None else None),
+            )
+        conn.execute("COMMIT")
         return True
-    except Exception as e:
-        print(f"Error al reemplazar detalles: {e}")
-        conn.rollback()
+    except Exception:
+        conn.execute("ROLLBACK")
         return False
-    finally:
-        conn.close()
+
+
+# Se reexporta para que la interfaz formatee fechas sin importar core.
+fecha_para_pantalla = a_espanol

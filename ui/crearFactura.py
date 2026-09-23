@@ -639,6 +639,7 @@ class CrearFactura(QWidget):
                 
             # El ID del servicio está en la posición 0
             cod_servicio = servicio_data[0]
+            descripcion_servicio = servicio_data[1]
                     
             try:
                 cantidad = float(cant.text() or "0")
@@ -654,6 +655,7 @@ class CrearFactura(QWidget):
                         
                     conceptos.append({
                         "cod_servicio": cod_servicio,
+                        "descripcion": descripcion_servicio,
                         "cantidad": cantidad,
                         "precio_ud": precio_unitario,
                         "total": total_linea
@@ -694,7 +696,10 @@ class CrearFactura(QWidget):
                     i,  # Número de línea
                     concepto["cantidad"],
                     concepto["precio_ud"],
-                    concepto["cod_servicio"]
+                    concepto["cod_servicio"],
+                    # La descripción se congela en la línea: cambiar mañana el
+                    # catálogo no debe reescribir las facturas de ayer.
+                    descripcion=concepto["descripcion"],
                 )
             
             # Mostrar mensaje de éxito

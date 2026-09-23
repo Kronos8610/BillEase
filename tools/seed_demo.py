@@ -19,16 +19,14 @@ script se actualizará con ella.
 """
 
 import argparse
-import os
-import shutil
 import sqlite3
 import sys
-import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from database.db import crear_base_de_datos
+from data.connection import abrir
+from database.db import ESQUEMA_INICIAL
 
 AUTONOMO = (
     "12345678A", "Carlos", "García López", "Calle Mayor 12, 2ºA",
@@ -88,30 +86,20 @@ LINEAS = [
 ]
 
 
-def crear_esquema(destino):
+def crear_esquema(conn):
     """
-    Crea las tablas usando la propia función de la aplicación.
+    Crea el esquema **original**, con sus defectos incluidos.
 
-    `crear_base_de_datos()` escribe siempre en `BillEase.db` dentro del
-    directorio actual, así que se ejecuta en un directorio temporal y después
-    se mueve el fichero. La fase 2 hace configurable la ruta y esto sobra.
+    Se genera la versión de partida a propósito: así la base de demostración
+    recorre después las mismas migraciones que la de un usuario que venía de
+    una versión antigua, y las pruebas de migración tienen contra qué correr.
     """
-    anterior = os.getcwd()
-    temporal = tempfile.mkdtemp(prefix="billease-seed-")
-    try:
-        os.chdir(temporal)
-        crear_base_de_datos()
-        generado = Path(temporal) / "BillEase.db"
-    finally:
-        os.chdir(anterior)
-
-    destino.parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(generado), str(destino))
-    shutil.rmtree(temporal, ignore_errors=True)
+    for sentencia in ESQUEMA_INICIAL:
+        conn.execute(sentencia)
+    conn.commit()
 
 
-def rellenar(destino):
-    conn = sqlite3.connect(destino)
+def rellenar(conn):
     try:
         cur = conn.cursor()
         cur.execute(
@@ -140,31 +128,49 @@ def rellenar(destino):
             LINEAS,
         )
         conn.commit()
-    finally:
-        conn.close()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
-    parser.add_argument("--salida", default="BillEase.db", help="fichero a generar")
+    parser.add_argument("--salida", default=None, help="fichero a generar")
     parser.add_argument(
         "--forzar", action="store_true", help="sobrescribe el fichero si ya existe"
     )
+    parser.add_argument(
+        "--sin-migrar", action="store_true",
+        help="deja la base en el esquema original, sin aplicar las migraciones",
+    )
     args = parser.parse_args()
 
-    destino = Path(args.salida)
+    if args.salida:
+        destino = Path(args.salida)
+    else:
+        from config import ruta_base_datos
+        destino = ruta_base_datos()
     if destino.exists() and not args.forzar:
         print(f"\n{destino} ya existe. Añade --forzar para sobrescribirla.\n")
         return 1
     if destino.exists():
         destino.unlink()
 
-    crear_esquema(destino)
-    rellenar(destino)
+    conn = abrir(destino)
+    try:
+        crear_esquema(conn)
+        rellenar(conn)
+        if not args.sin_migrar:
+            from data.migrations import migrar
+            migrar(conn, registrar=lambda *_: None)
+    finally:
+        conn.close()
 
     print(f"\nBase de demostración creada en {destino}")
     print(f"  {len(CLIENTES)} clientes · {len(SERVICIOS)} servicios · "
           f"{len(FACTURAS)} facturas · {len(LINEAS)} líneas")
+    if args.sin_migrar:
+        print("  esquema original, sin migrar (--sin-migrar)")
     print("  acceso: carlos.garcia@billease.es / Pass1234\n")
     return 0
 

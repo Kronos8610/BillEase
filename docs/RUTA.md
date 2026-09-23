@@ -128,14 +128,20 @@ python tools\verify.py --totales          :: → lista y PDF coinciden en las 7
 **Objetivo:** migraciones numeradas, reversibles y probadas sobre la copia antes de tocar nada real.
 **Cierra:** defectos 04, 05, 08 y el hash del 03.
 
-**Se toca:** `data/connection.py` · `data/migrations/001…006` · elimina la tabla `Servicio`
+**Se toca:** `config.py` · `data/connection.py` · `data/migrations/001…006` ·
+`core/security.py` · `core/fechas.py` · `database/db.py` · `main_start.py`
+
+> **Ajuste sobre el plan.** La tabla `Servicio` **no** se elimina aquí: las pantallas de
+> crear y editar factura todavía la usan, y la regla 3 dice que cada fase deja la
+> aplicación ejecutable. La migración 005 da a cada línea su propia descripción —que es
+> el cambio de datos— y la fase 4 retira el catálogo cuando ninguna pantalla lo lea.
 
 1. `data/connection.py`: una conexión por proceso con `PRAGMA foreign_keys=ON`, `journal_mode=WAL` y `row_factory = sqlite3.Row`.
 2. **001** códigos postales y teléfonos a `TEXT` con `CHECK`.
 3. **002** fechas a ISO-8601 (`15/01/2025` → `2025-01-15`).
 4. **003** columnas `base`, `tipo_iva`, `importe_total`; el valor actual pasa a `base`.
 5. **004** serie fiscal (`serie`, `ejercicio`, `numero`) con índice único; las 7 facturas quedan como 2025-001 … 2025-007.
-6. **005** las líneas guardan `descripcion` y `unidad`, copiando el texto del servicio al que apuntaban; después se elimina `Servicio`.
+6. **005** las líneas guardan `descripcion` y `unidad`, copiando el texto del servicio al que apuntaban.
 7. **006** contraseña con `argon2`; la base se mueve a `%LOCALAPPDATA%\BillEase\`.
 
 ```bat

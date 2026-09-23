@@ -10,7 +10,13 @@ import hashlib
 import sqlite3
 from pathlib import Path
 
-BASE_POR_DEFECTO = Path("BillEase.db")
+def _base_por_defecto():
+    """La base de la aplicación; se resuelve al usarla, no al importar."""
+    from config import ruta_base_datos
+    return ruta_base_datos()
+
+
+BASE_POR_DEFECTO = None  # None = «la de la aplicación», ver _base_por_defecto()
 FICHERO_BASELINE = Path("tests/fixtures/baseline.json")
 
 TABLAS = ("Autonomo", "Cliente", "Factura", "Servicio", "Detalle_linea")
@@ -25,14 +31,14 @@ def sha256(ruta):
     return h.hexdigest()
 
 
-def leer(ruta=BASE_POR_DEFECTO):
+def leer(ruta=None):
     """
     Devuelve el inventario de la base como un diccionario simple.
 
     Son las cifras contra las que se verifica cada fase de la ruta: si una
     migración las mueve, algo se ha perdido por el camino.
     """
-    ruta = Path(ruta)
+    ruta = Path(ruta) if ruta else _base_por_defecto()
     if not ruta.exists():
         raise FileNotFoundError(f"No existe la base de datos: {ruta}")
 
@@ -49,7 +55,14 @@ def leer(ruta=BASE_POR_DEFECTO):
             if tabla in tablas_existentes:
                 conteos[tabla] = cur.execute(f"SELECT COUNT(*) FROM {tabla}").fetchone()[0]
 
-        suma_bases = cur.execute("SELECT COALESCE(SUM(total), 0) FROM Factura").fetchone()[0]
+        # La columna de la base imponible se llamaba `total` antes de la
+        # migración 003 y `base` después: el inventario tiene que poder leer
+        # las dos, porque se usa a ambos lados de la migración.
+        columnas_factura = {f[1] for f in cur.execute("PRAGMA table_info(Factura)")}
+        columna_base = "base" if "base" in columnas_factura else "total"
+        suma_bases = cur.execute(
+            f"SELECT COALESCE(SUM({columna_base}), 0) FROM Factura"
+        ).fetchone()[0]
 
         # La suma de las líneas tiene que cuadrar con la suma de los totales
         # guardados. Es el invariante que delata una migración mal hecha.
@@ -67,11 +80,15 @@ def leer(ruta=BASE_POR_DEFECTO):
 
         # Líneas que apuntan a un servicio inexistente. Mientras sea 0, la
         # migración de la fase 2 puede copiar la descripción sin perder nada.
-        if {"Detalle_linea", "Servicio"} <= tablas_existentes:
+        columnas_linea = (
+            {f[1] for f in cur.execute("PRAGMA table_info(Detalle_linea)")}
+            if "Detalle_linea" in tablas_existentes else set()
+        )
+        if {"Detalle_linea", "Servicio"} <= tablas_existentes and "cod_servicio" in columnas_linea:
             huerfanas = cur.execute(
                 "SELECT COUNT(*) FROM Detalle_linea d "
                 "LEFT JOIN Servicio s ON s.Cod_servicio = d.cod_servicio "
-                "WHERE s.Cod_servicio IS NULL"
+                "WHERE d.cod_servicio IS NOT NULL AND s.Cod_servicio IS NULL"
             ).fetchone()[0]
         else:
             huerfanas = 0

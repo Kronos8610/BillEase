@@ -12,7 +12,7 @@ Esta es la herramienta que usan todas las puertas de la ruta (docs/RUTA.md).
 Cada fase añade aquí sus comprobaciones:
 
     fase 1 → --totales        el total de la lista coincide con el del PDF  ✓
-    fase 2 → --post-migracion tipos, fechas ISO y claves ajenas aplicadas
+    fase 2 → --post-migracion tipos, fechas ISO y claves ajenas aplicadas  ✓
     fase 3 → --conexiones     una sola conexión para pintar la lista
 """
 
@@ -23,7 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tools.inventario import BASE_POR_DEFECTO, FICHERO_BASELINE, leer
+from tools.inventario import FICHERO_BASELINE, _base_por_defecto, leer
 
 OK = "  OK  "
 FALLA = " FALLA"
@@ -111,19 +111,36 @@ def verificar_totales(ruta_base, r):
     conn = sqlite3.connect(f"file:{ruta_base}?mode=ro", uri=True)
     try:
         cur = conn.cursor()
+        # La columna de la base se llamaba `total` antes de la migración 003,
+        # y las líneas no tenían descripción propia antes de la 005: esta
+        # comprobación se usa a los dos lados de la fase 2.
+        columnas_factura = {f[1] for f in cur.execute("PRAGMA table_info(Factura)")}
+        columna_base = "base" if "base" in columnas_factura else "total"
+        columnas_linea = {f[1] for f in cur.execute("PRAGMA table_info(Detalle_linea)")}
+        linea_con_texto = "descripcion" in columnas_linea
+
         facturas = cur.execute(
-            "SELECT Num_factura, fecha, total, Cod_cliente FROM Factura ORDER BY Num_factura"
+            f"SELECT Num_factura, fecha, {columna_base}, Cod_cliente"
+            " FROM Factura ORDER BY Num_factura"
         ).fetchall()
 
         with tempfile.TemporaryDirectory(prefix="billease-verify-") as tmp:
             for num, fecha, base_guardada, _cod_cliente in facturas:
-                detalles = cur.execute(
-                    "SELECT d.Num_Factura, d.Num_Linea, d.NumServicios, d.precioPorServicio,"
-                    " d.cod_servicio, s.descripcion"
-                    " FROM Detalle_linea d JOIN Servicio s ON s.Cod_servicio = d.cod_servicio"
-                    " WHERE d.Num_Factura = ? ORDER BY d.Num_Linea",
-                    (num,),
-                ).fetchall()
+                if linea_con_texto:
+                    filas = cur.execute(
+                        "SELECT descripcion, NumServicios, precioPorServicio"
+                        " FROM Detalle_linea WHERE Num_Factura = ? ORDER BY Num_Linea",
+                        (num,),
+                    ).fetchall()
+                else:
+                    filas = cur.execute(
+                        "SELECT COALESCE(s.descripcion, ''), d.NumServicios, d.precioPorServicio"
+                        " FROM Detalle_linea d"
+                        " LEFT JOIN Servicio s ON s.Cod_servicio = d.cod_servicio"
+                        " WHERE d.Num_Factura = ? ORDER BY d.Num_Linea",
+                        (num,),
+                    ).fetchall()
+                detalles = [(0, 0, f[1], f[2], 0, f[0]) for f in filas]
 
                 lineas = desde_detalles(detalles)
                 del_listado = desde_base(base_guardada)
@@ -156,16 +173,92 @@ def verificar_totales(ruta_base, r):
         conn.close()
 
 
+def verificar_post_migracion(ruta_base, r):
+    """
+    Fase 2 · la base ya no puede corromper ni admitir datos incoherentes.
+
+    Comprueba lo que exige la puerta 2, mirando el esquema y los datos, no el
+    código de las migraciones.
+    """
+    import sqlite3
+
+    conn = sqlite3.connect(ruta_base)
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA foreign_keys = ON")
+        r.comprobar(
+            "PRAGMA foreign_keys",
+            conn.execute("PRAGMA foreign_keys").fetchone()[0],
+            1,
+        )
+
+        tipos_cp = {f[0] for f in conn.execute("SELECT DISTINCT typeof(cod_postal) FROM Cliente")}
+        r.comprobar("cod_postal guardado como texto", sorted(tipos_cp), ["text"])
+
+        con_punto = conn.execute(
+            "SELECT COUNT(*) FROM Cliente WHERE telefono LIKE '%.0'"
+        ).fetchone()[0]
+        r.comprobar("teléfonos sin el «.0» del tipo REAL", con_punto, 0)
+
+        no_iso = conn.execute(
+            "SELECT COUNT(*) FROM Factura WHERE fecha NOT GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'"
+        ).fetchone()[0]
+        r.comprobar("fechas en formato ISO", no_iso, 0)
+
+        sin_numero = conn.execute(
+            "SELECT COUNT(*) FROM Factura WHERE numero IS NULL OR ejercicio IS NULL"
+        ).fetchone()[0]
+        r.comprobar("facturas con número de serie", sin_numero, 0)
+
+        sin_descripcion = conn.execute(
+            "SELECT COUNT(*) FROM Detalle_linea WHERE descripcion IS NULL OR descripcion = ''"
+        ).fetchone()[0]
+        r.comprobar("líneas con descripción propia", sin_descripcion, 0)
+
+        en_claro = conn.execute(
+            "SELECT COUNT(*) FROM Autonomo WHERE contrasena NOT LIKE '$argon2%'"
+        ).fetchone()[0]
+        r.comprobar("contraseñas cifradas", en_claro, 0)
+
+        descuadre = conn.execute(
+            "SELECT COUNT(*) FROM Factura"
+            " WHERE ABS(importe_total - ROUND(base * (1 + tipo_iva / 100.0), 2)) > 0.01"
+        ).fetchone()[0]
+        r.comprobar("total = base + IVA en todas", descuadre, 0)
+
+        # La prueba de fuego: la base tiene que rechazar una línea huérfana.
+        try:
+            conn.execute("SAVEPOINT prueba")
+            conn.execute(
+                "INSERT INTO Detalle_linea (Num_Factura, Num_Linea, descripcion,"
+                " NumServicios, unidad, precioPorServicio)"
+                " VALUES (999999, 1, 'inventada', 1, 'ud', 10)"
+            )
+            conn.execute("ROLLBACK TO prueba")
+            rechazada = False
+        except sqlite3.IntegrityError:
+            conn.execute("ROLLBACK TO prueba")
+            rechazada = True
+        r.comprobar("una línea huérfana se rechaza", rechazada, True)
+
+        r.comprobar(
+            "claves ajenas coherentes",
+            len(conn.execute("PRAGMA foreign_key_check").fetchall()),
+            0,
+        )
+    finally:
+        conn.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
-    parser.add_argument("--base", default=BASE_POR_DEFECTO, help="base de datos a verificar")
+    parser.add_argument("--base", default=None, help="base de datos a verificar (por defecto, la de la aplicación)")
     parser.add_argument("--baseline", default=FICHERO_BASELINE, help="línea base de referencia")
     for pendiente in ("totales", "post-migracion", "conexiones", "abrir-todas", "pintar"):
         parser.add_argument(f"--{pendiente}", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     fase_pendiente = {
-        "post_migracion": 2,
         "conexiones": 3,
         "abrir_todas": 4,
         "pintar": 5,
@@ -196,7 +289,10 @@ def main():
     verificar_linea_base(inv, base, r)
     if args.totales:
         print()
-        verificar_totales(args.base, r)
+        verificar_totales(args.base or _base_por_defecto(), r)
+    if args.post_migracion:
+        print()
+        verificar_post_migracion(str(args.base or _base_por_defecto()), r)
     return r.resumen()
 
 

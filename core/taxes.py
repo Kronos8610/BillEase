@@ -168,18 +168,31 @@ def desde_detalles(detalles, tipo_iva=IVA_GENERAL):
     """
     Construye las líneas a partir de las filas de `Detalle_linea`.
 
-    Cada fila llega como `(Num_Factura, Num_Linea, cantidad, precio, cod_servicio,
-    descripcion)`, que es lo que devuelve `obtener_detalles_factura`.
-
-    El tipo de IVA aún no se guarda en la base: hasta la migración 003 de la
-    fase 2, todo el documento va al tipo general.
+    Acepta las filas de `obtener_detalles_factura`, que se leen por nombre de
+    columna, y también las tuplas de la forma antigua
+    `(Num_Factura, Num_Linea, cantidad, precio, cod_servicio, descripcion)`,
+    para no romper el código que todavía las construya a mano.
     """
-    return [
-        Linea(
-            descripcion=fila[5] if len(fila) > 5 else "",
-            cantidad=fila[2],
-            precio_ud=fila[3],
-            tipo_iva=tipo_iva,
-        )
-        for fila in detalles
-    ]
+    lineas = []
+    for fila in detalles:
+        claves = set(fila.keys()) if hasattr(fila, "keys") else set()
+        if {"NumServicios", "precioPorServicio"} <= claves:
+            lineas.append(
+                Linea(
+                    descripcion=fila["descripcion"] if "descripcion" in claves else "",
+                    cantidad=fila["NumServicios"],
+                    precio_ud=fila["precioPorServicio"],
+                    unidad=fila["unidad"] if "unidad" in claves else "ud",
+                    tipo_iva=tipo_iva,
+                )
+            )
+        else:
+            lineas.append(
+                Linea(
+                    descripcion=fila[5] if len(fila) > 5 else "",
+                    cantidad=fila[2],
+                    precio_ud=fila[3],
+                    tipo_iva=tipo_iva,
+                )
+            )
+    return lineas

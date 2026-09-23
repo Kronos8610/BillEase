@@ -410,7 +410,7 @@ python tools\verify.py --totales          <span class="g">→ lista y PDF coinci
               <span class="file new">data/connection.py</span><span class="file new">data/migrations/001_tipos.py</span>
               <span class="file new">002_fechas_iso.py</span><span class="file new">003_importes.py</span>
               <span class="file new">004_serie_fiscal.py</span><span class="file new">005_lineas_texto.py</span>
-              <span class="file new">006_password_hash.py</span><span class="file del">tabla Servicio</span>
+              <span class="file new">006_password_hash.py</span><span class="file new">config.py</span><span class="file new">core/security.py</span>
             </div>
           </div>
           <div class="block">
@@ -421,7 +421,7 @@ python tools\verify.py --totales          <span class="g">→ lista y PDF coinci
               <li><strong>002</strong> fechas a ISO-8601; se convierte «15/01/2025» → «2025-01-15».</li>
               <li><strong>003</strong> columnas <code>base</code>, <code>tipo_iva</code> e <code>importe_total</code>; el valor actual pasa a <code>base</code>.</li>
               <li><strong>004</strong> serie fiscal: <code>serie</code>, <code>ejercicio</code>, <code>numero</code> con índice único; las 7 facturas quedan como 2025-001 … 2025-007.</li>
-              <li><strong>005</strong> las líneas guardan <code>descripcion</code> y <code>unidad</code>, copiando el texto del servicio al que apuntaban. Después se elimina la tabla <code>Servicio</code>.</li>
+              <li><strong>005</strong> las líneas guardan <code>descripcion</code> y <code>unidad</code>, copiando el texto del servicio al que apuntaban. La tabla <code>Servicio</code> se mantiene hasta la fase 4, porque las pantallas de factura todavía la usan.</li>
               <li><strong>006</strong> contraseña con <code>argon2</code> y base de datos movida a <code>%LOCALAPPDATA%\BillEase\</code>.</li>
             </ol>
           </div>
