@@ -99,8 +99,53 @@ def test_se_detectan_los_huecos_de_la_serie():
 
 
 def test_el_redondeo_es_comercial_no_bancario():
-    assert redondear("112.875") == Decimal("112.88")
-    assert redondear("0.005") == Decimal("0.01")
+    # Se pasan Decimal, no texto: «112.875» escrito a la española son ciento
+    # doce mil ochocientos setenta y cinco, no 112 con 875 milésimas.
+    assert redondear(Decimal("112.875")) == Decimal("112.88")
+    assert redondear(Decimal("0.005")) == Decimal("0.01")
+
+
+def test_ciento_doce_punto_ochocientos_setenta_y_cinco_son_miles():
+    """
+    La ambigüedad de «112.875»: en España el punto separa millares. Un importe
+    tiene dos decimales, así que tres cifras tras el punto son un millar.
+    """
+    from core.money import a_decimal
+
+    assert a_decimal("112.875") == Decimal("112875")
+    assert a_decimal("112,875") == Decimal("112.875")
+
+
+@pytest.mark.parametrize(
+    "escrito,valor",
+    [
+        ("1.240,00", "1240.00"),     # lo que escribe el propio programa
+        ("12,50", "12.50"),          # coma decimal, lo normal aquí
+        ("12.50", "12.50"),          # punto decimal, de quien tiene esa costumbre
+        ("1.240", "1240"),           # punto de millar, sin decimales
+        ("12.345.678,90", "12345678.90"),
+        ("-50,25", "-50.25"),
+        ("  1 240,50 ", "1240.50"),
+        ("", "0"),
+    ],
+)
+def test_se_entienden_los_numeros_escritos_a_la_espanola(escrito, valor):
+    """
+    Sin esto, leer de vuelta lo que el propio programa había escrito
+    («1.240,00») daba cero, y editar una factura de más de 999 € le ponía el
+    precio a nada sin decir nada.
+    """
+    from core.money import a_decimal
+
+    assert a_decimal(escrito) == Decimal(valor)
+
+
+def test_un_importe_sobrevive_a_la_ida_y_la_vuelta():
+    from core.money import a_decimal
+
+    for valor in ("0.05", "12.50", "1240.00", "12345678.90"):
+        texto = formatear(valor)
+        assert a_decimal(texto) == Decimal(valor)
 
 
 def test_el_formato_espanol_agrupa_los_miles():

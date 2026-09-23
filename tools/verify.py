@@ -14,6 +14,7 @@ Cada fase añade aquí sus comprobaciones:
     fase 1 → --totales        el total de la lista coincide con el del PDF  ✓
     fase 2 → --post-migracion tipos, fechas ISO y claves ajenas aplicadas  ✓
     fase 3 → --conexiones     una sola conexión para pintar la lista  ✓
+    fase 4 → --abrir-todas    todos los documentos se abren y se imprimen  ✓
 """
 
 import argparse
@@ -61,15 +62,24 @@ class Resultado:
         return 1 if self.fallos else 0
 
 
+# Tablas que desaparecen a propósito en alguna migración. Cualquier otra que
+# falte es una pérdida de datos, no una decisión.
+TABLAS_RETIRADAS = {"Servicio": "migración 007: el catálogo se retira"}
+
+
 def verificar_linea_base(inv, base, r):
     """Los ocho invariantes de la fase 0."""
     for tabla in ("Autonomo", "Cliente", "Factura", "Servicio", "Detalle_linea"):
-        if tabla in base["conteos"]:
-            r.comprobar(
-                f"filas en {tabla}",
-                inv["conteos"].get(tabla),
-                base["conteos"][tabla],
-            )
+        if tabla not in base["conteos"]:
+            continue
+        if tabla not in inv["conteos"] and tabla in TABLAS_RETIRADAS:
+            print(f"[  --  ] {'tabla ' + tabla:<34} retirada · {TABLAS_RETIRADAS[tabla]}")
+            continue
+        r.comprobar(
+            f"filas en {tabla}",
+            inv["conteos"].get(tabla),
+            base["conteos"][tabla],
+        )
 
     r.comprobar("suma de bases (€)", inv["suma_bases"], base["suma_bases"])
 
@@ -266,7 +276,7 @@ def verificar_conexiones(ruta_base, r):
     os.environ["BILLEASE_DB"] = str(ruta_base)
 
     from data import connection
-    from data.repositories import facturas as repo_facturas
+    from data.repositories import documentos as repo_documentos
 
     connection.cerrar()
 
@@ -283,7 +293,7 @@ def verificar_conexiones(ruta_base, r):
     try:
         conn = connection.conexion()
         conn.set_trace_callback(sentencias.append)
-        documentos = repo_facturas.listar()
+        documentos = repo_documentos.listar()
         conn.set_trace_callback(None)
     finally:
         sqlite3.connect = abrir_original
@@ -303,6 +313,62 @@ def verificar_conexiones(ruta_base, r):
     connection.cerrar()
 
 
+def verificar_abrir_todas(ruta_base, r):
+    """
+    Fase 4 · todos los documentos que ya existían siguen abriéndose e
+    imprimiéndose después de retirar el catálogo de servicios.
+    """
+    import os
+    import tempfile
+    from pathlib import Path as _Path
+
+    os.environ["BILLEASE_DB"] = str(ruta_base)
+
+    from core.taxes import calcular, formatear
+    from data import connection
+    from data.repositories import clientes as repo_clientes
+    from data.repositories import documentos as repo_documentos
+    from documents.invoice_pdf import generar_documento_pdf
+
+    connection.cerrar()
+
+    documentos = repo_documentos.listar("factura") + repo_documentos.listar("presupuesto")
+    r.comprobar("documentos encontrados", len(documentos) > 0, True)
+
+    with tempfile.TemporaryDirectory(prefix="billease-abrir-") as tmp:
+        fallos = []
+        sin_concepto = []
+        for documento in documentos:
+            completo = repo_documentos.obtener(documento.id)
+            if not completo.lineas or any(not l.descripcion for l in completo.lineas):
+                sin_concepto.append(completo.referencia)
+            cliente = repo_clientes.obtener(completo.cliente_id)
+            try:
+                totales = calcular(completo.lineas)
+                resultado = generar_documento_pdf(
+                    {
+                        "tipo": completo.tipo,
+                        "numero": completo.referencia,
+                        "fecha": completo.fecha,
+                        "emisor": {"nombre": "Emisor de prueba", "nif": "00000000T"},
+                        "cliente": {"nombre": cliente.nombre if cliente else "",
+                                    "nif": cliente.nif if cliente else ""},
+                        "lineas": completo.lineas,
+                    },
+                    _Path(tmp) / f"{completo.referencia}.pdf",
+                    totales=totales,
+                )
+                if formatear(resultado["totales"].total) != formatear(completo.importe_total):
+                    fallos.append(f"{completo.referencia}: el total del PDF no cuadra")
+            except Exception as e:  # noqa: BLE001
+                fallos.append(f"{completo.referencia}: {e}")
+
+        r.comprobar("documentos que se imprimen sin fallo", fallos, [])
+        r.comprobar("documentos con todos sus conceptos", sin_concepto, [])
+
+    connection.cerrar()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     parser.add_argument("--base", default=None, help="base de datos a verificar (por defecto, la de la aplicación)")
@@ -312,7 +378,6 @@ def main():
     args = parser.parse_args()
 
     fase_pendiente = {
-        "abrir_todas": 4,
         "pintar": 5,
     }
     for nombre, fase in fase_pendiente.items():
@@ -348,6 +413,9 @@ def main():
     if args.conexiones:
         print()
         verificar_conexiones(args.base or _base_por_defecto(), r)
+    if args.abrir_todas:
+        print()
+        verificar_abrir_todas(args.base or _base_por_defecto(), r)
     return r.resumen()
 
 

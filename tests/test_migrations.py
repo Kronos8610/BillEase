@@ -49,7 +49,12 @@ def test_el_inventario_no_cambia_al_migrar(base_v0):
     conn.close()
 
     despues = leer(base_v0)
-    assert despues["conteos"] == antes["conteos"]
+
+    # El catálogo desaparece a propósito en la 007; lo demás tiene que estar
+    # exactamente igual, fila por fila.
+    permanecen = {t: n for t, n in antes["conteos"].items() if t != "Servicio"}
+    assert {t: n for t, n in despues["conteos"].items() if t != "Servicio"} == permanecen
+    assert "Servicio" not in despues["conteos"]
     assert despues["suma_bases"] == antes["suma_bases"] == 3768.5
     assert despues["suma_lineas"] == antes["suma_lineas"]
     assert despues["numeros_factura"] == antes["numeros_factura"]
@@ -168,6 +173,33 @@ def test_una_linea_huerfana_deja_de_admitirse(base_migrada):
     conn.close()
 
 
+def test_el_catalogo_desaparece_pero_los_conceptos_se_conservan(base_migrada):
+    """La 005 copió el texto en cada línea; la 007 retira la tabla."""
+    conn = abrir(base_migrada)
+    tablas = {f[0] for f in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+    )}
+    descripciones = [f[0] for f in conn.execute(
+        "SELECT descripcion FROM Detalle_linea ORDER BY Num_Factura, Num_Linea"
+    )]
+    columnas = {f[1] for f in conn.execute("PRAGMA table_info(Detalle_linea)")}
+    conn.close()
+
+    assert "Servicio" not in tablas
+    assert "cod_servicio" not in columnas
+    assert len(descripciones) == 16
+    assert all(descripciones)
+    assert descripciones[0] == "Instalación de fontanería"
+
+
+def test_todo_lo_que_habia_queda_marcado_como_factura(base_migrada):
+    conn = abrir(base_migrada)
+    filas = conn.execute("SELECT tipo, estado FROM Factura").fetchall()
+    conn.close()
+    assert {f["tipo"] for f in filas} == {"factura"}
+    assert {f["estado"] for f in filas} == {"emitida"}
+
+
 def test_borrar_una_factura_arrastra_sus_lineas(base_migrada):
     conn = abrir(base_migrada)
     assert conn.execute(
@@ -192,7 +224,7 @@ def test_migrar_dos_veces_no_cambia_nada(base_v0):
     segunda = migrar(conn, registrar=lambda *_: None)
     conn.close()
 
-    assert primera == [1, 2, 3, 4, 5, 6]
+    assert primera == [1, 2, 3, 4, 5, 6, 7, 8]
     assert segunda == []
     assert leer(base_v0)["conteos"] == inventario_tras_la_primera["conteos"]
 
@@ -213,9 +245,9 @@ def test_una_base_a_medio_migrar_solo_aplica_lo_que_falta(base_v0):
         )
         conn.commit()
 
-    assert [m.VERSION for m in pendientes(conn)] == [4, 5, 6]
-    assert migrar(conn, registrar=lambda *_: None) == [4, 5, 6]
-    assert aplicadas(conn) == {1, 2, 3, 4, 5, 6}
+    assert [m.VERSION for m in pendientes(conn)] == [4, 5, 6, 7, 8]
+    assert migrar(conn, registrar=lambda *_: None) == [4, 5, 6, 7, 8]
+    assert aplicadas(conn) == {1, 2, 3, 4, 5, 6, 7, 8}
     conn.close()
 
 

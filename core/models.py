@@ -18,16 +18,26 @@ from core.money import a_decimal, redondear
 IVA_GENERAL = Decimal("21")
 
 
+# Unidades habituales de un trabajo. No es una lista cerrada: el usuario puede
+# escribir la que quiera.
+UNIDADES = ("ud", "h", "m²", "m", "kg", "día")
+
+
 @dataclass(frozen=True)
 class Linea:
-    """Un concepto de una factura o un presupuesto."""
+    """
+    Un concepto de una factura o un presupuesto.
+
+    La descripción se escribe entera: «Suministro y montaje de armario
+    empotrado de dos módulos con puerta corredera…». Antes había que elegirla
+    de un catálogo, así que no se podía describir un trabajo concreto.
+    """
 
     descripcion: str
     cantidad: Decimal
     precio_ud: Decimal
     tipo_iva: Decimal = IVA_GENERAL
     unidad: str = "ud"
-    cod_servicio: int = None
 
     def __post_init__(self):
         # frozen=True obliga a usar object.__setattr__ para normalizar.
@@ -49,7 +59,6 @@ class Linea:
             precio_ud=fila["precioPorServicio"],
             unidad=fila["unidad"] or "ud",
             tipo_iva=tipo_iva,
-            cod_servicio=fila["cod_servicio"],
         )
 
 
@@ -120,37 +129,40 @@ class Autonomo:
         )
 
 
-@dataclass(frozen=True)
-class Servicio:
-    """Una entrada del catálogo. Desaparece en la fase 4."""
+# Tipos de documento. Comparten tabla y plantilla; cambian la cabecera, la
+# serie y lo que se puede hacer con ellos.
+FACTURA = "factura"
+PRESUPUESTO = "presupuesto"
 
-    id: int = None
-    descripcion: str = ""
-    precio: Decimal = Decimal("0")
-    observaciones: str = ""
+# Estados. Una factura emitida está siempre «emitida»; los demás son de los
+# presupuestos, que sí tienen ciclo de vida.
+BORRADOR = "borrador"
+ENVIADO = "enviado"
+ACEPTADO = "aceptado"
+RECHAZADO = "rechazado"
+EMITIDA = "emitida"
 
-    def __post_init__(self):
-        object.__setattr__(self, "precio", a_decimal(self.precio))
+ESTADOS_PRESUPUESTO = (BORRADOR, ENVIADO, ACEPTADO, RECHAZADO)
 
-    @classmethod
-    def desde_fila(cls, fila):
-        return cls(
-            id=fila["Cod_servicio"],
-            descripcion=fila["descripcion"] or "",
-            precio=fila["precio"],
-            observaciones=fila["observaciones"] or "",
-        )
+# Serie con la que se numeran los presupuestos, para que no se mezclen con la
+# de facturación.
+SERIE_PRESUPUESTO = "P"
 
 
 @dataclass(frozen=True)
 class Documento:
     """
-    Una factura (o, a partir de la fase 4, un presupuesto).
+    Una factura o un presupuesto: el mismo objeto con otra cabecera.
 
     `fecha` va siempre en ISO; la pantalla la formatea al enseñarla.
     """
 
     id: int = None
+    tipo: str = FACTURA
+    estado: str = EMITIDA
+    vencimiento: str = ""
+    validez: str = ""
+    origen_id: int = None
     serie: str = ""
     ejercicio: int = 0
     numero: int = 0
@@ -168,8 +180,17 @@ class Documento:
             object.__setattr__(self, campo, a_decimal(getattr(self, campo)))
 
     @property
+    def es_presupuesto(self):
+        return self.tipo == PRESUPUESTO
+
+    @property
+    def rotulo(self):
+        """Lo que va en grande arriba del papel."""
+        return "PRESUPUESTO" if self.es_presupuesto else "FACTURA"
+
+    @property
     def referencia(self):
-        """«2025-004»: el número tal y como se imprime."""
+        """«2025-004» o «P-2025-011»: el número tal y como se imprime."""
         if not (self.ejercicio and self.numero):
             return str(self.id or "")
         prefijo = f"{self.serie}-" if self.serie else ""
@@ -180,6 +201,11 @@ class Documento:
         claves = set(fila.keys())
         return cls(
             id=fila["Num_factura"],
+            tipo=(fila["tipo"] if "tipo" in claves else None) or FACTURA,
+            estado=(fila["estado"] if "estado" in claves else None) or EMITIDA,
+            vencimiento=(fila["vencimiento"] if "vencimiento" in claves else "") or "",
+            validez=(fila["validez"] if "validez" in claves else "") or "",
+            origen_id=fila["origen_id"] if "origen_id" in claves else None,
             serie=fila["serie"] or "",
             ejercicio=fila["ejercicio"] or 0,
             numero=fila["numero"] or 0,

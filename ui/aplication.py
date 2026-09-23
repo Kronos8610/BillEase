@@ -5,10 +5,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
+from core.models import FACTURA, PRESUPUESTO
 from ui.homePage import HomePage
-from ui.crearFactura import CrearFactura
 from ui.crearCliente import CrearCliente
-from ui.crearServicio import CrearServicio
 from utils.globals import (
     TYRIAN_PURPLE, BYZANTIUM, LAVENDER_PINK, CHAMPAGNE_PINK, ALMOND,
     TITLE_FONT, SUBTITLE_FONT, BODY_FONT
@@ -41,13 +40,14 @@ class SideMenu(QWidget):
         layout.addWidget(separator)
         layout.addSpacing(15)
 
-        # Menu butones - Reemplazado "Exit" por "Crear Servicio"
+        # Ya no hay «Crear Servicio»: los conceptos se escriben en el propio
+        # documento, no se eligen de un catálogo.
         self.buttons = []
         menu_items = [
-            {"text": "Home", "icon": "🏠"},
-            {"text": "Crear Factura", "icon": "📄"},
-            {"text": "Crear Cliente", "icon": "➕"},
-            {"text": "Crear Servicio", "icon": "🔧"}  
+            {"text": "Documentos", "icon": "🏠"},
+            {"text": "Nueva factura", "icon": "📄"},
+            {"text": "Nuevo presupuesto", "icon": "📝"},
+            {"text": "Nuevo cliente", "icon": "➕"},
         ]
         
         for item in menu_items:
@@ -104,24 +104,38 @@ class MainWindow(QMainWindow):
 
         self.pages = QStackedWidget()
         self.home_page = HomePage()
-        self.crear_factura_page = CrearFactura()
         self.new_page = CrearCliente()
-        self.crear_servicio_page = CrearServicio()  # Crear instancia de la nueva clase
         self.pages.addWidget(self.home_page)
-        self.pages.addWidget(self.crear_factura_page)
         self.pages.addWidget(self.new_page)
-        self.pages.addWidget(self.crear_servicio_page)
         content_layout.addWidget(self.pages)
 
         main_layout.addWidget(content_frame)
 
-        self.side_menu.buttons[0].clicked.connect(lambda: self.pages.setCurrentWidget(self.home_page))
-        self.side_menu.buttons[1].clicked.connect(lambda: self.pages.setCurrentWidget(self.crear_factura_page))
-        self.side_menu.buttons[2].clicked.connect(lambda: self.pages.setCurrentWidget(self.new_page))
-        self.side_menu.buttons[3].clicked.connect(lambda: self.pages.setCurrentWidget(self.crear_servicio_page))
+        self.side_menu.buttons[0].clicked.connect(self.ir_a_documentos)
+        self.side_menu.buttons[1].clicked.connect(lambda: self.nuevo_documento(FACTURA))
+        self.side_menu.buttons[2].clicked.connect(lambda: self.nuevo_documento(PRESUPUESTO))
+        self.side_menu.buttons[3].clicked.connect(self.ir_a_crear_cliente)
 
-    def save_action(self):
-        print("Save button clicked!")
+    def ir_a_documentos(self):
+        self.pages.setCurrentWidget(self.home_page)
+        self.home_page.cargar_datos()
+
+    def ir_a_crear_cliente(self):
+        self.pages.setCurrentWidget(self.new_page)
+
+    def nuevo_documento(self, tipo):
+        """
+        Abre el editor. Es el mismo para facturas y presupuestos: cambian la
+        cabecera, la serie y el plazo, no el formulario.
+        """
+        from ui.views.documento_editor import DocumentoEditor
+
+        self.pages.setCurrentWidget(self.home_page)
+        if DocumentoEditor(tipo=tipo, parent=self).exec():
+            self.home_page.categoria_combo.setCurrentText(
+                "Presupuestos" if tipo == PRESUPUESTO else "Facturas"
+            )
+            self.home_page.cargar_datos()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

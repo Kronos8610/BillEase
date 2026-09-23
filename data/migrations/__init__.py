@@ -28,6 +28,8 @@ from data.migrations import (
     m004_serie_fiscal,
     m005_lineas_con_texto,
     m006_password_hash,
+    m007_sin_catalogo,
+    m008_presupuestos,
 )
 
 MIGRACIONES = (
@@ -37,6 +39,8 @@ MIGRACIONES = (
     m004_serie_fiscal,
     m005_lineas_con_texto,
     m006_password_hash,
+    m007_sin_catalogo,
+    m008_presupuestos,
 )
 
 

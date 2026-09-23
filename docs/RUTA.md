@@ -222,8 +222,14 @@ python tools\verify.py --conexiones      :: → 1 (hoy son 8)
 presupuestos que se convierten en factura.
 **Cierra:** defecto 06 y la retirada del catálogo.
 
-**Se toca:** `ui/views/documento_editor.py` · `core/quotes.py` · elimina `crearFactura.py`,
+**Se toca:** `ui/views/documento_editor.py` · `ui/widgets/concepto.py` · `core/quotes.py` ·
+`data/repositories/documentos.py` · migraciones `007` y `008` · elimina `crearFactura.py`,
 `editarFactura.py` y `crearServicio.py`
+
+> **Ajuste sobre el plan.** Aquí se aplican las dos migraciones que la fase 2 dejó
+> pendientes a propósito: la **007** retira la tabla `Servicio` y la referencia de las
+> líneas, y la **008** añade `tipo`, `estado`, `vencimiento`, `validez` y `origen_id` para
+> que facturas y presupuestos compartan tabla.
 
 1. Un único editor `DocumentoEditor(tipo=factura|presupuesto, modo=nuevo|edición)`, que sustituye a las 1.176 líneas casi idénticas de crear y editar factura.
 2. Cada concepto es un bloque con descripción larga, cantidad, unidad (ud, h, m²) y precio; importe y total se recalculan al escribir.

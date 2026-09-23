@@ -118,7 +118,11 @@ Las credenciales de la base de demostración son:
 Vista general con listado de facturas, clientes y servicios. Permite eliminar registros y acceder rápidamente a todas las funciones.
 
 ### 📄 Crear factura
-Formulario completo para crear facturas. Selecciona un cliente existente, añade tantas líneas de concepto como necesites eligiendo servicios del catálogo, y el total se calcula automáticamente.
+Formulario completo para crear facturas. Selecciona un cliente existente y **escribe
+cada concepto**: la descripción entera del trabajo, su cantidad, su unidad (ud, h, m²…)
+y su precio. El total se calcula mientras escribes, con IVA desglosado. No hay catálogo
+que rellenar antes: el programa sugiere lo que ya has escrito otras veces, pero nunca
+obliga a elegir de una lista.
 
 ![Crear factura](assets/crear_factura.png)
 
@@ -127,10 +131,11 @@ Registro de clientes con soporte para **persona física** (NIF) y **persona jur�
 
 ![Crear cliente](assets/crear_cliente.png)
 
-### 🔧 Crear servicio
-Catálogo de servicios con descripción, precio y observaciones. Los servicios creados estarán disponibles al generar cualquier factura.
-
-![Crear servicio](assets/crear_servicio.png)
+### 📝 Presupuestos
+Presupuestos con su propia serie (`P-2025-001`), fecha de validez y estados
+—borrador, enviado, aceptado, rechazado—. Un presupuesto aceptado se convierte en
+factura con un clic: copia los conceptos y le asigna su número de la serie de
+facturación.
 
 
 ### ✏️ Editar factura
@@ -154,18 +159,29 @@ BillEase/
 │   └── inventario.py    # Lectura del inventario (compartido)
 ├── docs/                # Auditoría, rediseño y ruta de trabajo
 ├── tests/               # Pruebas automáticas
-├── ui/                  # Pantallas e interfaces gráficas
+├── core/                # Dominio: sin Qt y sin SQL
+│   ├── models.py        # Documento, Linea, Cliente, Autonomo
+│   ├── money.py         # Aritmética con Decimal
+│   ├── taxes.py         # Base, IVA y total: el único cálculo
+│   ├── numbering.py     # Serie fiscal por ejercicio
+│   ├── quotes.py        # Presupuestos y su conversión en factura
+│   ├── fechas.py        # ISO en la base, formato español en pantalla
+│   ├── security.py      # Contraseña cifrada con Argon2
+│   └── validators/      # NIF, NIE, CIF, teléfono, CP
+├── data/                # Único sitio con SQL
+│   ├── connection.py    # Una conexión, con claves ajenas activadas
+│   ├── schema.py        # Esquema de partida
+│   ├── migrations/      # 001 … 008
+│   └── repositories/    # documentos, clientes, autonomo
+├── documents/
+│   └── invoice_pdf.py   # Factura y presupuesto, sin Qt
+├── ui/                  # Pantallas
 │   ├── aplication.py    # Ventana principal y menú lateral
 │   ├── login_ui.py      # Registro inicial del autónomo
-│   ├── homePage.py      # Panel principal y generación de PDF
-│   ├── crearFactura.py  # Formulario de nueva factura
-│   ├── editarFactura.py # Edición de factura existente
+│   ├── homePage.py      # Listado de documentos y clientes
 │   ├── crearCliente.py  # Formulario de nuevo cliente
-│   └── crearServicio.py # Formulario de nuevo servicio
-├── database/
-│   └── db.py            # Toda la lógica de base de datos (SQLite)
-├── validators/
-│   └── Validator.py     # Validadores de formularios (NIF, CIF, email…)
+│   ├── views/           # documento_editor.py (facturas y presupuestos)
+│   └── widgets/         # concepto.py (el campo con sugerencias)
 └── utils/
     └── globals.py       # Colores y fuentes globales de la interfaz
 ```
