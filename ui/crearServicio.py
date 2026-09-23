@@ -218,10 +218,10 @@ class CrearServicio(QWidget):
                 return
                 
             # Importar función para insertar servicio
-            from database.db import insertar_servicio
+            from data.repositories import servicios as repo_servicios
             
             # Intentar guardar el servicio
-            servicio_id = insertar_servicio(
+            servicio_id = repo_servicios.crear(
                 servicio['descripcion'],
                 precio,
                 servicio['observaciones']

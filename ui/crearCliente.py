@@ -203,81 +203,72 @@ class CrearCliente(QWidget):
         self.radio_fisica.setChecked(True)
     
     def save_client(self):
-        """Guardar los datos del cliente en la base de datos"""
-        # Recoger datos del formulario
-        cliente = {
-            'tipo_cliente': self.radio_fisica.isChecked(),  # True = física, False = jurídica
-            'nombre': self.nombre_input.text().strip(),
-            'cifnif': self.cifnif_input.text().strip(),
-            'direccion': self.direccion_input.text().strip(),
-            'cod_postal': self.cod_postal_input.text().strip(),
-            'telefono': self.telefono_input.text().strip(),
-            'email': self.email_input.text().strip(),
-            'observaciones': self.observaciones_input.toPlainText().strip()
-        }
-        
-        # Importar validadores
-        from validators.Validator import (
-            RequiredValidator, NIFValidator, CIFValidator, PhoneValidator, 
-            PostalCodeValidator, validate_form_data
+        """Guarda los datos del cliente en la base de datos"""
+        from core.models import Cliente
+        from core.validators import (
+            CIF,
+            CODIGO_POSTAL_OPCIONAL,
+            NIF_O_NIE,
+            OBLIGATORIO,
+            TELEFONO_OPCIONAL,
+            validar_formulario,
         )
-        
-        # Configurar validadores para cada campo
-        validators = {
-            'nombre': RequiredValidator(),
-            # Seleccionar el validador según el tipo de cliente
-            'cifnif': NIFValidator() if cliente['tipo_cliente'] else CIFValidator()
+        from data.repositories import clientes as repo_clientes
+
+        es_fisica = self.radio_fisica.isChecked()
+        datos = {
+            "nombre": self.nombre_input.text().strip(),
+            "cifnif": self.cifnif_input.text().strip(),
+            "direccion": self.direccion_input.text().strip(),
+            "cod_postal": self.cod_postal_input.text().strip(),
+            "telefono": self.telefono_input.text().strip(),
+            "email": self.email_input.text().strip(),
+            "observaciones": self.observaciones_input.toPlainText().strip(),
         }
-        
-        # Validar campos opcionales solo si no están vacíos
-        if cliente['telefono']:
-            validators['telefono'] = PhoneValidator()
-        
-        if cliente['cod_postal']:
-            validators['cod_postal'] = PostalCodeValidator()
-        
-        # Ejecutar validación
-        is_valid, errors = validate_form_data(cliente, validators)
-        
-        # Mostrar errores si hay alguno
-        if not is_valid:
-            error_message = "Por favor corrija los siguientes errores:\n"
-            for field, message in errors.items():
-                field_name = {
-                    'nombre': "Nombre o Razón Social",
-                    'cifnif': "CIF/NIF",
-                    'telefono': "Teléfono",
-                    'cod_postal': "Código Postal"
-                }.get(field, field)
-                error_message += f"• {field_name}: {message}\n"
-            
-            self.show_error_message(error_message)
+
+        # Una persona física puede tener NIF o NIE: un residente extranjero
+        # también es cliente (defecto 12).
+        reglas = {
+            "nombre": OBLIGATORIO,
+            "cifnif": NIF_O_NIE if es_fisica else CIF,
+            "telefono": TELEFONO_OPCIONAL,
+            "cod_postal": CODIGO_POSTAL_OPCIONAL,
+        }
+        correcto, errores = validar_formulario(datos, reglas)
+
+        if not correcto:
+            nombres = {
+                "nombre": "Nombre o Razón Social",
+                "cifnif": "CIF/NIF",
+                "telefono": "Teléfono",
+                "cod_postal": "Código Postal",
+            }
+            mensaje = "Por favor corrija los siguientes errores:\n"
+            for campo, error in errores.items():
+                mensaje += f"• {nombres.get(campo, campo)}: {error}\n"
+            self.show_error_message(mensaje)
             return
-        
-        try:
-            # Importar función para agregar cliente
-            from database.db import agregar_cliente
-            
-            # Intentar guardar el cliente
-            cliente_id = agregar_cliente(
-                cliente['cifnif'],
-                cliente['nombre'],
-                cliente['direccion'],
-                cliente['cod_postal'],
-                cliente['telefono'],
-                cliente['observaciones'],
-                cliente['tipo_cliente'],
-                cliente['email']
+
+        cliente = Cliente(
+            nombre=datos["nombre"],
+            nif=datos["cifnif"],
+            es_persona_fisica=es_fisica,
+            direccion=datos["direccion"],
+            codigo_postal=datos["cod_postal"],
+            telefono=datos["telefono"],
+            email=datos["email"],
+            observaciones=datos["observaciones"],
+        )
+
+        cliente_id = repo_clientes.crear(cliente)
+        if cliente_id:
+            self.show_success_message(f"Cliente #{cliente_id} añadido correctamente.")
+            self.clear_form()
+        else:
+            self.show_error_message(
+                f"Ya hay un cliente con el documento {cliente.nif}. "
+                "Búscalo en la lista de clientes en lugar de crearlo otra vez."
             )
-            
-            if cliente_id:
-                self.show_success_message(f"Cliente #{cliente_id} añadido correctamente.")
-                self.clear_form()
-            else:
-                self.show_error_message("No se pudo guardar el cliente. Verifica los datos.")
-        
-        except Exception as e:
-            self.show_error_message(f"Error al guardar: {str(e)}")
     
     def show_error_message(self, message):
         """Mostrar mensaje de error"""

@@ -1,12 +1,17 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 import sys
 from ui.aplication import MainWindow
-from validators.Validator import (
-    RequiredValidator, EmailValidator, PhoneValidator, 
-    NIFValidator, PostalCodeValidator, PasswordValidator, 
-    validate_form_data
+from core.models import Autonomo
+from core.validators import (
+    CODIGO_POSTAL,
+    CONTRASENA,
+    EMAIL,
+    NIF_O_NIE,
+    OBLIGATORIO,
+    TELEFONO,
+    validar_formulario,
 )
-from database.db import crear_base_de_datos, register_autonomo
+from data.repositories import autonomo as repo_autonomo
 
 class RegisterWindow(QtWidgets.QWidget):
     def __init__(self, parent=None, initial_setup=False):
@@ -175,20 +180,21 @@ class RegisterWindow(QtWidgets.QWidget):
             "postal_code": self.postal_code_input.text()
         }
         
-        # Definir validadores para cada campo
-        validators = {
-            "email": EmailValidator(),
-            "password": PasswordValidator(),
-            "name": RequiredValidator(),
-            "surname": RequiredValidator(),
-            "address": RequiredValidator(),
-            "nif": NIFValidator(),
-            "phone": PhoneValidator(),
-            "postal_code": PostalCodeValidator()
+        # Reglas de cada campo. El documento admite NIF y NIE: un autónomo
+        # residente extranjero también factura (defecto 12).
+        reglas = {
+            "email": EMAIL,
+            "password": CONTRASENA,
+            "name": OBLIGATORIO,
+            "surname": OBLIGATORIO,
+            "address": OBLIGATORIO,
+            "nif": NIF_O_NIE,
+            "phone": TELEFONO,
+            "postal_code": CODIGO_POSTAL,
         }
         
         # Realizar validación
-        is_valid, errors = validate_form_data(form_data, validators)
+        is_valid, errors = validar_formulario(form_data, reglas)
         
         # Limpiar todas las etiquetas de error primero
         for error_label in self.error_labels.values():
@@ -230,15 +236,18 @@ class RegisterWindow(QtWidgets.QWidget):
                 
                 # Paso 1: Crear base de datos
                 print("Creando base de datos...")
-                crear_base_de_datos()
+                from data.schema import crear_esquema_y_migrar
+                crear_esquema_y_migrar()
                 progress_dialog.setValue(1)
                 QtWidgets.QApplication.processEvents()
                 
                 # Paso 2: Registrar usuario
                 print("Registrando usuario...")
-                success = register_autonomo(
-                    nif, nombre, apellido, direccion, 
-                    cod_postal, telefono, email, contrasena
+                success = repo_autonomo.registrar(
+                    Autonomo(nif=nif, nombre=nombre, apellido=apellido,
+                             direccion=direccion, codigo_postal=cod_postal,
+                             telefono=telefono, email=email),
+                    contrasena,
                 )
                 progress_dialog.setValue(2)
                 
@@ -270,9 +279,11 @@ class RegisterWindow(QtWidgets.QWidget):
                 )
         else:
             # Modo normal de registro (no estamos en configuración inicial)
-            success = register_autonomo(
-                nif, nombre, apellido, direccion, 
-                cod_postal, telefono, email, contrasena
+            success = repo_autonomo.registrar(
+                Autonomo(nif=nif, nombre=nombre, apellido=apellido,
+                         direccion=direccion, codigo_postal=cod_postal,
+                         telefono=telefono, email=email),
+                contrasena,
             )
             
             if success:

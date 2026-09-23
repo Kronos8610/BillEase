@@ -181,8 +181,14 @@ pytest tests\test_migrations.py -q
 **Objetivo:** que la interfaz deje de escribir SQL y de desempaquetar tuplas por índice.
 **Cierra:** defectos 07, 09 y 12.
 
-**Se toca:** `core/models.py` · `core/numbering.py` · `core/validators/` · `data/repositories/` ·
-elimina `database/db.py`
+**Se toca:** `core/money.py` · `core/models.py` · `core/numbering.py` · `core/validators/` ·
+`data/schema.py` · `data/repositories/` · todas las pantallas ·
+elimina `database/` y `validators/`
+
+> **Ajuste sobre el plan.** Los NIF y CIF de la base de demostración eran inventados y
+> **no pasaban la propia validación del programa**: editar un cliente de ejemplo daba
+> error. Se han sustituido por documentos igual de ficticios pero con el dígito de control
+> correcto.
 
 1. `core/models.py` con *dataclasses*: `Documento`, `Linea`, `Cliente`. Se acabó el `cliente[6]`.
 2. `core/numbering.py`: siguiente número de la serie por ejercicio, y anulación en lugar de borrado.

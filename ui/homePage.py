@@ -3,12 +3,15 @@ from PyQt6.QtWidgets import (
     QFrame, QApplication, QFileDialog, QScrollArea,
     QGroupBox, QMessageBox, QComboBox
 )
-import database.db as db
 import re
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from core.fechas import a_espanol as fecha_para_pantalla
-from core.taxes import calcular, desde_base, desde_detalles, formatear
+from core.taxes import calcular, desde_base, formatear
+from data.repositories import autonomo as repo_autonomo
+from data.repositories import clientes as repo_clientes
+from data.repositories import facturas as repo_facturas
+from data.repositories import servicios as repo_servicios
 from documents.invoice_pdf import generar_documento_pdf
 from utils.globals import (
     TYRIAN_PURPLE, BYZANTIUM, LAVENDER_PINK, CHAMPAGNE_PINK, ALMOND,
@@ -171,8 +174,9 @@ class HomePage(QWidget):
         self.limpiar_items()
         
         # Obtener facturas de la base de datos
-        from database.db import obtener_todas_facturas
-        facturas = obtener_todas_facturas()
+        # Una sola consulta con JOIN: antes se pedía el nombre del cliente
+        # factura por factura (defecto 09).
+        facturas = repo_facturas.listar()
         
         if facturas:
             self.no_items_container.hide()
@@ -228,8 +232,7 @@ class HomePage(QWidget):
         self.limpiar_items()
         
         # Obtener clientes de la base de datos
-        from database.db import obtener_clientes
-        clientes = obtener_clientes()
+        clientes = repo_clientes.listar()
         
         if clientes:
 
@@ -282,8 +285,7 @@ class HomePage(QWidget):
         self.limpiar_items()
         
         # Obtener servicios de la base de datos
-        from database.db import obtener_todos_servicios
-        servicios = obtener_todos_servicios()
+        servicios = repo_servicios.listar()
         
         if servicios:
             self.no_items_container.hide()
@@ -342,17 +344,11 @@ class HomePage(QWidget):
     def crear_factura_item(self, factura, alternate_color=False):
         """Crea un elemento de lista para una factura"""
         # Desempaquetar datos de la factura
-        # Las filas se leen por nombre de columna: añadir una columna a la
-        # tabla ya no rompe esta pantalla.
-        num_factura = factura["Num_factura"]
-        cod_cliente = factura["Cod_cliente"]
-        etiqueta_numero = db.numero_completo(factura)
-        totales = desde_base(factura["base"], factura["tipo_iva"])
-        
-        # Obtener el nombre del cliente
-        from database.db import obtener_cliente_por_id
-        cliente = obtener_cliente_por_id(cod_cliente)
-        nombre_cliente = cliente[2] if cliente else "Cliente desconocido"  # Índice 2 = nombre_o_razon_social
+        # `factura` es un Documento del dominio: se lee por nombre, y el
+        # nombre del cliente viene ya en la misma consulta.
+        num_factura = factura.id
+        totales = desde_base(factura.base, factura.tipo_iva)
+        nombre_cliente = factura.cliente_nombre or "Cliente desconocido"
         
         # Crear widget para la fila
         item = QWidget()
@@ -365,8 +361,8 @@ class HomePage(QWidget):
         item_layout.setContentsMargins(10, 10, 10, 10)
         
         # Datos de la factura
-        num_label = QLabel(etiqueta_numero)
-        fecha_label = QLabel(fecha_para_pantalla(factura["fecha"]))
+        num_label = QLabel(factura.referencia)
+        fecha_label = QLabel(fecha_para_pantalla(factura.fecha))
         cliente_label = QLabel(nombre_cliente)
 
         base_label = QLabel(f"{formatear(totales.base)} €")
@@ -450,7 +446,10 @@ class HomePage(QWidget):
     def crear_cliente_item(self, cliente, alternate_color=False):
         """Crea un elemento de lista para un cliente"""
         # Desempaquetar datos del cliente
-        cod_cliente, tipo_cliente, nombre, direccion, telefono, cod_postal, cifnif, observaciones, *_ = cliente
+        cod_cliente = cliente.id
+        nombre = cliente.nombre
+        telefono = cliente.telefono
+        cifnif = cliente.nif
         
         # Crear widget para la fila
         item = QWidget()
@@ -498,7 +497,9 @@ class HomePage(QWidget):
     def crear_servicio_item(self, servicio, alternate_color=False):
         """Crea un elemento de lista para un servicio"""
         # Desempaquetar datos del servicio
-        cod_servicio, descripcion, precio, observaciones = servicio
+        cod_servicio = servicio.id
+        descripcion = servicio.descripcion
+        precio = servicio.precio
         
         # Crear widget para la fila
         item = QWidget()
@@ -513,7 +514,7 @@ class HomePage(QWidget):
         # Datos del servicio
         id_label = QLabel(str(cod_servicio))
         descripcion_label = QLabel(descripcion)
-        precio_label = QLabel(f"{precio:.2f} €")
+        precio_label = QLabel(f"{formatear(precio)} €")
         
         # Botón de eliminar
         delete_btn = QPushButton("🗑️")
@@ -543,86 +544,76 @@ class HomePage(QWidget):
 
     def crear_pdf_factura(self, num_factura):
         """Genera el PDF de una factura y lo guarda donde elija el usuario."""
-        from database.db import (
-            obtener_cliente_por_id,
-            obtener_datos_autonomo,
-            obtener_detalles_factura,
-            obtener_factura_por_id,
-        )
-
-        factura = obtener_factura_por_id(num_factura)
-        if not factura:
+        factura = repo_facturas.obtener(num_factura)
+        if factura is None:
             QMessageBox.warning(self, "Factura no encontrada",
                 f"No se encontró la factura #{num_factura}.")
             return
 
-        detalles = obtener_detalles_factura(num_factura)
-        if not detalles:
+        if not factura.lineas:
             QMessageBox.warning(self, "Factura sin conceptos",
-                f"La factura #{num_factura} no tiene ninguna línea, así que no "
-                "hay nada que imprimir. Ábrela y añade al menos un concepto.")
+                f"La factura {factura.referencia} no tiene ninguna línea, así que "
+                "no hay nada que imprimir. Ábrela y añade al menos un concepto.")
             return
 
-        cliente = obtener_cliente_por_id(factura["Cod_cliente"])
-        if not cliente:
+        cliente = repo_clientes.obtener(factura.cliente_id)
+        if cliente is None:
             QMessageBox.warning(self, "Cliente no encontrado",
-                f"La factura #{num_factura} apunta a un cliente que ya no existe.")
+                f"La factura {factura.referencia} apunta a un cliente que ya no existe.")
             return
 
-        autonomo = obtener_datos_autonomo()
-        if not autonomo:
+        emisor = repo_autonomo.obtener()
+        if emisor is None:
             QMessageBox.warning(self, "Faltan tus datos",
                 "No se han podido leer tus datos de autónomo, y sin ellos la "
                 "factura no es válida. Revísalos antes de emitirla.")
             return
 
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Guardar PDF", f"factura_{num_factura}.pdf", "PDF Files (*.pdf)"
+            self, "Guardar PDF", f"{factura.referencia}.pdf", "PDF Files (*.pdf)"
         )
         if not file_path:
             return
 
-        # Las líneas y los totales se calculan una sola vez, con la misma
-        # función que alimenta el listado: el papel y la pantalla no pueden
-        # decir cifras distintas (defecto 01).
-        lineas = desde_detalles(detalles)
-        totales = calcular(lineas)
+        # Los totales se calculan una sola vez, con la misma función que
+        # alimenta el listado: el papel y la pantalla no pueden discrepar.
+        totales = calcular(factura.lineas)
 
         datos = {
             "tipo": "factura",
-            "numero": db.numero_completo(factura),
-            "fecha": fecha_para_pantalla(factura["fecha"]),
+            "numero": factura.referencia,
+            "fecha": fecha_para_pantalla(factura.fecha),
             "emisor": {
-                "nombre": f"{autonomo[1]} {autonomo[2]}".strip(),
-                "nif": autonomo[0],
-                "direccion": autonomo[3],
-                "poblacion": autonomo[4],
-                "telefono": autonomo[5],
-                "email": autonomo[6],
+                "nombre": emisor.nombre_completo,
+                "nif": emisor.nif,
+                "direccion": emisor.direccion,
+                "poblacion": emisor.codigo_postal,
+                "telefono": emisor.telefono,
+                "email": emisor.email,
             },
             "cliente": {
-                "nombre": cliente[2],
-                "nif": cliente[6],
-                "direccion": cliente[3],
-                "poblacion": cliente[5],
-                "telefono": cliente[4],
-                "email": cliente[8] if len(cliente) > 8 else "",
+                "nombre": cliente.nombre,
+                "nif": cliente.nif,
+                "direccion": cliente.direccion,
+                "poblacion": cliente.codigo_postal,
+                "telefono": cliente.telefono,
+                "email": cliente.email,
             },
-            "lineas": lineas,
-            "nota": factura["observaciones"] or "",
+            "lineas": factura.lineas,
+            "nota": factura.observaciones,
         }
 
         try:
             resultado = generar_documento_pdf(datos, file_path, totales=totales)
         except Exception as e:
             QMessageBox.critical(self, "No se pudo generar el PDF",
-                f"La factura #{num_factura} no se ha podido escribir en "
+                f"La factura {factura.referencia} no se ha podido escribir en "
                 f"{file_path}.\n\nMotivo: {e}")
             return
 
         paginas = resultado["paginas"]
         QMessageBox.information(self, "PDF generado",
-            f"Factura {db.numero_completo(factura)} · {formatear(totales.total)} €\n"
+            f"Factura {factura.referencia} · {formatear(totales.total)} €\n"
             f"{paginas} página{'s' if paginas != 1 else ''} en {file_path}")
 
     def eliminar_factura(self, num_factura):
@@ -636,7 +627,7 @@ class HomePage(QWidget):
         
         if confirmacion == QMessageBox.StandardButton.Yes:
             try:
-                if db.eliminar_factura(num_factura):
+                if repo_facturas.eliminar(num_factura):
                     QMessageBox.information(self, "Éxito", f"Factura #{num_factura} eliminada correctamente.")
                     self.cargar_facturas()  # Actualizar la lista
                 else:
@@ -647,14 +638,15 @@ class HomePage(QWidget):
     def eliminar_cliente(self, cod_cliente):
         """Elimina un cliente de la base de datos"""
         # Verificar primero si el cliente tiene facturas asociadas
-        facturas = db.obtener_facturas_cliente(cod_cliente)
+        cuantas = repo_clientes.cuantas_facturas(cod_cliente)
         
-        if facturas:
+        if cuantas:
             QMessageBox.warning(
                 self, 
                 "No se puede eliminar", 
-                f"El cliente #{cod_cliente} tiene {len(facturas)} factura(s) asociada(s).\n"
-                f"Elimine primero las facturas antes de eliminar este cliente."
+                f"Este cliente tiene {cuantas} factura(s) emitida(s).\n"
+                f"Una factura emitida no puede quedarse sin destinatario: "
+                f"elimina antes sus facturas si de verdad quieres borrarlo."
             )
             return
             
@@ -667,7 +659,7 @@ class HomePage(QWidget):
         
         if confirmacion == QMessageBox.StandardButton.Yes:
             try:
-                if db.eliminar_cliente(cod_cliente):
+                if repo_clientes.eliminar(cod_cliente):
                     QMessageBox.information(self, "Éxito", f"Cliente #{cod_cliente} eliminado correctamente.")
                     self.cargar_clientes()  # Actualizar la lista
                 else:
@@ -678,8 +670,7 @@ class HomePage(QWidget):
     def eliminar_servicio(self, cod_servicio):
         """Elimina un servicio de la base de datos"""
         # Verificar si el servicio está en uso en alguna factura
-        from database.db import verificar_servicio_en_uso
-        en_uso = verificar_servicio_en_uso(cod_servicio)
+        en_uso = repo_servicios.esta_en_uso(cod_servicio)
         
         if en_uso:
             QMessageBox.warning(
@@ -699,7 +690,7 @@ class HomePage(QWidget):
         
         if confirmacion == QMessageBox.StandardButton.Yes:
             try:
-                if db.eliminar_servicio(cod_servicio):
+                if repo_servicios.eliminar(cod_servicio):
                     QMessageBox.information(self, "Éxito", f"Servicio #{cod_servicio} eliminado correctamente.")
                     self.cargar_servicios()  # Actualizar la lista
                 else:

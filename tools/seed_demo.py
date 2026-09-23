@@ -13,9 +13,13 @@ versionar ningún fichero `.db`.
 Credenciales de la demostración:
     carlos.garcia@billease.es  /  Pass1234
 
-La contraseña se guarda en claro porque es lo que hace hoy la aplicación
-(defecto 03 de la auditoría). La fase 2 de la ruta la pasa a argon2 y este
-script se actualizará con ella.
+Se genera el esquema original y después se aplican las migraciones, igual que
+le pasaría a la base de un usuario que viniera de una versión antigua. Con
+`--sin-migrar` se queda en el esquema de partida, que es lo que necesitan las
+pruebas de migración.
+
+Los NIF y CIF son inventados pero **válidos**: pasan la comprobación del dígito
+de control, para que editar un cliente de la demostración no dé error.
 """
 
 import argparse
@@ -26,10 +30,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from data.connection import abrir
-from database.db import ESQUEMA_INICIAL
+from data.schema import ESQUEMA_INICIAL
 
 AUTONOMO = (
-    "12345678A", "Carlos", "García López", "Calle Mayor 12, 2ºA",
+    "12345678Z", "Carlos", "García López", "Calle Mayor 12, 2ºA",
     "28001", "612345678", "carlos.garcia@billease.es", "Pass1234",
 )
 
@@ -37,13 +41,13 @@ AUTONOMO = (
 # TIPO_CLIENTE: 0 = persona jurídica, 1 = persona física
 CLIENTES = [
     (0, "Construcciones Pérez S.L.", "Av. Industria 45", "654321098", "08020",
-     "B12345678", "Cliente habitual", "contacto@construccionesperez.es"),
+     "B12345674", "Cliente habitual", "contacto@construccionesperez.es"),
     (1, "María Fernández Ruiz", "C/ Rosales 8, 3ºB", "666111222", "28030",
-     "87654321B", "", "maria.fernandez@gmail.com"),
+     "87654321X", "", "maria.fernandez@gmail.com"),
     (0, "Reformas Norte S.A.", "Pol. Industrial km 3", "911223344", "33001",
-     "C87654321", "Pago a 30 días", "admin@reformasnorte.com"),
+     "C87654323", "Pago a 30 días", "admin@reformasnorte.com"),
     (1, "Antonio Martínez Soto", "Pza. España 1", "699887766", "41001",
-     "22334455C", "", "antonio.martinez@hotmail.com"),
+     "22334455Y", "", "antonio.martinez@hotmail.com"),
     (0, "Logística Sur S.L.", "Av. del Puerto 20", "955443322", "11006",
      "D11223344", "Pago transferencia", "info@logisticasur.es"),
 ]

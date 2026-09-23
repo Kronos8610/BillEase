@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QDate, pyqtSignal
 from PyQt6.QtGui import QFont
+from core.models import Linea
+from core.money import a_decimal, formatear
 from utils.globals import TYRIAN_PURPLE, BYZANTIUM, LAVENDER_PINK, CHAMPAGNE_PINK, ALMOND, TITLE_FONT, SUBTITLE_FONT, BODY_FONT
 
 class EditarFactura(QDialog):
@@ -240,67 +242,61 @@ class EditarFactura(QDialog):
 
     # ------- Carga de datos -------
     def cargar_clientes(self):
-        from database.db import obtener_clientes
+        from data.repositories import clientes as repo_clientes
         self.cliente_combo.clear()
         self.cliente_combo.addItem("-- Seleccione un cliente --", None)
-        for cliente in obtener_clientes():
-            self.cliente_combo.addItem(f"{cliente[2]} ({cliente[6]})", cliente)
+        for cliente in repo_clientes.listar():
+            self.cliente_combo.addItem(f"{cliente.nombre} ({cliente.nif})", cliente)
 
     def precargar_factura(self):
-        from database.db import obtener_factura_por_id, obtener_cliente_por_id, obtener_detalles_factura
-        factura = obtener_factura_por_id(self.num_factura)
-        if not factura:
+        from core.fechas import a_espanol
+        from data.repositories import facturas as repo_facturas
+
+        factura = repo_facturas.obtener(self.num_factura)
+        if factura is None:
             QMessageBox.warning(self, "Error", "No se encontró la factura.")
             self.reject()
             return
 
-        from core.fechas import a_espanol
-        fecha = a_espanol(factura["fecha"])
-        cod_cliente = factura["Cod_cliente"]
-        observaciones = factura["observaciones"] or ""
+        self.setWindowTitle(f"Editar factura {factura.referencia}")
 
-        # Seleccionar cliente en el combo y rellenar datos visuales
-        cliente = obtener_cliente_por_id(cod_cliente)
-        if cliente:
-            for i in range(self.cliente_combo.count()):
-                data = self.cliente_combo.itemData(i)
-                if data and data[0] == cod_cliente:
-                    self.cliente_combo.setCurrentIndex(i)
-                    break
-            self.nombre.setText(cliente[2] or "")
-            self.direccion.setText(cliente[3] or "")
-            self.cp.setText(str(cliente[5] or ""))   # CP y ciudad (ajústalo si lo separas)
-            self.nif.setText(cliente[6] or "")
-            self.telefono.setText(str(cliente[4]) if cliente[4] else "")
-            self.email.setText(cliente[8] if len(cliente) > 8 and cliente[8] else "")
+        # Seleccionar el cliente y enseñar sus datos (solo de lectura: lo que
+        # se escriba aquí no se guarda, así que no debe parecer editable).
+        for i in range(self.cliente_combo.count()):
+            cliente = self.cliente_combo.itemData(i)
+            if cliente and cliente.id == factura.cliente_id:
+                self.cliente_combo.setCurrentIndex(i)
+                self.nombre.setText(cliente.nombre)
+                self.direccion.setText(cliente.direccion)
+                self.cp.setText(cliente.codigo_postal)
+                self.nif.setText(cliente.nif)
+                self.telefono.setText(cliente.telefono)
+                self.email.setText(cliente.email)
+                break
 
-        # Fecha y observaciones
-        self.fecha.setText(fecha)
-        self.observaciones_input.setPlainText(observaciones)
+        self.fecha.setText(a_espanol(factura.fecha))
+        self.observaciones_input.setPlainText(factura.observaciones)
 
-        # Cargar conceptos existentes como filas
-        detalles = obtener_detalles_factura(self.num_factura)
+        # Cargar los conceptos existentes como filas
         self.filas_conceptos.clear()
         while self.conceptos_filas_layout.count():
             item = self.conceptos_filas_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        for det in detalles:
-            cantidad = det["NumServicios"]
-            precio = det["precioPorServicio"]
+        for linea in factura.lineas:
             self.add_fila_concepto(prefill={
-                "cod_servicio": det["cod_servicio"],
-                "descripcion": det["descripcion"],
-                "cantidad": str(cantidad),
-                "precio_ud": str(precio),
-                "total": f"{float(cantidad) * float(precio):.2f}"
+                "cod_servicio": linea.cod_servicio,
+                "descripcion": linea.descripcion,
+                "cantidad": str(linea.cantidad),
+                "precio_ud": formatear(linea.precio_ud),
+                "total": formatear(linea.importe),
             })
 
     def add_fila_concepto(self, prefill=None):
         fila = QHBoxLayout(); fila.setSpacing(10)
-        from database.db import obtener_todos_servicios
-        servicios = obtener_todos_servicios()
+        from data.repositories import servicios as repo_servicios
+        servicios = repo_servicios.listar()
 
         servicio_combo = QComboBox()
         servicio_combo.setMinimumHeight(35)
@@ -311,8 +307,8 @@ class EditarFactura(QDialog):
             QComboBox::drop-down {{ border: none; width: 25px; }}
         """)
         servicio_combo.addItem("Seleccione un servicio", None)
-        for s in servicios:
-            servicio_combo.addItem(s[1], s)  # (id, desc, precio, obs)
+        for servicio in servicios:
+            servicio_combo.addItem(servicio.descripcion, servicio)
 
         cantidad = self.create_styled_input("1")
         precio_ud = self.create_styled_input("0.00")
@@ -326,30 +322,35 @@ class EditarFactura(QDialog):
             QPushButton:hover { background-color: #c82333; }
         """)
 
+        def refrescar_importe():
+            if not servicio_combo.currentData():
+                total.setText("")
+                return
+            try:
+                fila = Linea(
+                    descripcion="",
+                    cantidad=cantidad.text() or "0",
+                    precio_ud=precio_ud.text() or "0",
+                )
+                total.setText(formatear(fila.importe))
+            except (ArithmeticError, ValueError):
+                total.setText("")
+
         def on_servicio_selected(index):
             if index <= 0:
                 precio_ud.setText(""); total.setText(""); return
-            sdata = servicio_combo.currentData()
-            if sdata:
-                precio_ud.setText(str(sdata[2]))
-                try:
-                    cant = float(cantidad.text() or "1")
-                    total.setText(f"{cant * float(sdata[2]):.2f}")
-                except ValueError:
-                    total.setText("")
+            servicio = servicio_combo.currentData()
+            if servicio:
+                precio_ud.setText(formatear(servicio.precio))
+                if not cantidad.text().strip():
+                    cantidad.setText("1")
+                refrescar_importe()
 
         def on_cantidad_changed():
-            sdata = servicio_combo.currentData()
-            if not sdata: return
-            try:
-                cant = float(cantidad.text() or "0")
-                pu = float(precio_ud.text() or "0")
-                total.setText(f"{cant * pu:.2f}")
-            except ValueError:
-                total.setText("")
+            refrescar_importe()
 
         def on_precio_changed():
-            on_cantidad_changed()
+            refrescar_importe()
 
         servicio_combo.currentIndexChanged.connect(on_servicio_selected)
         cantidad.textChanged.connect(on_cantidad_changed)
@@ -370,8 +371,8 @@ class EditarFactura(QDialog):
         if prefill:
             objetivo_id = prefill.get("cod_servicio")
             for i in range(servicio_combo.count()):
-                data = servicio_combo.itemData(i)
-                if data and data[0] == objetivo_id:
+                servicio = servicio_combo.itemData(i)
+                if servicio and servicio.id == objetivo_id:
                     servicio_combo.setCurrentIndex(i)
                     break
             cantidad.setText(prefill.get("cantidad", "1"))
@@ -396,6 +397,9 @@ class EditarFactura(QDialog):
 
     # ------- Guardado -------
     def guardar_cambios(self):
+        from core.taxes import calcular
+        from data.repositories import facturas as repo_facturas
+
         if self.cliente_combo.currentIndex() <= 0:
             QMessageBox.warning(self, "Cliente no seleccionado", "Seleccione un cliente.")
             return
@@ -403,42 +407,45 @@ class EditarFactura(QDialog):
             QMessageBox.warning(self, "Fecha requerida", "Indique una fecha.")
             return
 
-        cliente_datos = self.cliente_combo.currentData()
-        cod_cliente = cliente_datos[0]
+        cliente = self.cliente_combo.currentData()
 
-        detalles = []
-        total_factura = 0.0
-        for (_w, servicio_combo, cantidad, precio_ud, total) in self.filas_conceptos:
-            if servicio_combo.currentIndex() <= 0:
+        lineas = []
+        for (_w, servicio_combo, cantidad, precio_ud, _total) in self.filas_conceptos:
+            servicio = servicio_combo.currentData()
+            if not servicio:
                 continue
-            sdata = servicio_combo.currentData()
             try:
-                cant = float(cantidad.text() or "0")
-                pu = float(precio_ud.text() or "0")
-                if cant > 0 and pu > 0:
-                    detalles.append({
-                        "cod_servicio": sdata[0],
-                        "descripcion": sdata[1],
-                        "cantidad": cant,
-                        "precio_ud": pu
-                    })
-                    total_factura += cant * pu
-            except ValueError:
+                unidades = a_decimal(cantidad.text())
+                pu = a_decimal(precio_ud.text())
+            except ArithmeticError:
                 continue
+            if unidades > 0 and pu > 0:
+                lineas.append(Linea(
+                    descripcion=servicio.descripcion,
+                    cantidad=unidades,
+                    precio_ud=pu,
+                    cod_servicio=servicio.id,
+                ))
 
-        if not detalles:
+        if not lineas:
             QMessageBox.warning(self, "Sin líneas válidas", "Añada al menos una línea válida.")
             return
 
         observaciones = self.observaciones_input.toPlainText().strip()
+        # Cabecera y líneas se cambian en una sola transacción.
+        guardado = repo_facturas.actualizar(
+            self.num_factura, self.fecha.text().strip(), cliente.id, lineas, observaciones
+        )
 
-        from database.db import actualizar_factura, reemplazar_detalles_factura
-        ok1 = actualizar_factura(self.num_factura, self.fecha.text().strip(), total_factura, cod_cliente, observaciones)
-        ok2 = reemplazar_detalles_factura(self.num_factura, detalles)
+        if not guardado:
+            QMessageBox.critical(self, "No se pudo guardar",
+                "Los cambios no se han guardado. Revisa que el cliente siga "
+                "existiendo y que la fecha sea correcta.")
+            return
 
-        if ok1 and ok2:
-            QMessageBox.information(self, "Factura actualizada", f"Se han guardado los cambios de la factura #{self.num_factura}.")
-            self.saved.emit()
-            self.accept()  # cierra el diálogo
-        else:
-            QMessageBox.critical(self, "Error", "No se pudieron guardar los cambios. Revisa la consola para más detalles.")
+        totales = calcular(lineas)
+        factura = repo_facturas.obtener(self.num_factura, con_lineas=False)
+        QMessageBox.information(self, "Factura actualizada",
+            f"Factura {factura.referencia} · {formatear(totales.total)} €")
+        self.saved.emit()
+        self.accept()

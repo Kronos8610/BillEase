@@ -13,7 +13,7 @@ Cada fase añade aquí sus comprobaciones:
 
     fase 1 → --totales        el total de la lista coincide con el del PDF  ✓
     fase 2 → --post-migracion tipos, fechas ISO y claves ajenas aplicadas  ✓
-    fase 3 → --conexiones     una sola conexión para pintar la lista
+    fase 3 → --conexiones     una sola conexión para pintar la lista  ✓
 """
 
 import argparse
@@ -250,6 +250,59 @@ def verificar_post_migracion(ruta_base, r):
         conn.close()
 
 
+def verificar_conexiones(ruta_base, r):
+    """
+    Fase 3 · pintar el listado deja de ser un N+1.
+
+    Antes se pedía la lista de facturas y después, una consulta por fila, el
+    nombre del cliente: con siete facturas eran ocho viajes a la base y con
+    quinientas, quinientos uno (defecto 09).
+
+    Se cuentan de verdad las conexiones abiertas y las sentencias ejecutadas.
+    """
+    import os
+    import sqlite3
+
+    os.environ["BILLEASE_DB"] = str(ruta_base)
+
+    from data import connection
+    from data.repositories import facturas as repo_facturas
+
+    connection.cerrar()
+
+    abrir_original = sqlite3.connect
+    conexiones = []
+
+    def espia(*args, **kwargs):
+        conn = abrir_original(*args, **kwargs)
+        conexiones.append(conn)
+        return conn
+
+    sentencias = []
+    sqlite3.connect = espia
+    try:
+        conn = connection.conexion()
+        conn.set_trace_callback(sentencias.append)
+        documentos = repo_facturas.listar()
+        conn.set_trace_callback(None)
+    finally:
+        sqlite3.connect = abrir_original
+
+    consultas = [s for s in sentencias if s.strip().upper().startswith("SELECT")]
+
+    r.comprobar("conexiones para pintar el listado", len(conexiones), 1)
+    r.comprobar(
+        "consultas para pintar el listado",
+        len(consultas),
+        1,
+        detalle=f"{len(documentos)} facturas, con el nombre del cliente ya incluido",
+    )
+    con_nombre = all(d.cliente_nombre for d in documentos)
+    r.comprobar("el nombre del cliente viene en la misma consulta", con_nombre, True)
+
+    connection.cerrar()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     parser.add_argument("--base", default=None, help="base de datos a verificar (por defecto, la de la aplicación)")
@@ -259,7 +312,6 @@ def main():
     args = parser.parse_args()
 
     fase_pendiente = {
-        "conexiones": 3,
         "abrir_todas": 4,
         "pintar": 5,
     }
@@ -293,6 +345,9 @@ def main():
     if args.post_migracion:
         print()
         verificar_post_migracion(str(args.base or _base_por_defecto()), r)
+    if args.conexiones:
+        print()
+        verificar_conexiones(args.base or _base_por_defecto(), r)
     return r.resumen()
 
 
