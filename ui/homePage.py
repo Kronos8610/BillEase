@@ -7,11 +7,8 @@ import database.db as db
 import re
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import QMessageBox
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
+from core.taxes import calcular, desde_base, desde_detalles, formatear
+from documents.invoice_pdf import generar_documento_pdf
 from utils.globals import (
     TYRIAN_PURPLE, BYZANTIUM, LAVENDER_PINK, CHAMPAGNE_PINK, ALMOND,
     TITLE_FONT, SUBTITLE_FONT, BODY_FONT
@@ -188,6 +185,8 @@ class HomePage(QWidget):
                 ("Nº Factura", 1),
                 ("Fecha", 2),
                 ("Cliente", 4),
+                ("Base", 2),    # importe sin IVA
+                ("Total", 2),   # el que paga el cliente, IVA incluido
                 ("", 1),  # Columna para acción PDF
                 ("", 1),  # Columna para acción Editar
                 ("", 1)   # Columna para acción Eliminar
@@ -342,7 +341,11 @@ class HomePage(QWidget):
     def crear_factura_item(self, factura, alternate_color=False):
         """Crea un elemento de lista para una factura"""
         # Desempaquetar datos de la factura
-        num_factura, fecha, total, cod_cliente, observaciones = factura
+        # La columna `total` de la tabla guarda en realidad la base imponible
+        # (defecto 01). Se calcula el total con la MISMA función que usa el PDF,
+        # así no pueden discrepar. La fase 2 separa las columnas en la base.
+        num_factura, fecha, base_guardada, cod_cliente, observaciones = factura
+        totales = desde_base(base_guardada)
         
         # Obtener el nombre del cliente
         from database.db import obtener_cliente_por_id
@@ -363,6 +366,18 @@ class HomePage(QWidget):
         num_label = QLabel(str(num_factura))
         fecha_label = QLabel(fecha)
         cliente_label = QLabel(nombre_cliente)
+
+        base_label = QLabel(f"{formatear(totales.base)} €")
+        base_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        base_label.setStyleSheet(f"color: {BYZANTIUM};")
+
+        total_label = QLabel(f"{formatear(totales.total)} €")
+        total_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        total_label.setFont(SUBTITLE_FONT)
+        total_label.setStyleSheet(f"color: {TYRIAN_PURPLE};")
+        total_label.setToolTip(
+            f"Base {formatear(totales.base)} € + IVA {formatear(totales.cuota_iva)} €"
+        )
         
         # Botón de crear PDF
         pdf_btn = QPushButton("Crear PDF")
@@ -422,6 +437,8 @@ class HomePage(QWidget):
         item_layout.addWidget(num_label, 1)
         item_layout.addWidget(fecha_label, 2)
         item_layout.addWidget(cliente_label, 4)
+        item_layout.addWidget(base_label, 2)
+        item_layout.addWidget(total_label, 2)
         item_layout.addWidget(pdf_btn, 1)
         item_layout.addWidget(edit_btn, 1)
         item_layout.addWidget(delete_btn, 1)
@@ -523,83 +540,88 @@ class HomePage(QWidget):
         return item
 
     def crear_pdf_factura(self, num_factura):
-        """Genera un PDF para la factura seleccionada"""
-        # El código existente sin cambios
-        # Obtener datos de la factura desde la base de datos
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, 
-            "Guardar PDF", 
-            f"factura_{num_factura}.pdf", 
-            "PDF Files (*.pdf)"
+        """Genera el PDF de una factura y lo guarda donde elija el usuario."""
+        from database.db import (
+            obtener_cliente_por_id,
+            obtener_datos_autonomo,
+            obtener_detalles_factura,
+            obtener_factura_por_id,
         )
-        
-        if file_path:
-            try:
-                # Importar funciones necesarias
-                from database.db import obtener_factura_por_id, obtener_cliente_por_id, obtener_detalles_factura
-                
-                # 1. Obtener la factura por ID
-                factura = obtener_factura_por_id(num_factura)
-                if not factura:
-                    QMessageBox.warning(self, "Error", "No se encontró la factura")
-                    return
-                
-                fecha = factura[1]
-                total = factura[2]
-                cod_cliente = factura[3]
-                ref_obra = factura[4] or ""  # Observaciones como ref_obra
-                
-                # 2. Obtener detalles de la factura
-                detalles = obtener_detalles_factura(num_factura)
-                if not detalles:
-                    QMessageBox.warning(self, "Error", "No se encontraron detalles para esta factura")
-                    return
-                
-                # 3. Obtener datos del cliente
-                cliente = obtener_cliente_por_id(cod_cliente)
-                if not cliente:
-                    QMessageBox.warning(self, "Error", "No se encontró el cliente asociado")
-                    return
-                    
-                # 4. Preparar conceptos
-                conceptos = []
-                for detalle in detalles:
-                    num_factura, num_linea, cantidad, precio_ud, cod_servicio, descripcion = detalle
-                    total_linea = float(cantidad) * float(precio_ud)
-                    
-                    conceptos.append({
-                        "descripcion": descripcion,
-                        "cantidad": str(cantidad),
-                        "precio_ud": str(precio_ud),
-                        "total": str(total_linea)
-                    })
-                
-                # 5. Preparar datos para el PDF
-                datos = {
-                    "nombre": cliente[2],  # nombre_o_razon_social
-                    "direccion": cliente[3] or "",  # direccion
-                    "cp": cliente[5] or "",  # cod_postal
-                    "nif": cliente[6] or "",  # CIFNIF
-                    "telefono": str(cliente[4]) if cliente[4] else "",  # telefono
-                    "email": "",  # No disponible en la estructura actual
-                    "ref_obra": ref_obra,
-                    "fecha": fecha,
-                    "num_factura": str(num_factura),
-                    "conceptos": conceptos,
-                    "vencimiento": "",  # No disponible en la estructura actual
-                    "domiciliacion": "",  # No disponible en la estructura actual
-                    "cuenta": ""  # No disponible en la estructura actual
-                }
-                
-                # 6. Generar el PDF
-                generar_factura_pdf(datos, file_path)
-                
-                # 7. Mostrar mensaje de éxito
-                QMessageBox.information(self, "PDF Generado", 
-                    f"El PDF de la factura #{num_factura} se ha generado correctamente.")
-                    
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"No se pudo generar el PDF: {str(e)}")
+
+        factura = obtener_factura_por_id(num_factura)
+        if not factura:
+            QMessageBox.warning(self, "Factura no encontrada",
+                f"No se encontró la factura #{num_factura}.")
+            return
+
+        detalles = obtener_detalles_factura(num_factura)
+        if not detalles:
+            QMessageBox.warning(self, "Factura sin conceptos",
+                f"La factura #{num_factura} no tiene ninguna línea, así que no "
+                "hay nada que imprimir. Ábrela y añade al menos un concepto.")
+            return
+
+        cliente = obtener_cliente_por_id(factura[3])
+        if not cliente:
+            QMessageBox.warning(self, "Cliente no encontrado",
+                f"La factura #{num_factura} apunta a un cliente que ya no existe.")
+            return
+
+        autonomo = obtener_datos_autonomo()
+        if not autonomo:
+            QMessageBox.warning(self, "Faltan tus datos",
+                "No se han podido leer tus datos de autónomo, y sin ellos la "
+                "factura no es válida. Revísalos antes de emitirla.")
+            return
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Guardar PDF", f"factura_{num_factura}.pdf", "PDF Files (*.pdf)"
+        )
+        if not file_path:
+            return
+
+        # Las líneas y los totales se calculan una sola vez, con la misma
+        # función que alimenta el listado: el papel y la pantalla no pueden
+        # decir cifras distintas (defecto 01).
+        lineas = desde_detalles(detalles)
+        totales = calcular(lineas)
+
+        datos = {
+            "tipo": "factura",
+            "numero": str(num_factura),
+            "fecha": factura[1],
+            "emisor": {
+                "nombre": f"{autonomo[1]} {autonomo[2]}".strip(),
+                "nif": autonomo[0],
+                "direccion": autonomo[3],
+                "poblacion": autonomo[4],
+                "telefono": autonomo[5],
+                "email": autonomo[6],
+            },
+            "cliente": {
+                "nombre": cliente[2],
+                "nif": cliente[6],
+                "direccion": cliente[3],
+                "poblacion": cliente[5],
+                "telefono": cliente[4],
+                "email": cliente[8] if len(cliente) > 8 else "",
+            },
+            "lineas": lineas,
+            "nota": factura[4] or "",
+        }
+
+        try:
+            resultado = generar_documento_pdf(datos, file_path, totales=totales)
+        except Exception as e:
+            QMessageBox.critical(self, "No se pudo generar el PDF",
+                f"La factura #{num_factura} no se ha podido escribir en "
+                f"{file_path}.\n\nMotivo: {e}")
+            return
+
+        paginas = resultado["paginas"]
+        QMessageBox.information(self, "PDF generado",
+            f"Factura #{num_factura} · {formatear(totales.total)} €\n"
+            f"{paginas} página{'s' if paginas != 1 else ''} en {file_path}")
 
     def eliminar_factura(self, num_factura):
         """Elimina una factura de la base de datos"""
@@ -707,246 +729,3 @@ class HomePage(QWidget):
             pass
 
         dlg.exec()  # <- muestra la ventana modal de edición
-
-
-def generar_factura_pdf(datos, file_path):
-    import sqlite3
-    
-    # Obtener datos del autónomo directamente desde la base de datos
-    conn = None
-    autonomo = None
-    try:
-        conn = sqlite3.connect("BillEase.db")
-        cursor = conn.cursor()
-        
-        # Consultar estructura de tabla para confirmar nombres de columnas
-        cursor.execute("PRAGMA table_info(Autonomo)")
-        columnas = [col[1] for col in cursor.fetchall()]
-        print(f"Columnas en tabla Autonomo: {columnas}")
-        
-        # Consulta usando los nombres reales de las columnas
-        cursor.execute("SELECT DNI, nombre, apellido, direccion, codigo_postal, telefono, email FROM Autonomo LIMIT 1")
-        autonomo = cursor.fetchone()
-        print(f"Datos del autónomo obtenidos: {autonomo}")
-    except Exception as e:
-        print(f"Error al obtener datos del autónomo: {e}")
-    finally:
-        if conn:
-            conn.close()
-    
-    # Extraer datos del autónomo de forma segura
-    dni = autonomo[0] if len(autonomo) > 0 else "N/A"
-    nombre = autonomo[1] if len(autonomo) > 1 else "N/A"
-    apellido = autonomo[2] if len(autonomo) > 2 else "N/A" 
-    direccion = autonomo[3] if len(autonomo) > 3 else "N/A"
-    codigo_postal = autonomo[4] if len(autonomo) > 4 else "N/A"
-    telefono = autonomo[5] if len(autonomo) > 5 else "N/A"
-    email = autonomo[6] if len(autonomo) > 6 else "N/A"
-    
-    # Comenzar a generar el PDF
-    from reportlab.lib.pagesizes import A4
-    from reportlab.pdfgen import canvas
-    from reportlab.lib import colors
-    from utils.globals import TYRIAN_PURPLE, BYZANTIUM, LAVENDER_PINK, CHAMPAGNE_PINK, ALMOND
-    
-    c = canvas.Canvas(file_path, pagesize=A4)
-    width, height = A4
-    
-    # Color de fondo del encabezado
-    c.setFillColor(colors.HexColor(CHAMPAGNE_PINK))
-    c.rect(0, height-120, width, 120, fill=True, stroke=False)
-    
-    # Línea decorativa
-    c.setStrokeColor(colors.HexColor(LAVENDER_PINK))
-    c.setLineWidth(5)
-    c.line(0, height-120, width, height-120)
-    
-    # Título de factura
-    c.setFont("Helvetica-Bold", 24)
-    c.setFillColor(colors.HexColor(TYRIAN_PURPLE))
-    c.drawCentredString(width/2, height - 50, "FACTURA")
-    
-    # Información de factura en encabezado
-    c.setFont("Helvetica-Bold", 10)
-    c.setFillColor(colors.HexColor(BYZANTIUM))
-    c.drawString(width/2, height - 75, f"Nº Factura: {datos['num_factura']}")
-    c.drawString(width/2, height - 90, f"Fecha: {datos['fecha']}")
-    
-    # Sección 1: Datos del autónomo (izquierda)
-    y = height - 140
-    
-    # Fondo y borde
-    c.setFillColor(colors.HexColor(CHAMPAGNE_PINK))
-    c.rect(30, y-90, 250, 90, fill=True, stroke=False)
-    c.setStrokeColor(colors.HexColor(ALMOND))
-    c.setLineWidth(1)
-    c.rect(30, y-90, 250, 90, fill=False, stroke=True)
-    
-    c.setFont("Helvetica-Bold", 12)
-    c.setFillColor(colors.HexColor(TYRIAN_PURPLE))
-    c.drawString(40, y, "DATOS DEL EMISOR")
-    c.setFont("Helvetica", 10)
-    c.setFillColor(colors.black)
-    c.drawString(40, y - 20, f"{nombre} {apellido}")  # Nombre y apellido
-    c.drawString(40, y - 35, f"NIF: {dni}")  # DNI/NIF
-    c.drawString(40, y - 50, f"Dirección: {direccion}")  # Dirección
-    c.drawString(40, y - 65, f"CP: {codigo_postal}")  # Código postal
-    c.drawString(40, y - 80, f"Teléfono: {telefono}")  # Teléfono
-    
-    # Sección 2: Datos del cliente (derecha)
-    c.setFillColor(colors.HexColor(CHAMPAGNE_PINK))
-    c.rect(width-280, y-90, 250, 90, fill=True, stroke=False)
-    c.setStrokeColor(colors.HexColor(ALMOND))
-    c.rect(width-280, y-90, 250, 90, fill=False, stroke=True)
-    
-    c.setFont("Helvetica-Bold", 12)
-    c.setFillColor(colors.HexColor(TYRIAN_PURPLE))
-    c.drawString(width-270, y, "CLIENTE")
-    c.setFont("Helvetica", 10)
-    c.setFillColor(colors.black)
-    c.drawString(width-270, y - 20, f"{datos['nombre']}")
-    c.drawString(width-270, y - 35, f"NIF/CIF: {datos['nif']}")
-    c.drawString(width-270, y - 50, f"Dirección: {datos['direccion']}")
-    c.drawString(width-270, y - 65, f"CP: {datos['cp']}")
-    c.drawString(width-270, y - 80, f"Teléfono: {datos['telefono']}")
-    
-    # Sección 3: Detalles de la factura
-    y = y - 120
-    
-    # Si hay una referencia de obra, mostrarla
-    if datos['ref_obra']:
-        c.setFont("Helvetica-Bold", 11)
-        c.setFillColor(colors.HexColor(BYZANTIUM))
-        c.drawString(40, y, f"Referencia: {datos['ref_obra']}")
-        y -= 20
-    
-    # Encabezado de la tabla de conceptos
-    y -= 10
-    c.setFillColor(colors.HexColor(TYRIAN_PURPLE))
-    c.rect(30, y, width-60, 20, fill=True, stroke=False)
-    
-    c.setFont("Helvetica-Bold", 11)
-    c.setFillColor(colors.white)
-    c.drawString(40, y+5, "DETALLE DE CONCEPTOS")
-    
-    # Encabezado de columnas
-    y -= 25
-    c.setFont("Helvetica-Bold", 10)
-    c.setFillColor(colors.HexColor(BYZANTIUM))
-    c.drawString(40, y, "Descripción")
-    c.drawString(300, y, "Cantidad")
-    c.drawString(360, y, "Precio Ud.")
-    c.drawString(450, y, "Total")
-    
-    # Línea bajo el encabezado
-    c.setStrokeColor(colors.HexColor(ALMOND))
-    c.line(40, y-5, width-40, y-5)
-    
-    # Contenido de la tabla
-    c.setFont("Helvetica", 10)
-    c.setFillColor(colors.black)
-    y -= 20
-    
-    # Para calcular el subtotal
-    subtotal = 0
-    
-    # Alternar fondo de filas
-    row = 0
-    for concepto in datos.get("conceptos", []):
-        # Fondo alternante
-        if row % 2 == 0:
-            c.setFillColor(colors.HexColor(CHAMPAGNE_PINK))
-            c.rect(30, y-5, width-60, 20, fill=True, stroke=False)
-        
-        c.setFillColor(colors.black)
-        
-        # Descripción con límite de longitud
-        descripcion = concepto.get("descripcion", "")
-        if len(descripcion) > 40:
-            descripcion = descripcion[:37] + "..."
-        
-        c.drawString(40, y, descripcion)
-        
-        cantidad = concepto.get("cantidad", "")
-        precio_ud = concepto.get("precio_ud", "")
-        total_linea = concepto.get("total", "")
-        
-        c.drawString(300, y, cantidad)
-        c.drawString(360, y, f"{float(precio_ud):.2f} €")
-        c.drawString(450, y, f"{float(total_linea):.2f} €")
-        
-        # Sumar al subtotal
-        subtotal += float(total_linea)
-        
-        y -= 20
-        row += 1
-    
-    # Calcular importes
-    iva = subtotal * 0.21
-    total = subtotal + iva
-    
-    # Línea separadora
-    y -= 10
-    c.setStrokeColor(colors.HexColor(ALMOND))
-    c.line(40, y, width-40, y)
-    
-    # Resumen económico
-    y -= 30
-    c.setFillColor(colors.HexColor(LAVENDER_PINK))
-    c.rect(width-250, y-60, 210, 60, fill=True, stroke=False)
-    c.setStrokeColor(colors.HexColor(ALMOND))
-    c.rect(width-250, y-60, 210, 60, fill=False, stroke=True)
-    
-    c.setFont("Helvetica-Bold", 10)
-    c.setFillColor(colors.HexColor(TYRIAN_PURPLE))
-    c.drawString(width-240, y, "Subtotal:")
-    c.drawString(width-240, y-20, "IVA (21%):")
-    c.drawString(width-240, y-40, "TOTAL:")
-    
-    c.setFont("Helvetica-Bold", 10)
-    c.setFillColor(colors.black)
-    c.drawRightString(width-50, y, f"{subtotal:.2f} €")
-    c.drawRightString(width-50, y-20, f"{iva:.2f} €")
-    c.drawRightString(width-50, y-40, f"{total:.2f} €")
-    
-    # Observaciones si existen
-    y -= 90
-    if datos.get('ref_obra'):
-        c.setFillColor(colors.HexColor(CHAMPAGNE_PINK))
-        c.rect(30, y-40, width-60, 40, fill=True, stroke=False)
-        c.setStrokeColor(colors.HexColor(ALMOND))
-        c.rect(30, y-40, width-60, 40, fill=False, stroke=True)
-        
-        c.setFont("Helvetica-Bold", 11)
-        c.setFillColor(colors.HexColor(TYRIAN_PURPLE))
-        c.drawString(40, y, "OBSERVACIONES")
-        
-        c.setFont("Helvetica", 10)
-        c.setFillColor(colors.black)
-        c.drawString(40, y-20, datos['ref_obra'])
-    
-    # Datos bancarios si existen
-    y -= 60
-    if datos.get('cuenta') or datos.get('vencimiento'):
-        c.setFillColor(colors.HexColor(CHAMPAGNE_PINK))
-        c.rect(30, y-40, width-60, 40, fill=True, stroke=False)
-        c.setStrokeColor(colors.HexColor(ALMOND))
-        c.rect(30, y-40, width-60, 40, fill=False, stroke=True)
-        
-        c.setFont("Helvetica-Bold", 11)
-        c.setFillColor(colors.HexColor(TYRIAN_PURPLE))
-        c.drawString(40, y, "DATOS BANCARIOS")
-        
-        c.setFont("Helvetica", 10)
-        c.setFillColor(colors.black)
-        texto_bancario = []
-        if datos.get('vencimiento'):
-            texto_bancario.append(f"Vencimiento: {datos['vencimiento']}")
-        if datos.get('cuenta'):
-            texto_bancario.append(f"Cuenta: {datos['cuenta']}")
-            
-        c.drawString(40, y-20, " | ".join(texto_bancario))
-
-    c.showPage()
-    c.save()
-

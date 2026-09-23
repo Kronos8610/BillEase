@@ -4,7 +4,6 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from reportlab.lib.pagesizes import A4
 from utils.globals import (
     TYRIAN_PURPLE, BYZANTIUM, LAVENDER_PINK, CHAMPAGNE_PINK, ALMOND,
     TITLE_FONT, SUBTITLE_FONT, BODY_FONT

@@ -11,7 +11,7 @@ cual como puerta en un script o en integración continua.
 Esta es la herramienta que usan todas las puertas de la ruta (docs/RUTA.md).
 Cada fase añade aquí sus comprobaciones:
 
-    fase 1 → --totales        el total de la lista coincide con el del PDF
+    fase 1 → --totales        el total de la lista coincide con el del PDF  ✓
     fase 2 → --post-migracion tipos, fechas ISO y claves ajenas aplicadas
     fase 3 → --conexiones     una sola conexión para pintar la lista
 """
@@ -92,6 +92,70 @@ def verificar_linea_base(inv, base, r):
     )
 
 
+def verificar_totales(ruta_base, r):
+    """
+    Fase 1 · el importe que ve el usuario es el mismo en los dos sitios.
+
+    Para cada factura se calculan los totales por los dos caminos que usa el
+    programa —desde la base guardada, como el listado, y desde las líneas, como
+    el PDF— y se comprueba que dan el mismo céntimo. Además se genera el PDF de
+    verdad y se comprueba que el total impreso es ese mismo.
+    """
+    import sqlite3
+    import tempfile
+    from pathlib import Path as _Path
+
+    from core.taxes import calcular, desde_base, desde_detalles, formatear
+    from documents.invoice_pdf import generar_documento_pdf
+
+    conn = sqlite3.connect(f"file:{ruta_base}?mode=ro", uri=True)
+    try:
+        cur = conn.cursor()
+        facturas = cur.execute(
+            "SELECT Num_factura, fecha, total, Cod_cliente FROM Factura ORDER BY Num_factura"
+        ).fetchall()
+
+        with tempfile.TemporaryDirectory(prefix="billease-verify-") as tmp:
+            for num, fecha, base_guardada, _cod_cliente in facturas:
+                detalles = cur.execute(
+                    "SELECT d.Num_Factura, d.Num_Linea, d.NumServicios, d.precioPorServicio,"
+                    " d.cod_servicio, s.descripcion"
+                    " FROM Detalle_linea d JOIN Servicio s ON s.Cod_servicio = d.cod_servicio"
+                    " WHERE d.Num_Factura = ? ORDER BY d.Num_Linea",
+                    (num,),
+                ).fetchall()
+
+                lineas = desde_detalles(detalles)
+                del_listado = desde_base(base_guardada)
+                de_las_lineas = calcular(lineas)
+
+                ruta_pdf = _Path(tmp) / f"factura_{int(num)}.pdf"
+                resultado = generar_documento_pdf(
+                    {
+                        "tipo": "factura",
+                        "numero": str(int(num)),
+                        "fecha": fecha,
+                        "emisor": {"nombre": "Emisor de prueba", "nif": "00000000T"},
+                        "cliente": {"nombre": "Cliente de prueba", "nif": "00000000T"},
+                        "lineas": lineas,
+                    },
+                    ruta_pdf,
+                )
+
+                r.comprobar(
+                    f"factura {int(num)}: listado = líneas",
+                    formatear(del_listado.total),
+                    formatear(de_las_lineas.total),
+                )
+                r.comprobar(
+                    f"factura {int(num)}: PDF = listado",
+                    formatear(resultado["totales"].total),
+                    formatear(del_listado.total),
+                )
+    finally:
+        conn.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     parser.add_argument("--base", default=BASE_POR_DEFECTO, help="base de datos a verificar")
@@ -101,7 +165,6 @@ def main():
     args = parser.parse_args()
 
     fase_pendiente = {
-        "totales": 1,
         "post_migracion": 2,
         "conexiones": 3,
         "abrir_todas": 4,
@@ -131,6 +194,9 @@ def main():
     print(f"\nVerificando {args.base} contra {baseline}\n")
     r = Resultado()
     verificar_linea_base(inv, base, r)
+    if args.totales:
+        print()
+        verificar_totales(args.base, r)
     return r.resumen()
 
 

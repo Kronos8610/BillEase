@@ -19,3 +19,7 @@ argon2-cffi==25.1.0
 pytest==8.4.2
 pytest-qt==4.5.0
 pytest-cov==7.0.0
+
+# Lee el PDF generado en las pruebas: sirve para comprobar que ningún
+# concepto se dibuja fuera del papel y que los totales impresos cuadran.
+pypdf==6.18.1

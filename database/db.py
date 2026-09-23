@@ -503,7 +503,10 @@ def obtener_datos_autonomo():
     conn = sqlite3.connect("BillEase.db")
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT DNI, Nombre, Apellido, Direccion, CP, Tel, Email FROM Autonomo LIMIT 1")
+        cursor.execute(
+            "SELECT DNI, nombre, apellido, direccion, codigo_postal, telefono, email"
+            " FROM Autonomo LIMIT 1"
+        )
         autonomo = cursor.fetchone()
         return autonomo
     except Exception as e:

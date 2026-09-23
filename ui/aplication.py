@@ -5,7 +5,6 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from reportlab.lib.pagesizes import A4
 from ui.homePage import HomePage
 from ui.crearFactura import CrearFactura
 from ui.crearCliente import CrearCliente
