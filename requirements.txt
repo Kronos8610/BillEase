@@ -1,0 +1,21 @@
+# BillEase — dependencias
+# Requiere Python 3.10 o superior.
+#
+#   python -m venv .venv
+#   .venv\Scripts\activate        (Windows)
+#   source .venv/bin/activate     (macOS / Linux)
+#   pip install -r requirements.txt
+
+# --- Aplicación ---
+PyQt6==6.9.1
+reportlab==4.4.10
+
+# Cifrado de la contraseña del autónomo.
+# Se empieza a usar en la fase 2; se instala ya para que el entorno no
+# cambie a mitad de la ruta.
+argon2-cffi==25.1.0
+
+# --- Desarrollo y pruebas ---
+pytest==8.4.2
+pytest-qt==4.5.0
+pytest-cov==7.0.0

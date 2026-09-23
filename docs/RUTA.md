@@ -30,9 +30,13 @@ servicio que existe**, así que se puede copiar la descripción sin perder nada.
 
 ```bat
 python tools\baseline.py --escribir     :: → tests/fixtures/baseline.json
-copy BillEase.db tests\fixtures\baseline.db
-:: sha256 del fichero congelado: 6d8bcf2b41614593…
+python tools\seed_demo.py --salida tests\fixtures\baseline.db
 ```
+
+El JSON se versiona (son cifras, no datos personales); la base de referencia **no**: se
+regenera con `seed_demo.py`, que produce filas idénticas a las de la base original. Así
+ningún `.db` vuelve al repositorio. El sha256 del fichero de partida
+(`6d8bcf2b41614593…`) queda anotado dentro del JSON como procedencia.
 
 ---
 
@@ -51,14 +55,16 @@ copy BillEase.db tests\fixtures\baseline.db
 **Objetivo:** poder medir y poder volver atrás. No se cambia ni una línea de comportamiento.
 **Cierra:** defecto 16, y la parte de repositorio del 03.
 
-**Se toca:** `.gitignore` · `requirements.txt` · `tools/baseline.py` · `tools/verify.py` ·
-`tests/fixtures/` · elimina `__pycache__/` y `test.py` · crea `tools/seed_demo.py`
+**Se toca:** `.gitignore` · `requirements.txt` · `tools/inventario.py` · `tools/baseline.py` ·
+`tools/verify.py` · `tools/seed_demo.py` · `tests/fixtures/` · `README.md` ·
+elimina `__pycache__/`, `BillEase.db` y `test.py` del control de versiones
 
 1. Entorno virtual y `requirements.txt` con versiones fijadas: PyQt6, reportlab, argon2-cffi, pytest, pytest-qt.
 2. `.gitignore` de Python y `git rm -r --cached __pycache__ BillEase.db`.
-3. `tools/baseline.py` vuelca el inventario a `tests/fixtures/baseline.json` y copia la base.
+3. `tools/inventario.py` lee el inventario de cualquier base; `tools/baseline.py` lo congela en `tests/fixtures/baseline.json`.
 4. `tools/verify.py` comprueba ese inventario contra cualquier base — la herramienta de todas las puertas siguientes.
-5. `test.py` se convierte en `tools/seed_demo.py` con datos ficticios.
+5. `test.py` se convierte en `tools/seed_demo.py`, que regenera la base de demostración entera con datos ficticios.
+6. El README documenta el nuevo arranque (entorno virtual, `requirements.txt`, `seed_demo.py`).
 
 ```bat
 python -m venv .venv && .venv\Scripts\activate
@@ -74,7 +80,7 @@ python main_start.py                      :: abre igual que antes
 - [ ] `pip install -r requirements.txt` instala todo en una máquina limpia
 - [ ] `verify.py` da verde sobre la base actual
 - [ ] Ni `__pycache__` ni `BillEase.db` aparecen en `git ls-files`
-- [ ] Existe `tests/fixtures/baseline.db` y su sha256 coincide
+- [ ] `seed_demo.py` regenera una base con las mismas filas que la original
 - [ ] La aplicación arranca y genera un PDF como siempre
 
 ---

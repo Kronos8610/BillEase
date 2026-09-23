@@ -1,0 +1,22 @@
+{
+  "conteos": {
+    "Autonomo": 1,
+    "Cliente": 5,
+    "Factura": 7,
+    "Servicio": 8,
+    "Detalle_linea": 16
+  },
+  "suma_bases": 3768.5,
+  "suma_lineas": 3768.5,
+  "numeros_factura": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "lineas_huerfanas": 0,
+  "sha256": "6d8bcf2b416145931ccbb21e07e834a411516a168a85f2b772c882135235c294"
+}

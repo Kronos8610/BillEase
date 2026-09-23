@@ -244,10 +244,8 @@ footer .wrap{padding-block:24px;display:flex;gap:14px;justify-content:space-betw
       <p class="note">Dos invariantes más, que hoy se cumplen y deben seguir cumpliéndose: la <strong>suma de las líneas coincide con la suma de los totales guardados</strong> (3.768,50 € en ambos casos) y la serie de facturas va <strong>de la 1 a la 7 sin huecos</strong>. Además, las 16 líneas apuntan a un servicio que existe — por eso la migración a texto libre puede copiar la descripción sin perder nada.</p>
       <pre class="cmd"><span class="c"># Fotografía de partida — se ejecuta UNA vez, en la fase 0</span>
 python tools\baseline.py --escribir     <span class="c"># → tests/fixtures/baseline.json</span>
-copy BillEase.db tests\fixtures\baseline.db
-
-<span class="c"># sha256 del fichero congelado</span>
-6d8bcf2b41614593…</pre>
+python tools\seed_demo.py --salida tests\fixtures\baseline.db</pre>
+      <p class="note">El JSON se versiona (son cifras, no datos personales); la base de referencia <strong>no</strong>: se regenera con <code>seed_demo.py</code>, que produce filas idénticas a las de la original. Así ningún <code>.db</code> vuelve al repositorio. El sha256 del fichero de partida queda anotado dentro del JSON como procedencia.</p>
     </div>
   </div>
 </section>
@@ -298,9 +296,9 @@ copy BillEase.db tests\fixtures\baseline.db
             <span class="blabel">Qué se toca</span>
             <div class="files">
               <span class="file new">.gitignore</span><span class="file new">requirements.txt</span>
-              <span class="file new">tools/baseline.py</span><span class="file new">tools/verify.py</span>
+              <span class="file new">tools/inventario.py</span><span class="file new">tools/baseline.py</span><span class="file new">tools/verify.py</span>
               <span class="file new">tests/fixtures/</span><span class="file del">__pycache__/</span>
-              <span class="file del">test.py</span><span class="file new">tools/seed_demo.py</span>
+              <span class="file del">test.py</span><span class="file del">BillEase.db</span><span class="file new">tools/seed_demo.py</span><span class="file">README.md</span>
             </div>
           </div>
           <div class="block">
@@ -329,7 +327,7 @@ python main_start.py                      <span class="c"># abre igual que antes
               <label class="check"><input type="checkbox" id="g0a"><span><code>pip install -r requirements.txt</code> instala todo en una máquina limpia</span></label>
               <label class="check"><input type="checkbox" id="g0b"><span><code>verify.py</code> da verde sobre la base actual</span></label>
               <label class="check"><input type="checkbox" id="g0c"><span>Ni <code>__pycache__</code> ni <code>BillEase.db</code> aparecen en <code>git ls-files</code></span></label>
-              <label class="check"><input type="checkbox" id="g0d"><span>Existe <code>tests/fixtures/baseline.db</code> y su sha256 coincide</span></label>
+              <label class="check"><input type="checkbox" id="g0d"><span><code>seed_demo.py</code> regenera una base con las mismas filas que la original</span></label>
               <label class="check"><input type="checkbox" id="g0e"><span>La aplicación arranca y genera un PDF como siempre</span></label>
             </div>
           </div>

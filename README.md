@@ -37,13 +37,17 @@ git clone https://github.com/Kronos8610/BillEase.git
 cd BillEase
 ```
 
-### 2. Instala las dependencias
+### 2. Crea el entorno e instala las dependencias
 
 ```bash
-pip install PyQt6 reportlab
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+source .venv/bin/activate      # macOS / Linux
+
+pip install -r requirements.txt
 ```
 
-> Solo necesitas instalar **dos librerías**. El resto (SQLite, etc.) viene incluido con Python.
+> Las versiones están fijadas en `requirements.txt`. SQLite viene incluido con Python.
 
 ### 3. Ejecuta la aplicación
 
@@ -57,10 +61,18 @@ La primera vez que arranques la aplicación, se mostrará un formulario de **con
 
 ## 🗂️ Base de datos de prueba (opcional)
 
-Viene incluido una base de datos cargada con datos para una prueba fluida del programa.
-Si se desea empezar de cero borre la base de datos o muevala a otra carpeta.
+La base de datos **no se versiona**: es un fichero de trabajo, y además guardaría tus
+datos reales en el repositorio. Si quieres probar el programa con contenido, genera una
+base de demostración con datos ficticios:
 
-Las credenciales de acceso generadas son:
+```bash
+python tools/seed_demo.py
+```
+
+Crea `BillEase.db` con 5 clientes, 8 servicios y 7 facturas. Para empezar de cero, borra
+el fichero y arranca la aplicación: te pedirá tus datos de autónomo.
+
+Las credenciales de la base de demostración son:
 
 | Campo | Valor |
 |-------|-------|
@@ -116,7 +128,14 @@ Genera un PDF profesional de cualquier factura con los datos del emisor, del cli
 ```
 BillEase/
 ├── main_start.py        # Punto de entrada de la aplicación
-├── seed_db.py           # Script para generar datos de prueba
+├── requirements.txt     # Dependencias con versiones fijadas
+├── tools/               # Utilidades de desarrollo
+│   ├── seed_demo.py     # Genera una base de datos de demostración
+│   ├── baseline.py      # Congela el inventario de referencia
+│   ├── verify.py        # Verifica los invariantes de la base
+│   └── inventario.py    # Lectura del inventario (compartido)
+├── docs/                # Auditoría, rediseño y ruta de trabajo
+├── tests/               # Pruebas automáticas
 ├── ui/                  # Pantallas e interfaces gráficas
 │   ├── aplication.py    # Ventana principal y menú lateral
 │   ├── login_ui.py      # Registro inicial del autónomo
@@ -146,7 +165,30 @@ BillEase/
 
 ---
 
+## 🧰 Desarrollo
+
+```bash
+python tools/seed_demo.py            # base de demostración con datos ficticios
+python tools/verify.py               # comprueba los invariantes de la base
+pytest                               # pruebas automáticas
+```
+
+`tools/verify.py` compara la base contra `tests/fixtures/baseline.json` y devuelve 0 si
+todo está en verde. Es la puerta de verificación que usa cada fase del plan de trabajo.
+
+**Documentación técnica** — en [`docs/`](docs/):
+
+| Documento | Contenido |
+|---|---|
+| [`ANALISIS.md`](docs/ANALISIS.md) | Auditoría del código: 16 defectos verificados |
+| [`RUTA.md`](docs/RUTA.md) | Plan de trabajo en 7 fases con sus verificaciones |
+| [`rediseno-fluent.html`](docs/rediseno-fluent.html) | Propuesta de rediseño de la interfaz |
+
+---
+
 ## 🔮 Futuras mejoras
+
+> Estas mejoras están planificadas y ordenadas en [`docs/RUTA.md`](docs/RUTA.md).
 
 Estas son algunas funcionalidades que se plantean incorporar en próximas versiones de BillEase:
 

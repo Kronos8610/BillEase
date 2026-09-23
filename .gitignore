@@ -1,0 +1,38 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Entornos virtuales ---
+.venv/
+venv/
+env/
+
+# --- Pruebas y cobertura ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# --- Datos de la aplicación ---
+# La base de datos es un fichero de trabajo, no código: se regenera con
+#   python tools/seed_demo.py
+BillEase.db
+BillEase.db.bak
+*.db-wal
+*.db-shm
+
+# La base de referencia para las pruebas también se regenera:
+#   python tools/seed_demo.py --salida tests/fixtures/baseline.db
+tests/fixtures/baseline.db
+
+# --- Editores y sistema ---
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
