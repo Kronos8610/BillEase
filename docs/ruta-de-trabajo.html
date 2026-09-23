@@ -1,0 +1,812 @@
+<title>Ruta de BillEase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+:root{
+  --mica:#F3F3F3;
+  --mica-tint:#EDF1F6;
+  --layer:#FFFFFF;
+  --layer-alt:#F8F8F6;
+  --control:#FDFDFD;
+  --stroke:#E4E4E2;
+  --stroke-strong:#D1D1CE;
+  --divider:#ECECEA;
+  --text:#1A1A1A;
+  --text-2:#5C5C5C;
+  --text-3:#8A8A8A;
+  --accent:#0F6CBD;
+  --accent-soft:#EFF6FC;
+  --ok:#0F7B0F;
+  --ok-soft:#E9F5E9;
+  --caution:#9D5D00;
+  --caution-soft:#FBF4E4;
+  --danger:#C42B1C;
+  --danger-soft:#FCEDEB;
+  --elev:0 1px 2px rgba(0,0,0,.06), 0 0 1px rgba(0,0,0,.07);
+
+  --f-ui:"Segoe UI Variable Display","Segoe UI","Source Sans 3",system-ui,sans-serif;
+  --f-txt:"Segoe UI Variable Text","Segoe UI","Source Sans 3",system-ui,sans-serif;
+  --f-mono:"Cascadia Mono",Consolas,"IBM Plex Mono",ui-monospace,monospace;
+  --r:8px; --rc:4px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --mica:#1E1E1E; --mica-tint:#1E2227; --layer:#2A2A2A; --layer-alt:#242424;
+    --control:#313131; --stroke:#393939; --stroke-strong:#484848; --divider:#333333;
+    --text:#FFFFFF; --text-2:#C5C5C5; --text-3:#969696;
+    --accent:#60CDFF; --accent-soft:#1A2A35;
+    --ok:#6CCB5F; --ok-soft:#1C2A1B; --caution:#FCE100; --caution-soft:#2C2914;
+    --danger:#FF99A4; --danger-soft:#321E21;
+    --elev:0 1px 2px rgba(0,0,0,.3), 0 0 1px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --mica:#1E1E1E; --mica-tint:#1E2227; --layer:#2A2A2A; --layer-alt:#242424;
+  --control:#313131; --stroke:#393939; --stroke-strong:#484848; --divider:#333333;
+  --text:#FFFFFF; --text-2:#C5C5C5; --text-3:#969696;
+  --accent:#60CDFF; --accent-soft:#1A2A35;
+  --ok:#6CCB5F; --ok-soft:#1C2A1B; --caution:#FCE100; --caution-soft:#2C2914;
+  --danger:#FF99A4; --danger-soft:#321E21;
+  --elev:0 1px 2px rgba(0,0,0,.3), 0 0 1px rgba(0,0,0,.4);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--mica);
+  background-image:radial-gradient(1000px 460px at 8% -6%, var(--mica-tint), transparent 60%);
+  background-attachment:fixed;
+  color:var(--text);font-family:var(--f-txt);font-size:15px;line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1000px;margin:0 auto;padding-inline:22px}
+h1,h2,h3,h4{margin:0;font-family:var(--f-ui);font-weight:600;line-height:1.2;text-wrap:balance}
+p{margin:0}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--text-2)}
+.note{color:var(--text-2);font-size:14.5px;max-width:70ch}
+code{font-family:var(--f-mono);font-size:.87em;background:var(--layer-alt);border:1px solid var(--stroke);border-radius:3px;padding:.08em .34em}
+
+/* hero */
+.hero .wrap{padding-block:52px 26px;display:grid;gap:18px}
+h1{font-size:clamp(34px,5.6vw,54px);letter-spacing:-.02em}
+.lead{font-size:18px;line-height:1.55;max-width:64ch}
+
+/* medidor global */
+.meter{
+  background:var(--layer);border:1px solid var(--stroke);border-bottom-color:var(--stroke-strong);
+  border-radius:var(--r);padding:16px 18px;box-shadow:var(--elev);display:grid;gap:11px;
+}
+.meterhead{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap}
+.meterhead .n{font-family:var(--f-ui);font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+.meterhead .n small{font-size:14px;font-weight:400;color:var(--text-2)}
+.bar{height:6px;border-radius:99px;background:var(--divider);overflow:hidden}
+.bar i{display:block;height:100%;width:0%;background:var(--accent);border-radius:99px;transition:width .25s ease}
+.dbnote{font-size:12px;color:var(--text-3);font-family:var(--f-mono)}
+
+/* raíl de fases */
+.rail{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:4px}
+.railitem{
+  background:var(--layer);border:1px solid var(--stroke);border-radius:var(--rc);
+  padding:9px 10px;display:grid;gap:5px;text-decoration:none;color:inherit;min-width:0;
+}
+.railitem .f{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;color:var(--accent)}
+.railitem .t{font-size:11.5px;line-height:1.35;color:var(--text-2)}
+.railitem .b{height:3px;border-radius:99px;background:var(--divider);overflow:hidden}
+.railitem .b i{display:block;height:100%;width:0%;background:var(--ok);transition:width .25s ease}
+.railitem.done{border-color:var(--ok)}
+
+/* secciones */
+section > .wrap{padding-block:34px}
+.sechead{display:grid;gap:8px;margin-bottom:20px;max-width:72ch}
+.sechead h2{font-size:clamp(21px,3vw,27px);letter-spacing:-.015em}
+
+.card{
+  background:var(--layer);border:1px solid var(--stroke);border-bottom-color:var(--stroke-strong);
+  border-radius:var(--r);padding:20px;box-shadow:var(--elev);
+}
+.stack{display:grid;gap:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* línea base */
+.baseline{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:1px;background:var(--divider);border:1px solid var(--divider);border-radius:var(--rc);overflow:hidden}
+.bcell{background:var(--layer);padding:11px 13px}
+.bcell .v{font-family:var(--f-ui);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.3}
+.bcell .k{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--text-2)}
+
+/* reglas */
+.rules{display:grid;gap:0;counter-reset:r}
+.rule{display:grid;grid-template-columns:26px 1fr;gap:12px;padding:11px 0;border-bottom:1px solid var(--divider);align-items:start}
+.rule:last-child{border-bottom:0}
+.rule::before{
+  counter-increment:r;content:counter(r);font-family:var(--f-mono);font-size:11px;
+  color:var(--accent);border:1px solid var(--stroke-strong);border-radius:3px;
+  height:22px;display:grid;place-items:center;
+}
+.rule p{font-size:14.5px}
+.rule b{font-weight:600}
+
+/* fases */
+.phase{
+  background:var(--layer);border:1px solid var(--stroke);border-bottom-color:var(--stroke-strong);
+  border-radius:var(--r);box-shadow:var(--elev);overflow:hidden;scroll-margin-top:16px;
+}
+.phasehead{padding:18px 20px 16px;border-bottom:1px solid var(--divider);display:grid;gap:9px}
+.ptop{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.pnum{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase}
+.phasehead h3{font-size:19px;letter-spacing:-.01em;flex:1 1 240px}
+.pcost{font-family:var(--f-mono);font-size:11px;color:var(--text-2);white-space:nowrap}
+.pgoal{font-size:15px;color:var(--text)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;padding:3px 8px;border-radius:99px;
+  border:1px solid var(--stroke-strong);color:var(--text-2);background:var(--layer-alt);
+}
+.chip.d{border-color:var(--danger);color:var(--danger);background:var(--danger-soft)}
+.phasebody{padding:18px 20px;display:grid;gap:16px}
+.block{display:grid;gap:8px}
+.blabel{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3)}
+.files{display:flex;gap:6px;flex-wrap:wrap}
+.file{font-family:var(--f-mono);font-size:11.5px;padding:2px 7px;border-radius:3px;background:var(--layer-alt);border:1px solid var(--stroke);color:var(--text-2)}
+.file.new{border-color:var(--ok);color:var(--ok);background:var(--ok-soft)}
+.file.del{border-color:var(--danger);color:var(--danger);background:var(--danger-soft);text-decoration:line-through}
+ol.steps{margin:0;padding-left:19px;display:grid;gap:6px;font-size:14.5px}
+ol.steps li::marker{color:var(--text-3);font-family:var(--f-mono);font-size:12px}
+pre.cmd{
+  font-family:var(--f-mono);font-size:12.3px;line-height:1.75;background:var(--layer-alt);
+  border:1px solid var(--stroke);border-left:2px solid var(--accent);border-radius:0 var(--rc) var(--rc) 0;
+  padding:12px 14px;overflow-x:auto;margin:0;white-space:pre;color:var(--text);
+}
+pre.cmd .c{color:var(--text-3)}
+pre.cmd .g{color:var(--ok)}
+pre.cmd .r{color:var(--danger)}
+
+/* puerta */
+.gate{background:var(--layer-alt);border:1px solid var(--stroke);border-radius:var(--rc);padding:14px 16px;display:grid;gap:10px}
+.gatehead{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.gatehead .t{font-family:var(--f-ui);font-size:14px;font-weight:600}
+.gatestate{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 9px;border-radius:99px;border:1px solid var(--stroke-strong);color:var(--text-2);margin-left:auto;
+}
+.gatestate.on{border-color:var(--ok);color:var(--ok);background:var(--ok-soft)}
+.checks{display:grid;gap:7px}
+.check{display:grid;grid-template-columns:18px 1fr;gap:10px;align-items:start;cursor:pointer;font-size:14px}
+.check input{
+  appearance:none;width:17px;height:17px;margin:3px 0 0;border:1px solid var(--stroke-strong);
+  border-radius:3px;background:var(--control);display:grid;place-items:center;cursor:pointer;flex:none;
+}
+.check input:checked{background:var(--accent);border-color:var(--accent)}
+.check input:checked::after{content:"";width:9px;height:5px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+:root[data-theme="dark"] .check input:checked::after,
+:root:not([data-theme="light"]) .check input:checked::after{border-color:#06283D}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .check input:checked::after{border-color:#fff}}
+.check input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.check input:checked + span{color:var(--text-2);text-decoration:line-through;text-decoration-color:var(--stroke-strong)}
+.check span code{font-size:.85em}
+
+/* riesgo */
+.risk{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;background:var(--caution-soft);border:1px solid var(--caution);border-radius:var(--rc);padding:10px 13px;font-size:13.5px}
+.risk .l{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--caution);padding-top:3px;white-space:nowrap}
+
+footer{border-top:1px solid var(--stroke);margin-top:26px}
+footer .wrap{padding-block:24px;display:flex;gap:14px;justify-content:space-between;flex-wrap:wrap;color:var(--text-2);font-size:13px}
+
+@media (max-width:880px){
+  .grid2{grid-template-columns:1fr}
+  .rail{grid-template-columns:repeat(4,1fr)}
+}
+@media (max-width:560px){
+  .rail{grid-template-columns:repeat(2,1fr)}
+  .ptop{gap:6px}
+}
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">Plan de ejecución · rama claude/github-program-analysis-improvement-roa7pr</span>
+    <h1>Ruta de BillEase</h1>
+    <p class="lead">Siete fases en orden obligatorio, cada una con su puerta de verificación. Una fase no empieza hasta que la anterior está en verde, y ninguna deja la aplicación sin poder arrancar.</p>
+
+    <div class="meter">
+      <div class="meterhead">
+        <div>
+          <div class="n" id="mcount">0 <small>de 0 comprobaciones</small></div>
+          <div class="eyebrow" id="mphase">Empieza por la fase 0</div>
+        </div>
+        <div class="eyebrow" id="mgates">0 / 7 puertas</div>
+      </div>
+      <div class="bar"><i id="mbar"></i></div>
+      <div class="dbnote" id="dbnote">Conectando el registro…</div>
+    </div>
+
+    <nav class="rail" id="rail" aria-label="Fases"></nav>
+  </div>
+</header>
+
+<!-- ══════ LÍNEA BASE ══════ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <span class="eyebrow">Antes de tocar nada</span>
+      <h2>La línea base contra la que se verifica todo</h2>
+      <p class="note">Estas cifras son las de <code>BillEase.db</code> tal y como está hoy en el repositorio. Todas las puertas comparan contra ellas: si una migración las mueve, algo se ha perdido por el camino.</p>
+    </div>
+    <div class="card stack">
+      <div class="baseline">
+        <div class="bcell"><div class="v">1</div><div class="k">autónomo</div></div>
+        <div class="bcell"><div class="v">5</div><div class="k">clientes</div></div>
+        <div class="bcell"><div class="v">7</div><div class="k">facturas</div></div>
+        <div class="bcell"><div class="v">8</div><div class="k">servicios</div></div>
+        <div class="bcell"><div class="v">16</div><div class="k">líneas</div></div>
+        <div class="bcell"><div class="v">3.768,50 €</div><div class="k">suma de bases</div></div>
+      </div>
+      <p class="note">Dos invariantes más, que hoy se cumplen y deben seguir cumpliéndose: la <strong>suma de las líneas coincide con la suma de los totales guardados</strong> (3.768,50 € en ambos casos) y la serie de facturas va <strong>de la 1 a la 7 sin huecos</strong>. Además, las 16 líneas apuntan a un servicio que existe — por eso la migración a texto libre puede copiar la descripción sin perder nada.</p>
+      <pre class="cmd"><span class="c"># Fotografía de partida — se ejecuta UNA vez, en la fase 0</span>
+python tools\baseline.py --escribir     <span class="c"># → tests/fixtures/baseline.json</span>
+copy BillEase.db tests\fixtures\baseline.db
+
+<span class="c"># sha256 del fichero congelado</span>
+6d8bcf2b41614593…</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ REGLAS ══════ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <span class="eyebrow">Cómo se trabaja</span>
+      <h2>Cinco reglas que no se saltan</h2>
+    </div>
+    <div class="card">
+      <div class="rules">
+        <div class="rule"><p><b>Una fase, una rama, un pull request.</b> Nada de mezclar fases: si la fase 2 sale mal, se revierte sin arrastrar la 1.</p></div>
+        <div class="rule"><p><b>La puerta anterior en verde antes de empezar la siguiente.</b> Todas las comprobaciones de la puerta marcadas, no «casi todas».</p></div>
+        <div class="rule"><p><b>Cada fase deja la aplicación ejecutable.</b> <code>python main_start.py</code> abre, lista facturas y genera un PDF al terminar cualquier fase — nunca se queda a medias entre dos.</p></div>
+        <div class="rule"><p><b>Primero el test, después el arreglo.</b> Para cada defecto: se escribe la prueba que falla, se arregla, la prueba pasa. Así queda cerrado para siempre.</p></div>
+        <div class="rule"><p><b>La base de datos nunca se toca sin copia.</b> Toda migración se prueba antes sobre <code>tests/fixtures/baseline.db</code> y se ejecuta con <code>--dry-run</code> primero.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ FASES ══════ -->
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <span class="eyebrow">Las siete fases</span>
+      <h2>Qué se hace y cómo se comprueba</h2>
+      <p class="note">Las etiquetas rojas de cada fase son los defectos de la auditoría que cierra. Marca cada comprobación al superarla: el registro se guarda y se ve desde cualquier sitio donde abras esta página.</p>
+    </div>
+
+    <div class="stack" id="phases">
+
+      <!-- ─── F0 ─── -->
+      <article class="phase" id="f0" data-phase="0" data-name="Red de seguridad">
+        <div class="phasehead">
+          <div class="ptop">
+            <span class="pnum">Fase 0</span>
+            <h3>Red de seguridad</h3>
+            <span class="pcost">≈ 3 h</span>
+          </div>
+          <p class="pgoal">Poder medir y poder volver atrás. No se cambia ni una línea de comportamiento.</p>
+          <div class="chips"><span class="chip d">Defecto 16</span><span class="chip d">Defecto 03 · parte de repositorio</span></div>
+        </div>
+        <div class="phasebody">
+          <div class="block">
+            <span class="blabel">Qué se toca</span>
+            <div class="files">
+              <span class="file new">.gitignore</span><span class="file new">requirements.txt</span>
+              <span class="file new">tools/baseline.py</span><span class="file new">tools/verify.py</span>
+              <span class="file new">tests/fixtures/</span><span class="file del">__pycache__/</span>
+              <span class="file del">test.py</span><span class="file new">tools/seed_demo.py</span>
+            </div>
+          </div>
+          <div class="block">
+            <span class="blabel">Pasos</span>
+            <ol class="steps">
+              <li>Entorno virtual y <code>requirements.txt</code> con versiones fijadas: PyQt6, reportlab, argon2-cffi, pytest, pytest-qt.</li>
+              <li><code>.gitignore</code> de Python y <code>git rm -r --cached __pycache__ BillEase.db</code>. La base deja de estar versionada.</li>
+              <li><code>tools/baseline.py</code> vuelca el inventario a <code>tests/fixtures/baseline.json</code> y copia la base a <code>baseline.db</code>.</li>
+              <li><code>tools/verify.py</code> comprueba ese inventario contra cualquier base: es la herramienta que usarán todas las puertas siguientes.</li>
+              <li><code>test.py</code> se convierte en <code>tools/seed_demo.py</code> con datos ficticios — hoy no es una prueba, es un script que inserta un autónomo en la base real.</li>
+            </ol>
+          </div>
+          <div class="block">
+            <span class="blabel">Verificación</span>
+            <pre class="cmd">python -m venv .venv &amp;&amp; .venv\Scripts\activate
+pip install -r requirements.txt
+python tools\baseline.py --escribir
+python tools\verify.py                    <span class="g">→ 8/8 invariantes OK</span>
+git ls-files | findstr pycache            <span class="g">→ sin resultados</span>
+git ls-files | findstr BillEase.db        <span class="g">→ sin resultados</span>
+python main_start.py                      <span class="c"># abre igual que antes</span></pre>
+          </div>
+          <div class="gate">
+            <div class="gatehead"><span class="t">Puerta 0</span><span class="gatestate" data-gate="0">pendiente</span></div>
+            <div class="checks">
+              <label class="check"><input type="checkbox" id="g0a"><span><code>pip install -r requirements.txt</code> instala todo en una máquina limpia</span></label>
+              <label class="check"><input type="checkbox" id="g0b"><span><code>verify.py</code> da verde sobre la base actual</span></label>
+              <label class="check"><input type="checkbox" id="g0c"><span>Ni <code>__pycache__</code> ni <code>BillEase.db</code> aparecen en <code>git ls-files</code></span></label>
+              <label class="check"><input type="checkbox" id="g0d"><span>Existe <code>tests/fixtures/baseline.db</code> y su sha256 coincide</span></label>
+              <label class="check"><input type="checkbox" id="g0e"><span>La aplicación arranca y genera un PDF como siempre</span></label>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ─── F1 ─── -->
+      <article class="phase" id="f1" data-phase="1" data-name="Papel y pantalla">
+        <div class="phasehead">
+          <div class="ptop">
+            <span class="pnum">Fase 1</span>
+            <h3>Que el papel y la pantalla digan lo mismo</h3>
+            <span class="pcost">≈ 2 días</span>
+          </div>
+          <p class="pgoal">Cerrar los dos defectos que hoy producen documentos incorrectos. Sin tocar el esquema todavía: así la aplicación sigue funcionando entera.</p>
+          <div class="chips"><span class="chip d">Defecto 01 · totales</span><span class="chip d">Defecto 02 · PDF sin paginar</span></div>
+        </div>
+        <div class="phasebody">
+          <div class="block">
+            <span class="blabel">Qué se toca</span>
+            <div class="files">
+              <span class="file new">core/taxes.py</span><span class="file new">documents/invoice_pdf.py</span>
+              <span class="file new">tests/test_taxes.py</span><span class="file new">tests/test_pdf.py</span>
+              <span class="file">ui/homePage.py</span>
+            </div>
+          </div>
+          <div class="block">
+            <span class="blabel">Pasos</span>
+            <ol class="steps">
+              <li><code>core/taxes.py</code>: un único sitio donde se calcula base, IVA y total, con <code>Decimal</code> y redondeo a dos decimales. Sin Qt, sin SQL.</li>
+              <li>Sacar <code>generar_factura_pdf</code> de <code>homePage.py</code> a <code>documents/invoice_pdf.py</code> y reescribirlo con <code>platypus</code>: <code>SimpleDocTemplate</code> + <code>Table</code> con <code>repeatRows=1</code> y pie «página N de M».</li>
+              <li>La lista del panel muestra dos columnas, Base y Total, ambas calculadas por <code>core/taxes.py</code>.</li>
+              <li>El PDF deja de recalcular por su cuenta: recibe los importes ya calculados.</li>
+            </ol>
+          </div>
+          <div class="block">
+            <span class="blabel">Verificación</span>
+            <pre class="cmd">pytest tests\test_taxes.py -q
+  <span class="c">· 690,00 al 21 %            → 834,90</span>
+  <span class="c">· 537,50 al 21 %            → 112,88 de IVA (redondeo hacia arriba)</span>
+  <span class="c">· tipos 21 / 10 / 4 / exento → sin excepciones</span>
+
+pytest tests\test_pdf.py -q
+  <span class="c">· factura de 40 conceptos   → 2 páginas o más</span>
+  <span class="c">· ningún texto con y &lt; 0    → hoy salen 21</span>
+  <span class="c">· concepto de 400 caracteres → no se recorta</span>
+  <span class="c">· el total del PDF == core.taxes</span>
+
+<span class="c"># Manual, con la base real: las 7 facturas</span>
+python tools\verify.py --totales          <span class="g">→ lista y PDF coinciden en las 7</span></pre>
+          </div>
+          <div class="gate">
+            <div class="gatehead"><span class="t">Puerta 1</span><span class="gatestate" data-gate="1">pendiente</span></div>
+            <div class="checks">
+              <label class="check"><input type="checkbox" id="g1a"><span>Las 7 facturas muestran el mismo total en la lista y en el PDF</span></label>
+              <label class="check"><input type="checkbox" id="g1b"><span>Un PDF de 40 conceptos ocupa varias páginas y ninguno se pierde</span></label>
+              <label class="check"><input type="checkbox" id="g1c"><span>El cuadro de totales aparece siempre, sea cual sea el número de líneas</span></label>
+              <label class="check"><input type="checkbox" id="g1d"><span><code>homePage.py</code> ya no contiene código de PDF</span></label>
+              <label class="check"><input type="checkbox" id="g1e"><span><code>pytest</code> pasa sin PyQt6 instalado (el núcleo no depende de Qt)</span></label>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ─── F2 ─── -->
+      <article class="phase" id="f2" data-phase="2" data-name="Base de datos">
+        <div class="phasehead">
+          <div class="ptop">
+            <span class="pnum">Fase 2</span>
+            <h3>La base de datos deja de corromper datos</h3>
+            <span class="pcost">≈ 3 días</span>
+          </div>
+          <p class="pgoal">Migraciones numeradas, reversibles y probadas sobre la copia de seguridad antes de tocar nada real.</p>
+          <div class="chips"><span class="chip d">04 · tipos REAL</span><span class="chip d">05 · serie fiscal</span><span class="chip d">08 · fechas</span><span class="chip d">03 · contraseña</span></div>
+        </div>
+        <div class="phasebody">
+          <div class="block">
+            <span class="blabel">Qué se toca</span>
+            <div class="files">
+              <span class="file new">data/connection.py</span><span class="file new">data/migrations/001_tipos.py</span>
+              <span class="file new">002_fechas_iso.py</span><span class="file new">003_importes.py</span>
+              <span class="file new">004_serie_fiscal.py</span><span class="file new">005_lineas_texto.py</span>
+              <span class="file new">006_password_hash.py</span><span class="file del">tabla Servicio</span>
+            </div>
+          </div>
+          <div class="block">
+            <span class="blabel">Pasos</span>
+            <ol class="steps">
+              <li><code>data/connection.py</code>: una conexión por proceso con <code>PRAGMA foreign_keys=ON</code>, <code>journal_mode=WAL</code> y <code>row_factory = sqlite3.Row</code>.</li>
+              <li><strong>001</strong> códigos postales y teléfonos a <code>TEXT</code> con <code>CHECK</code>; el cero inicial vuelve a existir.</li>
+              <li><strong>002</strong> fechas a ISO-8601; se convierte «15/01/2025» → «2025-01-15».</li>
+              <li><strong>003</strong> columnas <code>base</code>, <code>tipo_iva</code> e <code>importe_total</code>; el valor actual pasa a <code>base</code>.</li>
+              <li><strong>004</strong> serie fiscal: <code>serie</code>, <code>ejercicio</code>, <code>numero</code> con índice único; las 7 facturas quedan como 2025-001 … 2025-007.</li>
+              <li><strong>005</strong> las líneas guardan <code>descripcion</code> y <code>unidad</code>, copiando el texto del servicio al que apuntaban. Después se elimina la tabla <code>Servicio</code>.</li>
+              <li><strong>006</strong> contraseña con <code>argon2</code> y base de datos movida a <code>%LOCALAPPDATA%\BillEase\</code>.</li>
+            </ol>
+          </div>
+          <div class="block">
+            <span class="blabel">Verificación</span>
+            <pre class="cmd"><span class="c"># Siempre sobre la copia primero</span>
+python -m data.migrations --base tests\fixtures\baseline.db --dry-run
+python -m data.migrations --base tests\fixtures\baseline.db
+python tools\verify.py --base tests\fixtures\baseline.db --post-migracion
+
+  <span class="g">✓ conteos 1 / 5 / 7 / 16 idénticos</span>
+  <span class="g">✓ suma de bases 3.768,50 €</span>
+  <span class="g">✓ facturas 2025-001 … 2025-007, sin huecos</span>
+  <span class="g">✓ 0 líneas con descripción vacía</span>
+  <span class="g">✓ typeof(cod_postal) = 'text' en las 5</span>
+  <span class="g">✓ PRAGMA foreign_keys = 1</span>
+  <span class="r">✗ INSERT de línea huérfana → IntegrityError (debe fallar)</span>
+
+pytest tests\test_migrations.py -q
+  <span class="c">· migrar dos veces da el mismo resultado (idempotencia)</span>
+  <span class="c">· la contraseña ya no se puede leer en claro</span></pre>
+          </div>
+          <div class="risk"><span class="l">Riesgo</span><p>Es la única fase que puede perder datos. No se ejecuta sobre la base real hasta que la copia migre limpia dos veces seguidas, y la migración guarda <code>BillEase.db.bak</code> antes de empezar.</p></div>
+          <div class="gate">
+            <div class="gatehead"><span class="t">Puerta 2</span><span class="gatestate" data-gate="2">pendiente</span></div>
+            <div class="checks">
+              <label class="check"><input type="checkbox" id="g2a"><span>La copia migra con los 7 invariantes en verde</span></label>
+              <label class="check"><input type="checkbox" id="g2b"><span>Migrar dos veces seguidas no cambia nada (idempotente)</span></label>
+              <label class="check"><input type="checkbox" id="g2c"><span>Una línea huérfana ya <em>no</em> se puede insertar</span></label>
+              <label class="check"><input type="checkbox" id="g2d"><span>«08001» se guarda y se lee como «08001», no como 8001.0</span></label>
+              <label class="check"><input type="checkbox" id="g2e"><span>Las 16 líneas conservan su descripción tras eliminar <code>Servicio</code></span></label>
+              <label class="check"><input type="checkbox" id="g2f"><span>La contraseña está hasheada y el acceso sigue funcionando</span></label>
+              <label class="check"><input type="checkbox" id="g2g"><span>La aplicación arranca contra la base migrada</span></label>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ─── F3 ─── -->
+      <article class="phase" id="f3" data-phase="3" data-name="Dominio y repositorios">
+        <div class="phasehead">
+          <div class="ptop">
+            <span class="pnum">Fase 3</span>
+            <h3>Dominio y repositorios, con red de pruebas</h3>
+            <span class="pcost">≈ 4 días</span>
+          </div>
+          <p class="pgoal">Que la interfaz deje de escribir SQL y de desempaquetar tuplas por índice.</p>
+          <div class="chips"><span class="chip d">07 · función rota</span><span class="chip d">09 · N+1</span><span class="chip d">12 · validadores</span></div>
+        </div>
+        <div class="phasebody">
+          <div class="block">
+            <span class="blabel">Qué se toca</span>
+            <div class="files">
+              <span class="file new">core/models.py</span><span class="file new">core/numbering.py</span>
+              <span class="file new">core/validators/nif.py</span><span class="file new">core/validators/cif.py</span>
+              <span class="file new">data/repositories/</span><span class="file del">database/db.py</span>
+            </div>
+          </div>
+          <div class="block">
+            <span class="blabel">Pasos</span>
+            <ol class="steps">
+              <li><code>core/models.py</code> con <em>dataclasses</em>: <code>Documento</code>, <code>Linea</code>, <code>Cliente</code>. Se acabó el <code>cliente[6]</code>.</li>
+              <li><code>core/numbering.py</code>: siguiente número de la serie por ejercicio, y anulación en lugar de borrado.</li>
+              <li>Validadores: NIE (X/Y/Z → 0/1/2 antes del módulo 23), CIF con letra de control en los tipos que la admiten, teléfono normalizado antes de validar.</li>
+              <li><code>data/repositories/</code>: un <code>JOIN</code> devuelve factura y cliente juntos; adiós al N+1.</li>
+              <li>Las pantallas pasan a llamar a repositorios. <code>database/db.py</code> desaparece.</li>
+            </ol>
+          </div>
+          <div class="block">
+            <span class="blabel">Verificación</span>
+            <pre class="cmd">pytest -q --cov=core --cov=data          <span class="g">→ cobertura de core ≥ 80 %</span>
+  <span class="c">· X1234567L (NIE)          → válido</span>
+  <span class="c">· G2866715B (CIF con letra) → válido</span>
+  <span class="c">· '612 34 56 78'            → válido tras normalizar</span>
+  <span class="c">· anular la última factura  → la serie no reutiliza el número</span>
+
+<span class="c"># Ningún SQL fuera de la capa de datos</span>
+findstr /s /m "sqlite3" *.py | findstr /v "^data\\"   <span class="g">→ sin resultados</span>
+
+<span class="c"># Una sola conexión para pintar la lista</span>
+python tools\verify.py --conexiones      <span class="g">→ 1 (hoy son 8)</span></pre>
+          </div>
+          <div class="gate">
+            <div class="gatehead"><span class="t">Puerta 3</span><span class="gatestate" data-gate="3">pendiente</span></div>
+            <div class="checks">
+              <label class="check"><input type="checkbox" id="g3a"><span>Cobertura de <code>core/</code> por encima del 80 %</span></label>
+              <label class="check"><input type="checkbox" id="g3b"><span>Se puede dar de alta un cliente con NIE</span></label>
+              <label class="check"><input type="checkbox" id="g3c"><span>No queda ningún <code>sqlite3</code> fuera de <code>data/</code></span></label>
+              <label class="check"><input type="checkbox" id="g3d"><span>Pintar la lista abre una conexión, no ocho</span></label>
+              <label class="check"><input type="checkbox" id="g3e"><span>Ninguna pantalla accede a una tupla por índice numérico</span></label>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ─── F4 ─── -->
+      <article class="phase" id="f4" data-phase="4" data-name="Conceptos y presupuestos">
+        <div class="phasehead">
+          <div class="ptop">
+            <span class="pnum">Fase 4</span>
+            <h3>Conceptos en texto libre y presupuestos</h3>
+            <span class="pcost">≈ 4 días</span>
+          </div>
+          <p class="pgoal">Escribir el trabajo entero en lugar de elegirlo de una lista, y poder emitir presupuestos que se convierten en factura.</p>
+          <div class="chips"><span class="chip d">06 · datos descartados</span><span class="chip">catálogo fuera</span></div>
+        </div>
+        <div class="phasebody">
+          <div class="block">
+            <span class="blabel">Qué se toca</span>
+            <div class="files">
+              <span class="file new">ui/views/documento_editor.py</span><span class="file new">core/quotes.py</span>
+              <span class="file del">ui/crearFactura.py</span><span class="file del">ui/editarFactura.py</span>
+              <span class="file del">ui/crearServicio.py</span>
+            </div>
+          </div>
+          <div class="block">
+            <span class="blabel">Pasos</span>
+            <ol class="steps">
+              <li>Un único editor <code>DocumentoEditor(tipo=factura|presupuesto, modo=nuevo|edición)</code>, que sustituye a las 1.176 líneas casi idénticas de crear y editar factura.</li>
+              <li>Cada concepto es un bloque con descripción larga, cantidad, unidad (ud, h, m²) y precio; el importe y el total se recalculan al escribir.</li>
+              <li><code>QCompleter</code> con los conceptos ya escritos: sugiere, nunca obliga.</li>
+              <li>Los datos fiscales del cliente pasan a solo lectura y se congelan en el documento al emitirlo.</li>
+              <li>Presupuestos con serie propia, fecha de validez y conversión a factura en un clic.</li>
+            </ol>
+          </div>
+          <div class="block">
+            <span class="blabel">Verificación</span>
+            <pre class="cmd">set QT_QPA_PLATFORM=offscreen
+pytest tests\test_editor.py -q
+  <span class="c">· dos conceptos de 1.240,00 y 195,00 → total 1.736,35</span>
+  <span class="c">· concepto de 400 caracteres          → se guarda entero</span>
+  <span class="c">· editar datos del cliente            → imposible (solo lectura)</span>
+  <span class="c">· presupuesto aceptado → factura       → copia líneas y asigna número</span>
+  <span class="c">· emitir dos veces seguidas           → números consecutivos, sin repetir</span>
+
+<span class="c"># Un documento antiguo sigue abriéndose</span>
+python tools\verify.py --abrir-todas     <span class="g">→ las 7 facturas se abren y se imprimen</span></pre>
+          </div>
+          <div class="gate">
+            <div class="gatehead"><span class="t">Puerta 4</span><span class="gatestate" data-gate="4">pendiente</span></div>
+            <div class="checks">
+              <label class="check"><input type="checkbox" id="g4a"><span>Se escribe un concepto largo y sale entero en el PDF</span></label>
+              <label class="check"><input type="checkbox" id="g4b"><span>El total en pantalla coincide con el del PDF al céntimo</span></label>
+              <label class="check"><input type="checkbox" id="g4c"><span>Las 7 facturas antiguas se abren y se imprimen sin fallo</span></label>
+              <label class="check"><input type="checkbox" id="g4d"><span>Un presupuesto se convierte en factura con su número de serie</span></label>
+              <label class="check"><input type="checkbox" id="g4e"><span>Ya no existe ninguna pantalla de servicios</span></label>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ─── F5 ─── -->
+      <article class="phase" id="f5" data-phase="5" data-name="Interfaz Fluent">
+        <div class="phasehead">
+          <div class="ptop">
+            <span class="pnum">Fase 5</span>
+            <h3>La interfaz Fluent</h3>
+            <span class="pcost">≈ 5 días</span>
+          </div>
+          <p class="pgoal">Aplicar el rediseño aprobado sobre una base que ya funciona.</p>
+          <div class="chips"><span class="chip d">10 · lista</span><span class="chip d">11 · contraste</span><span class="chip d">13 · layout</span><span class="chip d">14 · colores</span><span class="chip d">15 · QSS</span></div>
+        </div>
+        <div class="phasebody">
+          <div class="block">
+            <span class="blabel">Qué se toca</span>
+            <div class="files">
+              <span class="file new">theme/tokens.py</span><span class="file new">theme/app.qss</span>
+              <span class="file new">ui/shell.py</span><span class="file new">ui/models/</span>
+              <span class="file new">ui/widgets/</span><span class="file del">utils/globals.py</span>
+            </div>
+          </div>
+          <div class="block">
+            <span class="blabel">Pasos</span>
+            <ol class="steps">
+              <li><code>theme/tokens.py</code> sin dependencias (lo usan la interfaz <em>y</em> el PDF) y una sola <code>app.qss</code>.</li>
+              <li><code>QTableView</code> + <code>QAbstractTableModel</code> + <code>QSortFilterProxyModel</code>: búsqueda, orden por columna y píldoras de estado.</li>
+              <li>Navegación lateral nueva, con iconos SVG propios en lugar de emojis.</li>
+              <li>Tema claro y oscuro siguiendo al sistema, fondo Mica en Windows 11, atajos <code>Ctrl+N</code> / <code>Ctrl+F</code> / <code>Esc</code>.</li>
+              <li>Ancho máximo de contenido y estados vacíos con una acción.</li>
+            </ol>
+          </div>
+          <div class="block">
+            <span class="blabel">Verificación</span>
+            <pre class="cmd">python tools\check_contraste.py          <span class="g">→ todos los pares ≥ 4,5:1</span>
+  <span class="c">· hoy el menú lateral da 1,49:1</span>
+
+python tools\check_estilos.py
+  <span class="g">→ setStyleSheet ≤ 5 (hoy 84)</span>
+  <span class="g">→ 0 emojis en ui/</span>
+  <span class="g">→ 0 colores literales fuera de theme/</span>
+
+set QT_QPA_PLATFORM=offscreen
+pytest tests\test_ui_smoke.py -q         <span class="c"># abre cada pantalla y captura</span>
+
+<span class="c"># Rendimiento con volumen</span>
+python tools\seed_demo.py --facturas 1000
+python tools\verify.py --pintar          <span class="g">→ &lt; 300 ms y &lt; 100 widgets vivos</span></pre>
+          </div>
+          <div class="gate">
+            <div class="gatehead"><span class="t">Puerta 5</span><span class="gatestate" data-gate="5">pendiente</span></div>
+            <div class="checks">
+              <label class="check"><input type="checkbox" id="g5a"><span>Ningún par de colores por debajo de 4,5:1</span></label>
+              <label class="check"><input type="checkbox" id="g5b"><span>Menos de 5 llamadas a <code>setStyleSheet</code> en todo el proyecto</span></label>
+              <label class="check"><input type="checkbox" id="g5c"><span>Con 1.000 facturas la lista se pinta al instante</span></label>
+              <label class="check"><input type="checkbox" id="g5d"><span>La búsqueda y el orden por columna funcionan</span></label>
+              <label class="check"><input type="checkbox" id="g5e"><span>Tema claro y oscuro, siguiendo al de Windows</span></label>
+              <label class="check"><input type="checkbox" id="g5f"><span>Cero emojis en la interfaz</span></label>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ─── F6 ─── -->
+      <article class="phase" id="f6" data-phase="6" data-name="Entrega">
+        <div class="phasehead">
+          <div class="ptop">
+            <span class="pnum">Fase 6</span>
+            <h3>Entrega</h3>
+            <span class="pcost">≈ 3 días</span>
+          </div>
+          <p class="pgoal">Que sea un programa que se instala, no una carpeta que se ejecuta.</p>
+          <div class="chips"><span class="chip">resumen de IVA</span><span class="chip">copias de seguridad</span><span class="chip">instalador</span></div>
+        </div>
+        <div class="phasebody">
+          <div class="block">
+            <span class="blabel">Pasos</span>
+            <ol class="steps">
+              <li>Resumen trimestral de IVA y anual de ingresos — ya es posible con las fechas en ISO.</li>
+              <li>Estados de cobro (cobrada, pendiente, vencida) y logotipo propio en el documento.</li>
+              <li>Copia de seguridad automática al cerrar y exportación a CSV.</li>
+              <li><code>PyInstaller</code> + instalador, con la base en <code>%LOCALAPPDATA%\BillEase\</code>.</li>
+            </ol>
+          </div>
+          <div class="block">
+            <span class="blabel">Verificación</span>
+            <pre class="cmd">pyinstaller billease.spec
+<span class="c"># En una máquina limpia, sin Python instalado:</span>
+  <span class="c">· instalar → abrir → crear cliente → crear factura → PDF</span>
+  <span class="c">· la base aparece en %LOCALAPPDATA%\BillEase\billease.db</span>
+  <span class="c">· cerrar y reabrir → los datos siguen ahí</span>
+  <span class="c">· resumen del 1.º trimestre → cuadra con la suma manual</span></pre>
+          </div>
+          <div class="gate">
+            <div class="gatehead"><span class="t">Puerta 6</span><span class="gatestate" data-gate="6">pendiente</span></div>
+            <div class="checks">
+              <label class="check"><input type="checkbox" id="g6a"><span>El instalador funciona en una máquina sin Python</span></label>
+              <label class="check"><input type="checkbox" id="g6b"><span>La base vive en <code>%LOCALAPPDATA%</code>, no junto al ejecutable</span></label>
+              <label class="check"><input type="checkbox" id="g6c"><span>El resumen de IVA cuadra con la suma a mano</span></label>
+              <label class="check"><input type="checkbox" id="g6d"><span>Hay copia de seguridad automática y se puede restaurar</span></label>
+            </div>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>BillEase · ruta de trabajo · 16 defectos auditados, 7 puertas</span>
+    <span class="eyebrow" id="foot">docs/ANALISIS.md · docs/rediseno-fluent.html</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.check input[type="checkbox"]'));
+  var phases = Array.prototype.slice.call(document.querySelectorAll(".phase"));
+  var rail = document.getElementById("rail");
+  var docRef = null;
+  var writing = false;
+  var pending = false;
+
+  // Raíl de fases, construido desde las propias secciones
+  phases.forEach(function (p) {
+    var a = document.createElement("a");
+    a.className = "railitem";
+    a.href = "#" + p.id;
+    a.dataset.for = p.id;
+    a.innerHTML =
+      '<span class="f">F' + p.dataset.phase + '</span>' +
+      '<span class="t"></span>' +
+      '<span class="b"><i></i></span>';
+    a.querySelector(".t").textContent = p.dataset.name;
+    rail.appendChild(a);
+  });
+
+  function render() {
+    var total = boxes.length;
+    var done = boxes.filter(function (b) { return b.checked; }).length;
+    var gatesDone = 0;
+
+    phases.forEach(function (p) {
+      var bs = Array.prototype.slice.call(p.querySelectorAll('input[type="checkbox"]'));
+      var d = bs.filter(function (b) { return b.checked; }).length;
+      var complete = bs.length > 0 && d === bs.length;
+      if (complete) gatesDone++;
+
+      var state = p.querySelector(".gatestate");
+      if (state) {
+        state.textContent = complete ? "en verde" : d + " de " + bs.length;
+        state.classList.toggle("on", complete);
+      }
+      var item = rail.querySelector('[data-for="' + p.id + '"]');
+      if (item) {
+        item.querySelector("i").style.width = bs.length ? (d / bs.length * 100) + "%" : "0%";
+        item.classList.toggle("done", complete);
+      }
+    });
+
+    document.getElementById("mcount").innerHTML =
+      done + ' <small>de ' + total + " comprobaciones</small>";
+    document.getElementById("mbar").style.width = total ? (done / total * 100) + "%" : "0%";
+    document.getElementById("mgates").textContent = gatesDone + " / " + phases.length + " puertas";
+
+    var next = phases.find(function (p) {
+      var bs = Array.prototype.slice.call(p.querySelectorAll('input[type="checkbox"]'));
+      return bs.some(function (b) { return !b.checked; });
+    });
+    document.getElementById("mphase").textContent = next
+      ? "Siguiente: fase " + next.dataset.phase + " · " + next.dataset.name
+      : "Las siete puertas en verde";
+  }
+
+  function collect() {
+    var checks = {};
+    boxes.forEach(function (b) { if (b.checked) checks[b.id] = true; });
+    return checks;
+  }
+
+  function apply(checks) {
+    boxes.forEach(function (b) { b.checked = !!(checks && checks[b.id]); });
+    render();
+  }
+
+  // Una escritura cada vez por documento; las ráfagas se agrupan.
+  function save() {
+    if (!docRef) return;
+    if (writing) { pending = true; return; }
+    writing = true;
+    docRef.set({ checks: collect(), actualizado: new Date().toISOString() })
+      .catch(function (e) {
+        note(e && e.code === "invalid_argument"
+          ? "Sin permiso de escritura: las marcas no se guardan."
+          : "No se pudo guardar el registro.");
+      })
+      .then(function () {
+        writing = false;
+        if (pending) { pending = false; save(); }
+      });
+  }
+
+  function note(text) {
+    document.getElementById("dbnote").textContent = text;
+  }
+
+  boxes.forEach(function (b) {
+    b.addEventListener("change", function () { render(); save(); });
+  });
+  render();
+
+  if (window.claude && typeof window.claude.use === "function") {
+    window.claude.use("db").then(function (db) {
+      if (!db) { note("Registro no disponible aquí: las marcas valen solo para esta pestaña."); return; }
+      docRef = db.doc("progreso/puertas");
+      docRef.onSnapshot(
+        function (snap) {
+          var data = snap.exists ? snap.data() : null;
+          apply(data && data.checks);
+          note(snap.exists
+            ? "Registro guardado · última marca " + new Date(data.actualizado || Date.now()).toLocaleString("es-ES")
+            : "Registro vacío: marca la primera comprobación para empezar.");
+        },
+        function () { note("Se perdió la conexión con el registro; recarga la página."); }
+      );
+    }).catch(function () {
+      note("Registro no disponible: las marcas valen solo para esta pestaña.");
+    });
+  } else {
+    note("Marcas locales a esta pestaña.");
+  }
+})();
+</script>
