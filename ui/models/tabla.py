@@ -128,6 +128,27 @@ class ModeloTabla(QAbstractTableModel):
         return tuple(self._filas)
 
 
+def repartir(vista, minimo=70):
+    """
+    Reparte el ancho entre las columnas según el peso de cada una.
+
+    `QHeaderView` solo sabe repartir a partes iguales, y a partes iguales el
+    nombre del cliente se corta mientras la columna de la fecha sobra. El peso
+    lo declara cada `Columna`, que es donde se decide el diseño de la tabla.
+    """
+    modelo = vista.model()
+    columnas = getattr(modelo, "columnas", None)
+    if columnas is None:                      # una vista con proxy delante
+        columnas = getattr(getattr(modelo, "sourceModel", lambda: None)(), "columnas", ())
+    if not columnas:
+        return
+
+    ancho = vista.viewport().width()
+    total = sum(columna.peso for columna in columnas) or 1
+    for numero, columna in enumerate(columnas):
+        vista.setColumnWidth(numero, max(minimo, int(ancho * columna.peso / total)))
+
+
 class FiltroTexto(QSortFilterProxyModel):
     """
     La búsqueda: mira todas las columnas de la fila, sin tildes ni mayúsculas.

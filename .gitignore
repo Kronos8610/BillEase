@@ -30,6 +30,12 @@ BillEase.db.bak
 #   python tools/seed_demo.py --salida tests/fixtures/baseline.db
 tests/fixtures/baseline.db
 
+# --- Empaquetado ---
+# `pyinstaller billease.spec` deja aquí el programa montado; el instalador,
+# en installer/Output/. Se regeneran los dos, no se versionan.
+installer/Output/
+*.manifest
+
 # --- Editores y sistema ---
 .vscode/
 .idea/

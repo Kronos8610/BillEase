@@ -23,3 +23,9 @@ pytest-cov==7.0.0
 # Lee el PDF generado en las pruebas: sirve para comprobar que ningún
 # concepto se dibuja fuera del papel y que los totales impresos cuadran.
 pypdf==6.18.1
+
+# --- Empaquetado ---
+# Solo hace falta para generar el ejecutable:
+#   pyinstaller billease.spec
+# El instalador se compila aparte, con Inno Setup 6 (installer/billease.iss).
+pyinstaller==6.22.3

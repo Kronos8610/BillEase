@@ -21,6 +21,7 @@ from core.models import (
     Documento,
     Linea,
 )
+from core.cobros import puede_pasar_a as puede_cobrarse
 from core.numbering import siguiente
 from core.quotes import a_factura, puede_pasar_a
 from core.taxes import IVA_GENERAL, calcular
@@ -65,6 +66,31 @@ def lineas_de(documento_id):
         (int(documento_id),),
     ).fetchall()
     return [Linea.desde_fila(f) for f in filas]
+
+
+def listar_ejercicio(ejercicio, tipo=FACTURA):
+    """
+    Los documentos de un año. Lo que necesita el resumen trimestral.
+
+    Se filtra en SQL con un `BETWEEN` sobre la fecha, que es posible desde que
+    las fechas se guardan en ISO (fase 2): antes había que leerlo todo y
+    comparar en Python, porque «15/01/2025» no ordena ni filtra.
+    """
+    filas = conexion().execute(
+        SELECT_RESUMEN + " WHERE f.tipo = ? AND f.fecha BETWEEN ? AND ?" + ORDEN,
+        (tipo, f"{int(ejercicio)}-01-01", f"{int(ejercicio)}-12-31"),
+    ).fetchall()
+    return [Documento.desde_fila(f) for f in filas]
+
+
+def ejercicios(tipo=FACTURA):
+    """Los años que tienen documentos, del más reciente al más antiguo."""
+    filas = conexion().execute(
+        "SELECT DISTINCT ejercicio FROM Factura WHERE tipo = ? AND ejercicio > 0"
+        " ORDER BY ejercicio DESC",
+        (tipo,),
+    ).fetchall()
+    return [f["ejercicio"] for f in filas]
 
 
 def numeros_usados(serie=""):
@@ -160,9 +186,18 @@ def actualizar(documento_id, fecha, cliente_id, lineas, observaciones="",
 
 
 def cambiar_estado(documento_id, estado):
-    """Mueve un presupuesto por su ciclo de vida, si la transición es legítima."""
+    """
+    Mueve un documento a otro estado, si la transición es legítima.
+
+    Un presupuesto recorre su ciclo de vida (borrador → enviado → aceptado o
+    rechazado) y una factura su cobro (emitida ↔ cobrada). Lo que decide si el
+    salto vale es el dominio —`core/quotes.py` y `core/cobros.py`—, no esta
+    función.
+    """
     documento = obtener(documento_id, con_lineas=False)
-    if documento is None or not puede_pasar_a(documento, estado):
+    if documento is None:
+        return False
+    if not (puede_pasar_a(documento, estado) or puede_cobrarse(documento, estado)):
         return False
     conn = conexion()
     conn.execute(

@@ -21,20 +21,25 @@ Estructura del diccionario:
       "fecha":    "14/02/2025",
       "vencimiento": "16/03/2025",     # opcional (facturas)
       "validez":     "19/09/2025",     # opcional (presupuestos)
-      "emisor":   {"nombre", "nif", "direccion", "poblacion", "telefono", "email"},
+      "emisor":   {"nombre", "nif", "direccion", "poblacion", "telefono", "email",
+                   "logotipo"},   # ruta de una imagen, opcional
       "cliente":  {"nombre", "nif", "direccion", "poblacion", "telefono", "email"},
       "lineas":   [core.taxes.Linea, ...],
       "nota":     "Forma de pago: …",  # opcional
     }
 """
 
+from pathlib import Path
+
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas as rl_canvas
 from reportlab.platypus import (
+    Image,
     KeepTogether,
     Paragraph,
     SimpleDocTemplate,
@@ -61,6 +66,11 @@ FUENTE_NEGRITA = "Helvetica-Bold"
 
 MARGEN = 18 * mm
 
+# El logotipo encabeza el documento sin competir con él: cabe en una caja de
+# este tamaño y se escala conservando su proporción.
+ANCHO_LOGO = 42 * mm
+ALTO_LOGO = 16 * mm
+
 
 def _texto(valor):
     """
@@ -76,6 +86,29 @@ def _texto(valor):
     if isinstance(valor, float) and valor.is_integer():
         return str(int(valor))
     return str(valor).strip()
+
+
+def _logotipo(datos):
+    """
+    El logotipo del emisor, escalado para que quepa en su caja.
+
+    Devuelve None si no hay logotipo, si el fichero ya no existe o si la
+    imagen no se puede leer: un documento sin logotipo es exactamente lo que
+    se emitía hasta ahora, y es preferible a no poder emitirlo.
+    """
+    ruta = _texto(datos.get("emisor", {}).get("logotipo", ""))
+    if not ruta or not Path(ruta).is_file():
+        return None
+
+    try:
+        ancho_real, alto_real = ImageReader(ruta).getSize()
+        if not ancho_real or not alto_real:
+            return None
+        escala = min(ANCHO_LOGO / ancho_real, ALTO_LOGO / alto_real)
+        return Image(ruta, width=ancho_real * escala, height=alto_real * escala,
+                     hAlign="LEFT")
+    except Exception:          # noqa: BLE001 — un fichero que no es una imagen
+        return None
 
 
 def _estilos():
@@ -391,7 +424,12 @@ def generar_documento_pdf(datos, ruta, totales=None):
     )
     ancho = doc.width
 
-    historia = [
+    historia = []
+    logotipo = _logotipo(datos)
+    if logotipo is not None:
+        historia += [logotipo, Spacer(1, 6 * mm)]
+
+    historia += [
         _cabecera(datos, est),
         Spacer(1, 5 * mm),
         _banda(datos, est),

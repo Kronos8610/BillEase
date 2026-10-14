@@ -15,12 +15,30 @@ que `theme.tokens` se pueda leer desde una herramienta de línea de órdenes o
 desde el generador de PDF sin arrastrar una pantalla detrás.
 """
 
+import sys
 from pathlib import Path
 from string import Template
 
 from theme.tokens import CLARO_ID, MEDIDAS, OSCURO_ID, paleta
 
-HOJA = Path(__file__).with_name("app.qss")
+
+def _hoja():
+    """
+    Dónde está `app.qss`, también dentro del ejecutable.
+
+    PyInstaller descomprime los ficheros de datos en una carpeta temporal y
+    deja su ruta en `sys._MEIPASS`. Sin esto, el programa empaquetado
+    arrancaría sin estilos: todo gris del sistema.
+    """
+    empaquetado = getattr(sys, "_MEIPASS", None)
+    if empaquetado:
+        dentro = Path(empaquetado) / "theme" / "app.qss"
+        if dentro.exists():
+            return dentro
+    return Path(__file__).with_name("app.qss")
+
+
+HOJA = _hoja()
 
 AUTOMATICO = "auto"
 

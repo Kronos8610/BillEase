@@ -38,6 +38,26 @@ def registrar(autonomo, contrasena):
         return False
 
 
+def guardar_logotipo(ruta):
+    """
+    Apunta qué imagen encabeza los documentos. Con cadena vacía, se quita.
+
+    Se guarda la ruta tal cual la eligió el usuario. Si el fichero se mueve o
+    se borra, el documento sale sin logotipo —como salía antes— en lugar de
+    fallar al imprimirse.
+    """
+    conn = conexion()
+    fila = conn.execute("SELECT DNI FROM Autonomo LIMIT 1").fetchone()
+    if fila is None:
+        return False
+    conn.execute(
+        "UPDATE Autonomo SET logotipo = ? WHERE DNI = ?",
+        (str(ruta or "") or None, fila["DNI"]),
+    )
+    conn.commit()
+    return True
+
+
 def verificar_acceso(email, contrasena):
     """
     Comprueba las credenciales.

@@ -30,6 +30,7 @@ from data.migrations import (
     m006_password_hash,
     m007_sin_catalogo,
     m008_presupuestos,
+    m009_logotipo,
 )
 
 MIGRACIONES = (
@@ -41,6 +42,7 @@ MIGRACIONES = (
     m006_password_hash,
     m007_sin_catalogo,
     m008_presupuestos,
+    m009_logotipo,
 )
 
 

@@ -308,19 +308,43 @@ python tools\seed_demo.py --facturas 1000 --forzar
 
 **Objetivo:** que sea un programa que se instala, no una carpeta que se ejecuta.
 
+**Se toca:** `core/reports.py` · `core/cobros.py` · `data/backup.py` ·
+`data/migrations/m009_logotipo.py` · `documents/export_csv.py` ·
+`ui/views/resumen.py` · `ui/views/ajustes.py` · `billease.spec` ·
+`installer/billease.iss`
+
 1. Resumen trimestral de IVA y anual de ingresos — ya es posible con las fechas en ISO.
 2. Estados de cobro (cobrada, pendiente, vencida) y logotipo propio en el documento.
 3. Copia de seguridad automática al cerrar y exportación a CSV.
 4. `PyInstaller` + instalador, con la base en `%LOCALAPPDATA%\BillEase\`.
 
 ```bat
-pyinstaller billease.spec
+set QT_QPA_PLATFORM=offscreen
+pytest -q                                 :: → 298 pruebas
+
+python tools\verify.py --fiscal           :: → el resumen cuadra con la suma a mano,
+::                                            factura por factura y trimestre a trimestre
+python tools\verify.py --copia            :: → se copia, se borra todo, se restaura
+::                                            y vuelven las 7 facturas con sus importes
+
+pyinstaller billease.spec                 :: → dist\BillEase\BillEase.exe
+iscc installer\billease.iss               :: → installer\Output\BillEase-instalador-1.0.0.exe
+
 :: En una máquina limpia, sin Python instalado:
 ::  instalar → abrir → crear cliente → crear factura → PDF
 ::  la base aparece en %LOCALAPPDATA%\BillEase\billease.db
 ::  cerrar y reabrir → los datos siguen ahí
 ::  resumen del 1.º trimestre → cuadra con la suma manual
 ```
+
+> **Resultado medido.** El resumen cuadra al céntimo con la suma hecha factura a factura
+> (`--fiscal`, 10 comprobaciones). La copia se restaura de verdad: se borran las 7
+> facturas, se restaura y vuelven las 7 con sus 4.559,89 € (`--copia`). El empaquetado se
+> ha probado **en este contenedor Linux**: `pyinstaller billease.spec` termina sin errores,
+> el ejecutable arranca, encuentra `app.qss` dentro del paquete y abre la base aplicando
+> las 9 migraciones. **La comprobación en una máquina Windows limpia sigue pendiente**: no
+> se puede hacer desde aquí, y es la única casilla de la puerta 6 que no se puede marcar
+> sin un Windows delante.
 
 **Puerta 6**
 - [ ] El instalador funciona en una máquina sin Python

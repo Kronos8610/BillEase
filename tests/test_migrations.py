@@ -213,6 +213,29 @@ def test_borrar_una_factura_arrastra_sus_lineas(base_migrada):
     conn.close()
 
 
+def test_el_emisor_tiene_sitio_para_su_logotipo(base_migrada):
+    """La 009 añade la columna; vacía, que es como estaba todo hasta ahora."""
+    conn = abrir(base_migrada)
+    columnas = {f[1] for f in conn.execute("PRAGMA table_info(Autonomo)")}
+    logotipo = conn.execute("SELECT logotipo FROM Autonomo").fetchone()[0]
+    indices = {f[1] for f in conn.execute("PRAGMA index_list(Factura)")}
+    conn.close()
+
+    assert "logotipo" in columnas
+    assert logotipo is None
+    assert "idx_factura_estado" in indices
+
+
+def test_las_facturas_de_siempre_quedan_pendientes_de_cobro(base_migrada):
+    """Emitida es «emitida y sin cobrar»: ninguna base antigua dice lo contrario."""
+    conn = abrir(base_migrada)
+    estados = {f[0] for f in conn.execute(
+        "SELECT DISTINCT estado FROM Factura WHERE tipo = 'factura'"
+    )}
+    conn.close()
+    assert estados == {"emitida"}
+
+
 # ─────────────────────── se pueden repetir ───────────────────────
 
 
@@ -224,7 +247,7 @@ def test_migrar_dos_veces_no_cambia_nada(base_v0):
     segunda = migrar(conn, registrar=lambda *_: None)
     conn.close()
 
-    assert primera == [1, 2, 3, 4, 5, 6, 7, 8]
+    assert primera == [1, 2, 3, 4, 5, 6, 7, 8, 9]
     assert segunda == []
     assert leer(base_v0)["conteos"] == inventario_tras_la_primera["conteos"]
 
@@ -245,9 +268,9 @@ def test_una_base_a_medio_migrar_solo_aplica_lo_que_falta(base_v0):
         )
         conn.commit()
 
-    assert [m.VERSION for m in pendientes(conn)] == [4, 5, 6, 7, 8]
-    assert migrar(conn, registrar=lambda *_: None) == [4, 5, 6, 7, 8]
-    assert aplicadas(conn) == {1, 2, 3, 4, 5, 6, 7, 8}
+    assert [m.VERSION for m in pendientes(conn)] == [4, 5, 6, 7, 8, 9]
+    assert migrar(conn, registrar=lambda *_: None) == [4, 5, 6, 7, 8, 9]
+    assert aplicadas(conn) == {1, 2, 3, 4, 5, 6, 7, 8, 9}
     conn.close()
 
 

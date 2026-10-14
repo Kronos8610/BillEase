@@ -46,6 +46,21 @@ def documento(lineas, **extra):
     return datos
 
 
+@pytest.fixture
+def logotipo(tmp_path):
+    """Un PNG de 600 × 200 generado al vuelo, para no versionar imágenes."""
+    from PIL import Image, ImageDraw
+
+    imagen = Image.new("RGB", (600, 200), "white")
+    dibujo = ImageDraw.Draw(imagen)
+    dibujo.rectangle([8, 8, 592, 192], outline="black", width=6)
+    dibujo.text((40, 95), "CARPINTERIA GARCIA", fill="black")
+
+    ruta = tmp_path / "logotipo.png"
+    imagen.save(ruta)
+    return ruta
+
+
 def texto_de(ruta):
     """Todo el texto del PDF, página a página."""
     return [pagina.extract_text() or "" for pagina in PdfReader(str(ruta)).pages]
@@ -286,7 +301,7 @@ def test_emisor_y_cliente_van_en_la_misma_fila(tmp_path, factura_4):
     assert x_cliente > x_emisor, "el cliente debería ir a la derecha del emisor"
 
 
-def test_el_documento_no_lleva_marca_de_agua_ni_logotipo(tmp_path, factura_4):
+def test_el_documento_no_lleva_la_marca_del_programa(tmp_path, factura_4):
     """
     En el papel solo van los datos del autónomo y del cliente. El nombre del
     programa únicamente puede aparecer dentro del correo del emisor, porque
@@ -298,6 +313,61 @@ def test_el_documento_no_lleva_marca_de_agua_ni_logotipo(tmp_path, factura_4):
     for renglon in "\n".join(texto_de(ruta)).splitlines():
         if "billease" in renglon.lower():
             assert "@" in renglon, f"marca del programa fuera del correo: {renglon!r}"
+
+
+def test_un_documento_sin_logotipo_no_lleva_ninguna_imagen(tmp_path, factura_4):
+    """El papel sigue siendo el mismo si el emisor no ha puesto logotipo."""
+    ruta = tmp_path / "factura.pdf"
+    generar_documento_pdf(documento(factura_4), ruta)
+    assert list(PdfReader(str(ruta)).pages[0].images) == []
+
+
+def test_el_logotipo_del_emisor_encabeza_el_documento(tmp_path, factura_4, logotipo):
+    """El logotipo es del autónomo: es su documento, no el del programa."""
+    ruta = tmp_path / "factura.pdf"
+    emisor = dict(EMISOR, logotipo=str(logotipo))
+    generar_documento_pdf(documento(factura_4, emisor=emisor), ruta)
+
+    imagenes = list(PdfReader(str(ruta)).pages[0].images)
+    assert len(imagenes) == 1
+    # Y no desplaza el contenido fuera del papel.
+    assert "FACTURA" in texto_de(ruta)[0]
+
+
+def test_el_logotipo_se_escala_sin_deformarse(tmp_path, factura_4, logotipo):
+    """
+    Una imagen de 600 × 200 entra en la caja de 42 × 16 mm conservando su
+    proporción: lo que no puede pasar es que salga achatada.
+    """
+    from documents.invoice_pdf import ALTO_LOGO, ANCHO_LOGO, _logotipo
+
+    imagen = _logotipo({"emisor": {"logotipo": str(logotipo)}})
+    assert imagen is not None
+    assert imagen.drawWidth <= ANCHO_LOGO + 0.01
+    assert imagen.drawHeight <= ALTO_LOGO + 0.01
+    assert round(imagen.drawWidth / imagen.drawHeight, 2) == 3.0
+
+
+@pytest.mark.parametrize("ruta_logo", ["", "/no/existe/logo.png", "no-es-una-imagen.txt"])
+def test_un_logotipo_que_no_se_puede_leer_no_impide_emitir(
+    tmp_path, factura_4, ruta_logo
+):
+    """
+    Si el fichero se ha movido o no es una imagen, sale el documento de
+    siempre. Quedarse sin poder facturar por un logotipo sería absurdo.
+    """
+    if ruta_logo.endswith(".txt"):
+        falso = tmp_path / ruta_logo
+        falso.write_text("esto no es una imagen")
+        ruta_logo = str(falso)
+
+    ruta = tmp_path / "factura.pdf"
+    emisor = dict(EMISOR, logotipo=ruta_logo)
+    resultado = generar_documento_pdf(documento(factura_4, emisor=emisor), ruta)
+
+    assert resultado["paginas"] == 1
+    assert list(PdfReader(str(ruta)).pages[0].images) == []
+    assert "FACTURA" in texto_de(ruta)[0]
 
 
 def test_el_generador_no_necesita_qt():

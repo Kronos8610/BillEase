@@ -109,6 +109,9 @@ class Autonomo:
     codigo_postal: str = ""
     telefono: str = ""
     email: str = ""
+    # Ruta de la imagen, no la imagen: un PNG dentro de la base engorda cada
+    # copia de seguridad y no se puede mirar desde fuera.
+    logotipo: str = ""
 
     @property
     def nombre_completo(self):
@@ -118,6 +121,7 @@ class Autonomo:
     def desde_fila(cls, fila):
         if fila is None:
             return None
+        claves = set(fila.keys())
         return cls(
             nif=fila["DNI"] or "",
             nombre=fila["nombre"] or "",
@@ -126,6 +130,7 @@ class Autonomo:
             codigo_postal=str(fila["codigo_postal"] or ""),
             telefono=str(fila["telefono"] or ""),
             email=fila["email"] or "",
+            logotipo=(fila["logotipo"] if "logotipo" in claves else "") or "",
         )
 
 
@@ -134,15 +139,19 @@ class Autonomo:
 FACTURA = "factura"
 PRESUPUESTO = "presupuesto"
 
-# Estados. Una factura emitida está siempre «emitida»; los demás son de los
-# presupuestos, que sí tienen ciclo de vida.
+# Estados. Los cuatro primeros son de los presupuestos, que tienen ciclo de
+# vida; los dos últimos, de las facturas: emitida es «pendiente de cobro», y
+# el día que entra el dinero pasa a cobrada. «Vencida» no se guarda, se deduce
+# del vencimiento (`core/cobros.py`).
 BORRADOR = "borrador"
 ENVIADO = "enviado"
 ACEPTADO = "aceptado"
 RECHAZADO = "rechazado"
 EMITIDA = "emitida"
+COBRADA = "cobrada"
 
 ESTADOS_PRESUPUESTO = (BORRADOR, ENVIADO, ACEPTADO, RECHAZADO)
+ESTADOS_FACTURA = (EMITIDA, COBRADA)
 
 # Serie con la que se numeran los presupuestos, para que no se mezclen con la
 # de facturación.

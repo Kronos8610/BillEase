@@ -218,8 +218,11 @@ QComboBox {
     min-height: 20px;
 }
 
-QComboBox:focus      { border-bottom: 2px solid $acento; }
-QComboBox::drop-down { border: none; width: 22px; }
+QComboBox:focus { border-bottom: 2px solid $acento; }
+
+/* La flecha la dibuja el estilo del sistema: aquí solo se le hace sitio.
+   Quitarle el borde a la zona del desplegable la dejaba sin flecha. */
+QComboBox::drop-down { width: 22px; border: none; background: transparent; }
 
 QComboBox QAbstractItemView {
     background-color: $capa;
@@ -233,6 +236,25 @@ QComboBox QAbstractItemView {
 }
 
 QRadioButton, QCheckBox { color: $texto; spacing: 8px; }
+
+/* ───────────────────────────── listas ───────────────────────────── */
+
+QListWidget, QListView {
+    background-color: $capa_sutil;
+    color: $texto;
+    border: 1px solid $borde;
+    border-radius: $radio;
+    padding: 4px;
+    outline: none;
+}
+
+QListWidget::item, QListView::item {
+    padding: 7px 10px;
+    border-radius: 4px;
+}
+
+QListWidget::item:hover    { background-color: $realce; }
+QListWidget::item:selected { background-color: $seleccion; color: $texto; }
 
 /* ───────────────────────────── tabla ───────────────────────────── */
 

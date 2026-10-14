@@ -10,7 +10,11 @@ Sustituye a `aplication.py`. Los cambios que se ven:
   contraste, cuando lo legible empieza en 4,5:1 (defecto 13).
 - **Las pantallas se crean cuando se abren**, no las cuatro al arrancar.
 - **Atajos**: `Ctrl+N` crea lo de la pantalla en la que estás, `Ctrl+F` busca,
-  `Esc` limpia la búsqueda, `Ctrl+1/2/3` salta de sección.
+  `Esc` limpia la búsqueda, `Ctrl+1`…`Ctrl+5` salta de sección.
+
+Al cerrar se guarda una copia de seguridad de la base. Es lo último que hace
+el programa y no puede impedir que se cierre: si la copia falla, se avisa por
+la consola y la ventana se cierra igual.
 """
 
 from PyQt6.QtCore import Qt
@@ -30,12 +34,24 @@ from core.models import PRESUPUESTO
 from ui import iconos
 from ui.views.listado import CLIENTES, FACTURAS, PRESUPUESTOS
 
+RESUMEN = "Resumen"
+AJUSTES = "Ajustes"
+
 # (sección, icono, atajo)
 SECCIONES = (
     (FACTURAS, "factura", "Ctrl+1"),
     (PRESUPUESTOS, "presupuesto", "Ctrl+2"),
     (CLIENTES, "clientes", "Ctrl+3"),
+    (RESUMEN, "resumen", "Ctrl+4"),
+    (AJUSTES, "ajustes", "Ctrl+5"),
 )
+
+# Los rótulos que separan el menú lateral, antes de la sección que los lleva.
+GRUPOS = {
+    FACTURAS: "DOCUMENTOS",
+    CLIENTES: "DIRECTORIO",
+    RESUMEN: "CUENTAS",
+}
 
 
 class Navegacion(QWidget):
@@ -54,11 +70,9 @@ class Navegacion(QWidget):
         marca.setObjectName("Marca")
         columna.addWidget(marca)
 
-        columna.addWidget(self._rotulo("DOCUMENTOS"))
-
         for nombre, icono, atajo in SECCIONES:
-            if nombre == CLIENTES:
-                columna.addWidget(self._rotulo("DIRECTORIO"))
+            if nombre in GRUPOS:
+                columna.addWidget(self._rotulo(GRUPOS[nombre]))
 
             boton = QPushButton(f"  {nombre}")
             boton.setObjectName("Navegacion")
@@ -81,7 +95,7 @@ class Navegacion(QWidget):
         self.tema = QPushButton("  Cambiar tema")
         self.tema.setObjectName("Navegacion")
         self.tema.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.tema.setIcon(iconos.icono("ajustes"))
+        self.tema.setIcon(iconos.icono("imagen"))
         self.tema.setIconSize(iconos.medida())
         self.tema.setMinimumHeight(38)
         self.tema.setToolTip("Claro u oscuro. Al arrancar sigue al de Windows.")
@@ -110,7 +124,7 @@ class Navegacion(QWidget):
         """Tras cambiar de tema, los iconos se piden otra vez con el color nuevo."""
         for nombre, icono, _ in SECCIONES:
             self.botones[nombre].setIcon(iconos.icono(icono))
-        self.tema.setIcon(iconos.icono("ajustes"))
+        self.tema.setIcon(iconos.icono("imagen"))
 
 
 class VentanaPrincipal(QWidget):
@@ -151,9 +165,18 @@ class VentanaPrincipal(QWidget):
         el usuario no llegara a abrirlas.
         """
         if nombre not in self._creadas:
-            from ui.views.listado import Listado
+            if nombre == RESUMEN:
+                from ui.views.resumen import Resumen
 
-            pantalla = Listado(nombre, self)
+                pantalla = Resumen(self)
+            elif nombre == AJUSTES:
+                from ui.views.ajustes import Ajustes
+
+                pantalla = Ajustes(self)
+            else:
+                from ui.views.listado import Listado
+
+                pantalla = Listado(nombre, self)
             self._creadas[nombre] = pantalla
             self.paginas.addWidget(pantalla)
         return self._creadas[nombre]
@@ -183,6 +206,36 @@ class VentanaPrincipal(QWidget):
     def nuevo_documento(self, tipo):
         """Crear un documento desde fuera, por ejemplo al terminar el alta."""
         return self.ir_a(PRESUPUESTOS if tipo == PRESUPUESTO else FACTURAS, nuevo=True)
+
+    def recargar_todo(self):
+        """
+        Vuelve a leerlo todo de la base.
+
+        Hace falta después de restaurar una copia: lo que hay en pantalla es
+        de la base anterior, que ya no existe.
+        """
+        for pantalla in self._creadas.values():
+            pantalla.cargar()
+
+    # ───────────────────────────── al cerrar ─────────────────────────────
+
+    def closeEvent(self, evento):
+        """
+        Lo último que hace el programa es guardar una copia de la base.
+
+        Si la copia falla —disco lleno, carpeta sin permisos— se avisa por la
+        consola y la ventana se cierra igual: no poder cerrar el programa
+        sería peor que quedarse sin la copia de hoy.
+        """
+        try:
+            from data import backup
+
+            copia = backup.copiar()
+            if copia:
+                print(f"Copia de seguridad: {copia}")
+        except Exception as e:  # noqa: BLE001
+            print(f"No se pudo guardar la copia de seguridad: {e}")
+        super().closeEvent(evento)
 
     # ───────────────────────────── tema ─────────────────────────────
 

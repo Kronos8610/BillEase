@@ -16,11 +16,15 @@ Cada fase añade aquí sus comprobaciones:
     fase 3 → --conexiones     una sola conexión para pintar la lista  ✓
     fase 4 → --abrir-todas    todos los documentos se abren y se imprimen  ✓
     fase 5 → --pintar         el listado se pinta al instante con 1.000  ✓
+    fase 6 → --fiscal         el resumen de IVA cuadra con la suma a mano  ✓
+    fase 6 → --copia          la copia se hace y se restaura de verdad  ✓
 """
 
 import argparse
 import json
+import os
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -66,6 +70,30 @@ class Resultado:
 # Tablas que desaparecen a propósito en alguna migración. Cualquier otra que
 # falte es una pérdida de datos, no una decisión.
 TABLAS_RETIRADAS = {"Servicio": "migración 007: el catálogo se retira"}
+
+
+@contextmanager
+def apuntando_a(ruta):
+    """
+    Hace que la aplicación mire a otra base, y lo deja como estaba al salir.
+
+    Varias comprobaciones trabajan sobre una base temporal. Si una de ellas se
+    dejara `BILLEASE_DB` apuntando a un directorio ya borrado, la siguiente
+    fallaría con «no such table» sin que nada estuviera mal.
+    """
+    from data import connection
+
+    anterior = os.environ.get("BILLEASE_DB")
+    os.environ["BILLEASE_DB"] = str(ruta)
+    connection.cerrar()
+    try:
+        yield ruta
+    finally:
+        connection.cerrar()
+        if anterior is None:
+            os.environ.pop("BILLEASE_DB", None)
+        else:
+            os.environ["BILLEASE_DB"] = anterior
 
 
 def verificar_linea_base(inv, base, r):
@@ -389,112 +417,254 @@ def verificar_pintar(ruta_base, r):
     y se cronometra. Si no se le pasa `--base`, la base de prueba se crea en
     un directorio temporal y se borra al salir, sin tocar la del usuario.
     """
-    import os
     import tempfile
-    import time
     from pathlib import Path as _Path
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     with tempfile.TemporaryDirectory(prefix="billease-pintar-") as tmp:
         if ruta_base is None:
-            from tools import seed_demo
-
             ruta_base = _Path(tmp) / "grande.db"
-            conn = abrir_base(ruta_base)
-            try:
-                seed_demo.crear_esquema(conn)
-                seed_demo.rellenar(conn)
-                seed_demo.rellenar_muchas(conn, FACTURAS_DE_PRUEBA)
-                from data.migrations import migrar
-
-                migrar(conn, registrar=lambda *_: None)
-            finally:
-                conn.close()
-
-        os.environ["BILLEASE_DB"] = str(ruta_base)
-        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
-        from data import connection
-
-        connection.cerrar()
-
-        from PyQt6.QtWidgets import QApplication
-
-        import theme
-
-        app = QApplication.instance() or QApplication([])
-        theme.aplicar_tema(app, "claro")
-
-        from data.repositories import documentos as repo_documentos
-        from ui.views.listado import FACTURAS, Listado
-
-        cuantas = len(repo_documentos.listar("factura"))
-        r.comprobar("facturas en la base de prueba", cuantas >= FACTURAS_DE_PRUEBA, True,
-                    detalle=f"{cuantas} facturas")
-
-        widgets_antes = len(app.allWidgets())
-
-        comienzo = time.perf_counter()
-        listado = Listado(FACTURAS)          # consulta + modelo + primera pintura
-        listado.resize(1280, 800)
-        listado.show()
-        app.processEvents()
-        milisegundos = (time.perf_counter() - comienzo) * 1000
-
-        vivos = len(app.allWidgets()) - widgets_antes
-
-        r.comprobar(
-            f"el listado se pinta en menos de {LIMITE_MS} ms",
-            milisegundos < LIMITE_MS,
-            True,
-            detalle=f"{milisegundos:.0f} ms con {cuantas} facturas",
-        )
-        r.comprobar(
-            f"menos de {LIMITE_WIDGETS} widgets vivos",
-            vivos < LIMITE_WIDGETS,
-            True,
-            detalle=f"{vivos} widgets para {cuantas} filas"
-                    f" (antes eran ~11 por fila: {cuantas * 11})",
-        )
-        r.comprobar("todas las filas en el modelo", listado.modelo.rowCount(), cuantas)
-
-        # Y que la búsqueda y el orden de verdad funcionan sobre esos mil.
-        listado.buscador.setText("perez")
-        app.processEvents()
-        filtradas = listado.filtro.rowCount()
-        r.comprobar("la búsqueda filtra", 0 < filtradas < cuantas, True,
-                    detalle=f"«perez» deja {filtradas} de {cuantas}")
-        listado.buscador.clear()
-
-        from PyQt6.QtCore import Qt
-
-        columna_total = len(listado.modelo.columnas) - 1
-        listado.vista.sortByColumn(columna_total, Qt.SortOrder.DescendingOrder)
-        app.processEvents()
-        from ui.models import ROL_ORDEN
-
-        importes = [
-            listado.filtro.index(fila, columna_total).data(ROL_ORDEN)
-            for fila in range(min(50, listado.filtro.rowCount()))
-        ]
-        r.comprobar("el orden por importe es numérico", importes == sorted(importes, reverse=True),
-                    True, detalle=f"de {importes[0]} € a {importes[-1]} €")
-
-        listado.close()
-        listado.deleteLater()
-        connection.cerrar()
+            _base_grande(ruta_base)
+        with apuntando_a(ruta_base):
+            _medir_pintado(r)
 
 
-def abrir_base(ruta):
+def _base_grande(ruta):
+    """Una base con mil facturas, recorriendo las mismas migraciones de siempre."""
     from data.connection import abrir
+    from data.migrations import migrar
+    from tools import seed_demo
 
-    return abrir(ruta)
+    conn = abrir(ruta)
+    try:
+        seed_demo.crear_esquema(conn)
+        seed_demo.rellenar(conn)
+        seed_demo.rellenar_muchas(conn, FACTURAS_DE_PRUEBA)
+        migrar(conn, registrar=lambda *_: None)
+    finally:
+        conn.close()
+
+
+def _medir_pintado(r):
+    """Abre el listado y cronometra, con la base ya puesta."""
+    import time
+
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtWidgets import QApplication
+
+    import theme
+    from data.repositories import documentos as repo_documentos
+    from ui.models import ROL_ORDEN
+    from ui.views.listado import FACTURAS, Listado
+
+    app = QApplication.instance() or QApplication([])
+    theme.aplicar_tema(app, "claro")
+
+    cuantas = len(repo_documentos.listar("factura"))
+    r.comprobar("facturas en la base de prueba", cuantas >= FACTURAS_DE_PRUEBA, True,
+                detalle=f"{cuantas} facturas")
+
+    widgets_antes = len(app.allWidgets())
+
+    comienzo = time.perf_counter()
+    listado = Listado(FACTURAS)              # consulta + modelo + primera pintura
+    listado.resize(1280, 800)
+    listado.show()
+    app.processEvents()
+    milisegundos = (time.perf_counter() - comienzo) * 1000
+
+    vivos = len(app.allWidgets()) - widgets_antes
+
+    r.comprobar(
+        f"el listado se pinta en menos de {LIMITE_MS} ms",
+        milisegundos < LIMITE_MS,
+        True,
+        detalle=f"{milisegundos:.0f} ms con {cuantas} facturas",
+    )
+    r.comprobar(
+        f"menos de {LIMITE_WIDGETS} widgets vivos",
+        vivos < LIMITE_WIDGETS,
+        True,
+        detalle=f"{vivos} widgets para {cuantas} filas"
+                f" (antes eran ~11 por fila: {cuantas * 11})",
+    )
+    r.comprobar("todas las filas en el modelo", listado.modelo.rowCount(), cuantas)
+
+    # Y que la búsqueda y el orden de verdad funcionan sobre esos mil.
+    listado.buscador.setText("perez")
+    app.processEvents()
+    filtradas = listado.filtro.rowCount()
+    r.comprobar("la búsqueda filtra", 0 < filtradas < cuantas, True,
+                detalle=f"«perez» deja {filtradas} de {cuantas}")
+    listado.buscador.clear()
+
+    # La columna del importe, buscada por su título: el orden de las columnas
+    # cambia cuando se añade alguna, como la del cobro en la fase 6.
+    columna_total = next(
+        numero for numero, columna in enumerate(listado.modelo.columnas)
+        if columna.titulo == "Total"
+    )
+    listado.vista.sortByColumn(columna_total, Qt.SortOrder.DescendingOrder)
+    app.processEvents()
+    importes = [
+        listado.filtro.index(fila, columna_total).data(ROL_ORDEN)
+        for fila in range(min(50, listado.filtro.rowCount()))
+    ]
+    r.comprobar("el orden por importe es numérico",
+                importes == sorted(importes, reverse=True), True,
+                detalle=f"de {importes[0]} € a {importes[-1]} €")
+
+    listado.close()
+    listado.deleteLater()
+
+
+def verificar_fiscal(ruta_base, r):
+    """
+    Fase 6 · el resumen trimestral cuadra con la suma a mano.
+
+    Se suman las facturas una a una, con `Decimal`, sin pasar por
+    `core.reports`, y se compara con lo que dice el resumen. Si el resumen se
+    comprobara contra sí mismo no se estaría comprobando nada.
+    """
+    with apuntando_a(ruta_base):
+        _cuadrar_resumen(r)
+
+
+def _cuadrar_resumen(r):
+    from decimal import Decimal
+
+    from core.money import formatear
+    from core.reports import resumen_trimestral, trimestre_de
+    from core.taxes import desde_base
+    from data.repositories import documentos as repo_documentos
+
+    facturas = repo_documentos.listar("factura")
+    presupuestos = repo_documentos.listar("presupuesto")
+    r.comprobar("facturas que entran en el resumen", len(facturas) > 0, True)
+
+    ejercicios = repo_documentos.ejercicios()
+    for ejercicio in ejercicios:
+        del_ano = [f for f in facturas if f.ejercicio == ejercicio]
+        resumen = resumen_trimestral(del_ano + presupuestos, ejercicio)
+
+        # La suma a mano, factura por factura.
+        base = cuota = total = Decimal("0")
+        por_trimestre = {1: Decimal("0"), 2: Decimal("0"), 3: Decimal("0"), 4: Decimal("0")}
+        for factura in del_ano:
+            totales = desde_base(factura.base, factura.tipo_iva)
+            base += totales.base
+            cuota += totales.cuota_iva
+            total += totales.total
+            por_trimestre[trimestre_de(factura.fecha)] += totales.base
+
+        r.comprobar(
+            f"{ejercicio}: base del ejercicio",
+            formatear(resumen.anual.base), formatear(base),
+            detalle=f"{len(del_ano)} facturas sumadas una a una",
+        )
+        r.comprobar(f"{ejercicio}: IVA repercutido",
+                    formatear(resumen.anual.cuota_iva), formatear(cuota))
+        r.comprobar(f"{ejercicio}: total facturado",
+                    formatear(resumen.anual.total), formatear(total))
+        r.comprobar(
+            f"{ejercicio}: los 4 trimestres suman el año",
+            formatear(sum((t.base for t in resumen.trimestres), Decimal("0"))),
+            formatear(base),
+        )
+        for numero in (1, 2, 3, 4):
+            tramo = resumen.trimestre(numero)
+            r.comprobar(f"{ejercicio}: base del {numero}T",
+                        formatear(tramo.base), formatear(por_trimestre[numero]))
+
+    # Un presupuesto no es un ingreso: no puede colarse en el resumen.
+    if presupuestos:
+        de_presupuestos = sum((p.base for p in presupuestos), Decimal("0"))
+        suma_resumenes = sum(
+            (resumen_trimestral(facturas + presupuestos, e).anual.base for e in ejercicios),
+            Decimal("0"),
+        )
+        suma_facturas = sum((f.base for f in facturas), Decimal("0"))
+        r.comprobar(
+            "los presupuestos quedan fuera del resumen",
+            formatear(suma_resumenes), formatear(suma_facturas),
+            detalle=f"{len(presupuestos)} presupuestos por "
+                    f"{formatear(de_presupuestos)} € sin declarar",
+        )
+
+
+def verificar_copia(ruta_base, r):
+    """
+    Fase 6 · la copia de seguridad se hace y se restaura.
+
+    Una copia que no se ha restaurado nunca no es una copia: es un fichero.
+    Aquí se copia, se borra todo, se restaura y se comprueba que han vuelto
+    los mismos datos —sobre una copia de trabajo, nunca sobre la del usuario.
+    """
+    import shutil
+    import tempfile
+    from pathlib import Path as _Path
+
+    with tempfile.TemporaryDirectory(prefix="billease-copia-") as tmp:
+        trabajo = _Path(tmp) / "billease.db"
+        shutil.copy2(ruta_base, trabajo)
+        with apuntando_a(trabajo):
+            _ida_y_vuelta(r, trabajo)
+
+
+def _ida_y_vuelta(r, trabajo):
+    """Copiar, borrar, restaurar y comprobar que ha vuelto todo."""
+    from data import backup
+    from data.repositories import documentos as repo_documentos
+
+    antes = repo_documentos.listar("factura")
+    suma_antes = sum(float(f.importe_total) for f in antes)
+
+    copia = backup.copiar(trabajo)
+    r.comprobar("la copia se escribe", copia is not None and copia.exists(), True,
+                detalle=str(copia))
+
+    for documento in antes:
+        repo_documentos.eliminar(documento.id)
+    r.comprobar("se borra todo para la prueba", len(repo_documentos.listar("factura")), 0)
+
+    resultado = backup.restaurar(copia, trabajo)
+    despues = repo_documentos.listar("factura")
+
+    r.comprobar("al restaurar vuelven las facturas", len(despues), len(antes))
+    r.comprobar(
+        "y vuelven con sus importes",
+        round(sum(float(f.importe_total) for f in despues), 2),
+        round(suma_antes, 2),
+    )
+    r.comprobar(
+        "restaurar guarda antes lo que había",
+        resultado["copia_previa"] is not None and resultado["copia_previa"].exists(),
+        True,
+    )
+
+    # Y la limpieza: no se guardan copias sin fin.
+    for numero in range(backup.CUANTAS_SE_GUARDAN + 4):
+        backup.copiar(
+            trabajo,
+            backup.directorio(trabajo) / f"billease-2026-01-{numero + 1:02d}_120000.db",
+            cuantas_se_guardan=0,
+        )
+    backup.limpiar(trabajo)
+    r.comprobar(
+        "solo se guardan las últimas copias",
+        len(backup.copias(trabajo)) <= backup.CUANTAS_SE_GUARDAN,
+        True,
+        detalle=f"{len(backup.copias(trabajo))} copias, máximo {backup.CUANTAS_SE_GUARDAN}",
+    )
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     parser.add_argument("--base", default=None, help="base de datos a verificar (por defecto, la de la aplicación)")
     parser.add_argument("--baseline", default=FICHERO_BASELINE, help="línea base de referencia")
-    for comprobacion in ("totales", "post-migracion", "conexiones", "abrir-todas", "pintar"):
+    for comprobacion in ("totales", "post-migracion", "conexiones", "abrir-todas",
+                         "pintar", "fiscal", "copia"):
         parser.add_argument(f"--{comprobacion}", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
@@ -533,6 +703,12 @@ def main():
         # Sin --base se genera una base de mil facturas aparte: medir sobre la
         # del usuario, que tiene siete, no dice nada.
         verificar_pintar(args.base, r)
+    if args.fiscal:
+        print()
+        verificar_fiscal(args.base or _base_por_defecto(), r)
+    if args.copia:
+        print()
+        verificar_copia(args.base or _base_por_defecto(), r)
     return r.resumen()
 
 

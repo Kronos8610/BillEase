@@ -20,6 +20,7 @@ from ui.models.tabla import (
     Columna,
     FiltroTexto,
     ModeloTabla,
+    repartir,
     sin_tildes,
 )
 
@@ -28,5 +29,5 @@ __all__ = [
     "CENTRO", "DERECHA", "IZQUIERDA", "Columna", "FiltroTexto", "ModeloTabla",
     "ROL_BUSQUEDA", "ROL_ESTADO", "ROL_OBJETO", "ROL_ORDEN",
     "estado_de", "modelo_clientes", "modelo_facturas", "modelo_presupuestos",
-    "sin_tildes",
+    "repartir", "sin_tildes",
 ]

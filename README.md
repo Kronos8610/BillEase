@@ -11,9 +11,11 @@
 Está diseñada para autónomos que necesitan una herramienta ligera y fácil de usar para:
 
 - Registrar y gestionar sus clientes
-- Crear y editar facturas profesionales
+- Crear y editar facturas y presupuestos profesionales
 - Escribir cada concepto con su cantidad, su unidad y su precio
-- Exportar facturas en formato **PDF** listas para enviar
+- Saber qué está cobrado, qué está pendiente y qué se ha pasado de plazo
+- Sacar el **resumen de IVA de cada trimestre** para el modelo 303
+- Exportar facturas en **PDF** y los datos en **CSV** para la gestoría
 
 No requiere conexión a internet, ni servidores externos. Todo queda guardado localmente en tu ordenador.
 
@@ -74,6 +76,25 @@ primera vez (el original se conserva renombrado, no se borra).
 Al arrancar se aplican las **migraciones** pendientes, guardando antes una copia de
 seguridad con la fecha en el nombre. La variable de entorno `BILLEASE_DB` permite apuntar
 a otro fichero, útil para pruebas.
+
+### Generar el ejecutable (Windows)
+
+Para repartirlo a alguien que no tiene Python instalado:
+
+```bash
+pip install pyinstaller
+pyinstaller billease.spec          # deja dist\BillEase\BillEase.exe
+```
+
+Y para el instalador, con [Inno Setup 6](https://jrsoftware.org/isdl.php):
+
+```bash
+iscc installer\billease.iss        # deja installer\Output\BillEase-instalador-1.0.0.exe
+```
+
+El instalador copia el programa en «Archivos de programa», que es de solo lectura para el
+usuario. **Los datos no van ahí**: viven en `%LOCALAPPDATA%\BillEase\`, así que
+desinstalar no borra ninguna factura.
 
 ---
 
@@ -165,7 +186,28 @@ facturación.
 Permite modificar cualquier factura existente: cambiar el cliente, las fechas, los conceptos y las cantidades.
 
 ### 📥 Exportar a PDF
-Genera un PDF profesional de cualquier factura con los datos del emisor, del cliente, el desglose de conceptos, subtotal, IVA (21%) y total.
+Genera un PDF profesional de cualquier factura con los datos del emisor, del cliente, el
+desglose de conceptos, subtotal, IVA (21%) y total. Si has puesto logotipo, encabeza el
+documento.
+
+### 📊 Resumen trimestral de IVA
+Lo facturado y el IVA repercutido de cada trimestre y del año entero, que es lo que pide
+el modelo 303. Los presupuestos quedan fuera: una oferta no es un ingreso. Se exporta a
+CSV para mandárselo a la gestoría.
+
+![Resumen trimestral](assets/resumen_trimestral.png)
+
+### 💶 Estados de cobro
+Cada factura dice si está **cobrada**, **pendiente** o **vencida**. Lo de vencida no hay
+que marcarlo: se deduce de la fecha de vencimiento, así que la lista siempre está al día
+sin tocar nada.
+
+### ⚙️ Ajustes: logotipo, copias y exportación
+Tu logotipo en el papel, una copia de seguridad al cerrar —y cuando quieras—, y la
+exportación a CSV de documentos, conceptos y clientes. Restaurar una copia guarda antes
+lo que hubiera, así que equivocarse no es un camino de ida.
+
+![Ajustes](assets/ajustes.png)
 
 ---
 
@@ -190,25 +232,33 @@ BillEase/
 │   ├── taxes.py         # Base, IVA y total: el único cálculo
 │   ├── numbering.py     # Serie fiscal por ejercicio
 │   ├── quotes.py        # Presupuestos y su conversión en factura
+│   ├── cobros.py        # Cobrada, pendiente o vencida
+│   ├── reports.py       # Resumen de IVA por trimestre y por año
 │   ├── fechas.py        # ISO en la base, formato español en pantalla
 │   ├── security.py      # Contraseña cifrada con Argon2
 │   └── validators/      # NIF, NIE, CIF, teléfono, CP
 ├── data/                # Único sitio con SQL
 │   ├── connection.py    # Una conexión, con claves ajenas activadas
 │   ├── schema.py        # Esquema de partida
-│   ├── migrations/      # 001 … 008
+│   ├── backup.py        # Copias de seguridad, con la API de copia de SQLite
+│   ├── migrations/      # 001 … 009
 │   └── repositories/    # documentos, clientes, autonomo
 ├── documents/
-│   └── invoice_pdf.py   # Factura y presupuesto, sin Qt
+│   ├── invoice_pdf.py   # Factura y presupuesto, sin Qt
+│   └── export_csv.py    # CSV para Excel en español
 ├── ui/                  # Pantallas
 │   ├── shell.py         # Ventana principal y navegación lateral
 │   ├── iconos.py        # Los iconos, en SVG propio (ya no hay emojis)
 │   ├── models/          # QAbstractTableModel: listados y búsqueda
-│   ├── views/           # listado · documento_editor · cliente_editor · registro
+│   ├── views/           # listado · documento_editor · cliente_editor
+│   │                    # registro · resumen · ajustes
 │   └── widgets/         # concepto.py (sugerencias) · pildora.py (estados)
-└── theme/               # Todo el color, en un sitio
-    ├── tokens.py        # Paleta clara y oscura, sin dependencias
-    └── app.qss          # Una hoja de estilos, no 84 llamadas sueltas
+├── theme/               # Todo el color, en un sitio
+│   ├── tokens.py        # Paleta clara y oscura, sin dependencias
+│   └── app.qss          # Una hoja de estilos, no 84 llamadas sueltas
+├── billease.spec        # Receta de PyInstaller
+└── installer/
+    └── billease.iss     # Instalador para Windows (Inno Setup)
 ```
 
 ---
@@ -233,6 +283,7 @@ python -m data.migrations --dry-run       # qué migraciones faltan
 python -m data.migrations                 # aplicarlas (deja copia de seguridad)
 python tools/verify.py --totales --post-migracion
 python tools/verify.py --pintar           # 1.000 facturas: cuánto tarda el listado
+python tools/verify.py --fiscal --copia   # el IVA cuadra y la copia se restaura
 python tools/check_contraste.py           # legibilidad de los dos temas
 python tools/check_estilos.py             # una sola hoja de estilos, ningún emoji
 pytest                                    # pruebas automáticas
@@ -278,14 +329,12 @@ Estas son algunas funcionalidades que se plantean incorporar en próximas versio
 - Subida de logotipo propio para que aparezca en los PDFs generados
 
 ### 📊 Estadísticas e informes
+- ~~Resumen trimestral y anual de facturación~~ y ~~exportación a CSV~~ — **ya disponibles**
 - Panel de estadísticas con gráficos de ingresos por mes
-- Resumen anual de facturación para facilitar la declaración de impuestos
-- Exportación de informes en Excel o CSV
 
 ### 📄 Mejoras en la generación de PDF
+- ~~Logotipo del autónomo en la cabecera~~ y ~~numeración automática `2025-001`~~ — **ya disponibles**
 - Plantillas de diseño seleccionables para las facturas
-- Inclusión del logotipo del autónomo en la cabecera
-- Numeración automática de facturas con formato personalizable (ej: `2025-001`)
 - Campo de número de cuenta bancaria para incluirlo en la factura
 
 ### 📧 Envío de facturas
@@ -293,5 +342,4 @@ Estas son algunas funcionalidades que se plantean incorporar en próximas versio
 - Historial de facturas enviadas por correo
 
 ### 🗄️ Gestión avanzada de datos
-- Sistema de copias de seguridad automáticas de la base de datos
-- Posibilidad de marcar facturas como **pagadas / pendientes / vencidas**
+- ~~Copias de seguridad automáticas~~ y ~~facturas cobradas / pendientes / vencidas~~ — **ya disponibles**

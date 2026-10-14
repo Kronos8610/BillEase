@@ -38,8 +38,17 @@ from PyQt6.QtWidgets import (
 )
 
 import theme
+from core.cobros import TRANSICIONES as TRANSICIONES_COBRO
 from core.fechas import a_espanol
-from core.models import ACEPTADO, ENVIADO, FACTURA, PRESUPUESTO, RECHAZADO
+from core.models import (
+    ACEPTADO,
+    COBRADA,
+    EMITIDA,
+    ENVIADO,
+    FACTURA,
+    PRESUPUESTO,
+    RECHAZADO,
+)
 from core.money import formatear
 from core.quotes import TRANSICIONES
 from core.taxes import calcular
@@ -54,6 +63,7 @@ from ui.models import (
     modelo_clientes,
     modelo_facturas,
     modelo_presupuestos,
+    repartir,
 )
 from ui.widgets.pildora import PildoraEstado
 
@@ -89,9 +99,17 @@ NOMBRES_ESTADO = {
     ENVIADO: "Marcar como enviado",
     ACEPTADO: "Marcar como aceptado",
     RECHAZADO: "Marcar como rechazado",
+    COBRADA: "Marcar como cobrada",
+    EMITIDA: "Volver a pendiente de cobro",
 }
 
-ICONOS_ESTADO = {ENVIADO: "enviar", ACEPTADO: "aceptar", RECHAZADO: "rechazar"}
+ICONOS_ESTADO = {
+    ENVIADO: "enviar",
+    ACEPTADO: "aceptar",
+    RECHAZADO: "rechazar",
+    COBRADA: "cobrado",
+    EMITIDA: "restaurar",
+}
 
 SINGULAR = {FACTURAS: "factura", PRESUPUESTOS: "presupuesto", CLIENTES: "cliente"}
 
@@ -209,6 +227,9 @@ class Listado(QWidget):
                                     "Guarda el documento en PDF")
             self.boton_editar = anadir("Editar", "editar", self._editar,
                                        "También con doble clic en la fila")
+        if self.categoria == FACTURAS:
+            self.boton_estado = anadir("Cobro", "cobrado", self._menu_estado,
+                                       "Marcar la factura como cobrada")
         if self.categoria == PRESUPUESTOS:
             self.boton_estado = anadir("Cambiar estado", "enviar", self._menu_estado)
             self.boton_facturar = anadir("Facturar", "facturar", self._facturar,
@@ -258,9 +279,9 @@ class Listado(QWidget):
         cabecera = self.vista.horizontalHeader()
         cabecera.setHighlightSections(False)
         cabecera.setSectionsMovable(True)
-        cabecera.setStretchLastSection(False)
+        cabecera.setStretchLastSection(True)
+        cabecera.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         for numero, columna in enumerate(self.modelo.columnas):
-            cabecera.setSectionResizeMode(numero, QHeaderView.ResizeMode.Stretch)
             if columna.estado:
                 self.vista.setItemDelegateForColumn(numero, PildoraEstado(self.vista))
 
@@ -309,6 +330,11 @@ class Listado(QWidget):
         columna.addStretch()
         return caja
 
+    def resizeEvent(self, evento):
+        """Al cambiar el tamaño, las columnas se reparten según su peso."""
+        super().resizeEvent(evento)
+        repartir(self.vista)
+
     def repintar_iconos(self):
         """Al cambiar de tema los iconos se piden otra vez, del color nuevo."""
         for control, nombre in self._iconos_de_accion.items():
@@ -328,6 +354,7 @@ class Listado(QWidget):
             elementos = repo_documentos.listar(self.tipo)
 
         self.modelo.poner(elementos)
+        repartir(self.vista)
         self._buscar(self.buscador.text())
         self._cambio_seleccion()
 
@@ -376,18 +403,30 @@ class Listado(QWidget):
             return None
         return self.filtro.data(indices[0], ROL_OBJETO)
 
+    def _transiciones(self, documento):
+        """A qué estados puede pasar lo seleccionado, según lo que sea."""
+        if documento is None:
+            return ()
+        if documento.es_presupuesto:
+            return TRANSICIONES.get(documento.estado, ())
+        return TRANSICIONES_COBRO.get(documento.estado, ())
+
     def _cambio_seleccion(self, *_):
         elemento = self.seleccionado()
         for accion in self.acciones:
             accion.setEnabled(elemento is not None)
 
-        if self.categoria != PRESUPUESTOS or elemento is None:
+        if self.categoria == CLIENTES or elemento is None:
             return
-        # Un presupuesto solo se factura si está aceptado y no se ha facturado ya.
-        self.boton_estado.setEnabled(bool(TRANSICIONES.get(elemento.estado)))
-        self.boton_facturar.setEnabled(
-            elemento.estado == ACEPTADO and not repo_documentos.factura_de(elemento.id)
-        )
+
+        self.boton_estado.setEnabled(bool(self._transiciones(elemento)))
+        if self.categoria == PRESUPUESTOS:
+            # Un presupuesto solo se factura si está aceptado y no se ha
+            # facturado ya: facturarlo dos veces es cobrar dos veces.
+            self.boton_facturar.setEnabled(
+                elemento.estado == ACEPTADO
+                and not repo_documentos.factura_de(elemento.id)
+            )
 
     def _menu_contextual(self, punto):
         if self.seleccionado() is None:
@@ -434,15 +473,15 @@ class Listado(QWidget):
             self.cargar()
 
     def _menu_estado(self):
-        presupuesto = self.seleccionado()
-        if presupuesto is None:
+        documento = self.seleccionado()
+        if documento is None:
             return
         menu = QMenu(self)
-        for estado in TRANSICIONES.get(presupuesto.estado, ()):
+        for estado in self._transiciones(documento):
             menu.addAction(
                 iconos.icono(ICONOS_ESTADO[estado]),
                 NOMBRES_ESTADO[estado],
-                lambda _=False, e=estado: self._cambiar_estado(presupuesto.id, e),
+                lambda _=False, e=estado: self._cambiar_estado(documento.id, e),
             )
         menu.exec(self.boton_estado.mapToGlobal(self.boton_estado.rect().bottomLeft()))
 
@@ -530,6 +569,7 @@ class Listado(QWidget):
                 "poblacion": emisor.codigo_postal,
                 "telefono": emisor.telefono,
                 "email": emisor.email,
+                "logotipo": emisor.logotipo,
             },
             "cliente": {
                 "nombre": cliente.nombre,

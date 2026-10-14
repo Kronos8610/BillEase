@@ -15,6 +15,7 @@ algo «se vea bonito»: comprueban lo que exige la puerta 5, que es medible.
 import os
 import re
 from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
 
@@ -27,7 +28,15 @@ from PyQt6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
 import theme  # noqa: E402
 from core.fechas import a_espanol, hoy_iso  # noqa: E402
-from core.models import ACEPTADO, ENVIADO, PRESUPUESTO, Cliente, Linea  # noqa: E402
+from core.models import (  # noqa: E402
+    ACEPTADO,
+    COBRADA,
+    ENVIADO,
+    PRESUPUESTO,
+    Autonomo,
+    Cliente,
+    Linea,
+)
 from core.quotes import validez_por_defecto  # noqa: E402
 from data.connection import cerrar  # noqa: E402
 from data.repositories import clientes as repo_clientes  # noqa: E402
@@ -36,7 +45,7 @@ from data.schema import crear_esquema_y_migrar  # noqa: E402
 from theme.tokens import MINIMO, revisar, temas  # noqa: E402
 from tools import check_estilos  # noqa: E402
 from ui import iconos  # noqa: E402
-from ui.models import ROL_ESTADO, ROL_ORDEN  # noqa: E402
+from ui.models import ROL_ESTADO, ROL_OBJETO, ROL_ORDEN  # noqa: E402
 from ui.views.listado import CLIENTES, FACTURAS, PRESUPUESTOS, Listado  # noqa: E402
 
 
@@ -267,10 +276,18 @@ def test_la_busqueda_que_no_encuentra_nada_lo_dice(base, app):
     assert not listado.vacio_boton.isVisible()
 
 
+def columna_de(listado, titulo):
+    """El número de la columna que lleva ese título."""
+    for numero, columna in enumerate(listado.modelo.columnas):
+        if columna.titulo == titulo:
+            return numero
+    raise AssertionError(f"no hay columna «{titulo}»")
+
+
 def test_el_orden_por_importe_es_numerico_no_alfabetico(base, app):
     """«1.240,00 €» va después de «195,00 €», no antes por empezar por uno."""
     listado = Listado(FACTURAS)
-    columna = len(listado.modelo.columnas) - 1
+    columna = columna_de(listado, "Total")
 
     listado.vista.sortByColumn(columna, Qt.SortOrder.AscendingOrder)
     texto = [listado.filtro.index(f, columna).data() for f in range(2)]
@@ -375,14 +392,166 @@ def test_un_cliente_con_facturas_no_se_puede_borrar(base, app, sin_dialogos):
     assert any("No se puede eliminar" in titulo for _, titulo, _ in sin_dialogos)
 
 
+# ─────────────────────── resumen y ajustes (fase 6) ───────────────────────
+
+
+def test_el_resumen_ensena_los_cuatro_trimestres_y_el_ano(base, app):
+    from ui.views.resumen import Resumen
+
+    pantalla = Resumen()
+    # 1.240 + 195 = 1.435 de base, los dos en el trimestre de hoy.
+    assert pantalla.modelo.rowCount() == 5          # 4 trimestres + el año
+    assert pantalla.modelo.data(pantalla.modelo.index(4, 0)) == (
+        f"Ejercicio {hoy_iso()[:4]}"
+    )
+    assert pantalla.modelo.data(pantalla.modelo.index(4, 2)) == "1.435,00 €"
+    assert pantalla.modelo.data(pantalla.modelo.index(4, 3)) == "301,35 €"
+    assert "1.736,35 €" == pantalla.facturado.valor.text()
+
+
+def test_el_resumen_deja_fuera_los_presupuestos(base, app):
+    """Una oferta no es un ingreso: declararla sería declarar lo que no se cobró."""
+    from ui.views.resumen import Resumen
+
+    assert len(repo.listar(PRESUPUESTO)) == 1       # hay uno de 800 €
+    pantalla = Resumen()
+    assert pantalla.resumen.anual.documentos == 2   # solo las dos facturas
+    assert pantalla.resumen.anual.base == Decimal("1435.00")
+
+
+def test_el_resumen_separa_lo_cobrado_de_lo_vencido(base, app):
+    from ui.views.resumen import Resumen
+
+    factura = repo.listar()[0]
+    repo.cambiar_estado(factura.id, COBRADA)
+
+    pantalla = Resumen()
+    pantalla.cargar()
+    assert pantalla.cobrado.valor.text() != "0,00 €"
+    assert "cobradas" in pantalla.cobrado.detalle.text()
+
+
+def test_los_ajustes_dicen_donde_vive_la_base(base, app):
+    """La versión anterior la creaba donde se arrancara, y los datos «desaparecían»."""
+    import os
+
+    from ui.views.ajustes import Ajustes
+
+    pantalla = Ajustes()
+    assert os.environ["BILLEASE_DB"] in pantalla.donde.text()
+
+
+def test_se_puede_poner_y_quitar_el_logotipo(base, app, tmp_path):
+    from PIL import Image
+
+    from data.repositories import autonomo as repo_autonomo
+    from ui.views.ajustes import Ajustes
+
+    repo_autonomo.registrar(
+        Autonomo(nif="12345678Z", nombre="Carlos", apellido="García",
+                 direccion="Calle Mayor 12", codigo_postal="28001",
+                 telefono="612345678", email="carlos@billease.es"),
+        "Pass1234",
+    )
+    logo = tmp_path / "logo.png"
+    Image.new("RGB", (600, 200), "white").save(logo)
+
+    pantalla = Ajustes()
+    assert "Todavía no has puesto logotipo" in pantalla.ruta_logo.text()
+
+    repo_autonomo.guardar_logotipo(str(logo))
+    pantalla.cargar()
+    assert pantalla.ruta_logo.text() == str(logo)
+    assert pantalla.quitar_logo.isEnabled()
+
+    pantalla._quitar_logotipo()
+    assert "Todavía no has puesto logotipo" in pantalla.ruta_logo.text()
+    assert repo_autonomo.obtener().logotipo == ""
+
+
+def test_un_logotipo_que_ya_no_esta_se_dice_claramente(base, app, tmp_path):
+    from data.repositories import autonomo as repo_autonomo
+    from ui.views.ajustes import Ajustes
+
+    repo_autonomo.registrar(
+        Autonomo(nif="12345678Z", nombre="Carlos", apellido="García",
+                 direccion="Calle Mayor 12", codigo_postal="28001",
+                 telefono="612345678", email="carlos@billease.es"),
+        "Pass1234",
+    )
+    repo_autonomo.guardar_logotipo(str(tmp_path / "se-ha-borrado.png"))
+
+    pantalla = Ajustes()
+    assert "ya no está donde estaba" in pantalla.ruta_logo.text()
+
+
+def test_los_ajustes_listan_las_copias_de_seguridad(base, app):
+    from data import backup
+    from ui.views.ajustes import Ajustes
+
+    pantalla = Ajustes()
+    assert pantalla.lista_copias.count() == 1
+    assert "Todavía no hay ninguna copia" in pantalla.lista_copias.item(0).text()
+    assert not pantalla.boton_restaurar.isEnabled()
+
+    backup.copiar()
+    pantalla.cargar()
+    assert pantalla.copia_elegida() is None          # hay que elegirla
+    pantalla.lista_copias.setCurrentRow(0)
+    assert pantalla.copia_elegida() is not None
+    assert pantalla.boton_restaurar.isEnabled()
+
+
+def test_la_factura_ensena_si_esta_cobrada(base, app):
+    listado = Listado(FACTURAS)
+    cobro = columna_de(listado, "Cobro")
+
+    assert listado.filtro.index(0, cobro).data() == "Pendiente"
+    assert listado.filtro.index(0, cobro).data(ROL_ESTADO) == "neutro"
+
+    documento = listado.filtro.index(0, 0).data(ROL_OBJETO)
+    repo.cambiar_estado(documento.id, COBRADA)
+    listado.cargar()
+
+    assert listado.filtro.index(0, cobro).data() == "Cobrada"
+    assert listado.filtro.index(0, cobro).data(ROL_ESTADO) == "ok"
+
+
+def test_una_factura_pasada_de_vencimiento_sale_como_vencida(base, app):
+    documento = repo.listar()[0]
+    repo.actualizar(documento.id, a_espanol(dentro_de(-90)), documento.cliente_id,
+                    repo.lineas_de(documento.id), vencimiento=dentro_de(-60))
+
+    listado = Listado(FACTURAS)
+    cobro = columna_de(listado, "Cobro")
+    fila = [f for f in range(listado.filtro.rowCount())
+            if listado.filtro.index(f, 0).data() == documento.referencia][0]
+
+    assert listado.filtro.index(fila, cobro).data() == "Vencida"
+    assert listado.filtro.index(fila, cobro).data(ROL_ESTADO) == "peligro"
+
+
+def test_se_marca_una_factura_como_cobrada_desde_la_lista(base, app, sin_dialogos):
+    listado = Listado(FACTURAS)
+    listado.vista.selectRow(0)
+    documento = listado.seleccionado()
+
+    assert listado.boton_estado.isEnabled()
+    listado._cambiar_estado(documento.id, COBRADA)
+
+    assert repo.obtener(documento.id, con_lineas=False).estado == COBRADA
+
+
 # ─────────────────────── la ventana ───────────────────────
 
 
-def test_la_ventana_abre_las_tres_secciones(base, app):
-    from ui.shell import SECCIONES, VentanaPrincipal
+def test_la_ventana_abre_todas_sus_secciones(base, app):
+    from ui.shell import AJUSTES, RESUMEN, SECCIONES, VentanaPrincipal
 
     ventana = VentanaPrincipal()
-    assert [nombre for nombre, _, _ in SECCIONES] == [FACTURAS, PRESUPUESTOS, CLIENTES]
+    assert [nombre for nombre, _, _ in SECCIONES] == [
+        FACTURAS, PRESUPUESTOS, CLIENTES, RESUMEN, AJUSTES
+    ]
     assert ventana.seccion == FACTURAS
 
     for nombre, _, _ in SECCIONES:
@@ -390,12 +559,13 @@ def test_la_ventana_abre_las_tres_secciones(base, app):
         assert ventana.seccion == nombre
         assert pantalla.categoria == nombre
         assert ventana.navegacion.botones[nombre].property("activo") == "true"
+        # Y solo una está señalada a la vez.
         otros = [
             boton.property("activo")
             for seccion, boton in ventana.navegacion.botones.items()
             if seccion != nombre
         ]
-        assert otros == ["false"] * 2
+        assert otros == ["false"] * (len(SECCIONES) - 1)
     ventana.close()
 
 
