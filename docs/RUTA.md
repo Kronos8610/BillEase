@@ -263,25 +263,36 @@ python tools\verify.py --abrir-todas     :: → las 7 facturas se abren y se imp
 **Objetivo:** aplicar el rediseño aprobado sobre una base que ya funciona.
 **Cierra:** defectos 10, 11, 13, 14 y 15.
 
-**Se toca:** `theme/tokens.py` · `theme/app.qss` · `ui/shell.py` · `ui/models/` · `ui/widgets/` ·
-elimina `utils/globals.py`
+**Se toca:** `theme/tokens.py` · `theme/app.qss` · `theme/__init__.py` · `ui/shell.py` ·
+`ui/iconos.py` · `ui/models/` · `ui/widgets/pildora.py` · `ui/views/listado.py` ·
+`ui/views/cliente_editor.py` · `ui/views/registro.py` · elimina `utils/globals.py`,
+`ui/aplication.py`, `ui/homePage.py`, `ui/crearCliente.py` y `ui/login_ui.py`
 
-1. `theme/tokens.py` sin dependencias (lo usan la interfaz *y* el PDF) y una sola `app.qss`.
+1. `theme/tokens.py` sin dependencias (lo leen la interfaz *y* las herramientas) y una sola `app.qss`.
 2. `QTableView` + `QAbstractTableModel` + `QSortFilterProxyModel`: búsqueda, orden por columna y píldoras de estado.
 3. Navegación lateral nueva, con iconos SVG propios en lugar de emojis.
 4. Tema claro y oscuro siguiendo al sistema, fondo Mica en Windows 11, atajos `Ctrl+N` / `Ctrl+F` / `Esc`.
 5. Ancho máximo de contenido y estados vacíos con una acción.
 
 ```bat
-python tools\check_contraste.py          :: → todos los pares ≥ 4,5:1 (hoy el menú da 1,49:1)
-python tools\check_estilos.py            :: → setStyleSheet ≤ 5 (hoy 84), 0 emojis en ui/
+python tools\check_contraste.py          :: → los 50 pares ≥ 4,5:1 (el menú anterior da 1,49:1)
+python tools\check_estilos.py            :: → setStyleSheet ≤ 5 (eran 84; 54 al empezar la fase)
+::                                           y 0 emojis en texto de interfaz
 
 set QT_QPA_PLATFORM=offscreen
-pytest tests\test_ui_smoke.py -q
+pytest tests\test_ui_smoke.py -q         :: → 31 pruebas de la interfaz
 
-python tools\seed_demo.py --facturas 1000
-python tools\verify.py --pintar          :: → < 300 ms y < 100 widgets vivos
+python tools\verify.py --pintar          :: → genera 1.000 facturas en una base aparte,
+::                                           pinta el listado y mide: < 300 ms, < 100 widgets
+
+:: y la base grande también se puede dejar en disco para mirarla a mano:
+python tools\seed_demo.py --facturas 1000 --forzar
 ```
+
+> **Resultado medido.** Contraste: el peor par queda en **4,61:1** (el mínimo es 4,5:1) y el
+> mejor en 17,40:1, en los dos temas. `setStyleSheet`: **1 llamada** en todo el proyecto, la
+> de `theme/aplicar_tema`. Listado con 1.000 facturas: **124 ms** y **37 widgets vivos**,
+> frente a los ~11.000 widgets que exigía una fila de widgets por factura.
 
 **Puerta 5**
 - [ ] Ningún par de colores por debajo de 4,5:1

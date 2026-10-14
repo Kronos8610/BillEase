@@ -17,7 +17,7 @@ Tres cosas cambian respecto a lo anterior:
 """
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QKeySequence
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -33,6 +33,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+import theme
 from core.fechas import a_espanol, a_iso, hoy_iso
 from core.models import FACTURA, PRESUPUESTO, UNIDADES, Linea
 from core.money import a_decimal, formatear
@@ -40,28 +41,15 @@ from core.quotes import validez_por_defecto, vencimiento_por_defecto
 from core.taxes import calcular
 from data.repositories import clientes as repo_clientes
 from data.repositories import documentos as repo_documentos
+from ui import iconos
 from ui.widgets.concepto import CampoConcepto
-from utils.globals import (
-    ALMOND,
-    BODY_FONT,
-    BYZANTIUM,
-    CHAMPAGNE_PINK,
-    LAVENDER_PINK,
-    SUBTITLE_FONT,
-    TITLE_FONT,
-    TYRIAN_PURPLE,
-)
 
-ESTILO_CAMPO = f"""
-    QLineEdit {{
-        background-color: white;
-        border: 1px solid {ALMOND};
-        border-radius: 4px;
-        padding: 5px 10px;
-    }}
-    QLineEdit:focus {{ border: 1px solid {BYZANTIUM}; }}
-    QLineEdit[readOnly="true"] {{ background-color: #F4F4F2; color: #5C5C5C; }}
-"""
+
+def etiqueta(texto, nombre="Etiqueta"):
+    """Un rótulo. El color y el tamaño los pone la hoja de estilos, no aquí."""
+    marca = QLabel(texto)
+    marca.setObjectName(nombre)
+    return marca
 
 
 class FilaConcepto(QWidget):
@@ -70,24 +58,22 @@ class FilaConcepto(QWidget):
     def __init__(self, numero, sugerencias, al_cambiar, al_borrar, parent=None):
         super().__init__(parent)
         self._al_cambiar = al_cambiar
-        self.setStyleSheet(
-            f"FilaConcepto {{ background-color: #FBFBFA; border: 1px solid {ALMOND};"
-            f" border-radius: 6px; }}"
-        )
+        self.setObjectName("Concepto")
+        # Un QWidget corriente no pinta el fondo que le da la hoja de estilos
+        # si no se le pide expresamente.
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(12, 10, 12, 12)
         raiz.setSpacing(8)
 
         cabecera = QHBoxLayout()
-        self.etiqueta = QLabel(f"Concepto {numero}")
-        self.etiqueta.setStyleSheet(f"color: {BYZANTIUM}; font-size: 11px;")
+        self.etiqueta = etiqueta(f"Concepto {numero}")
         borrar = QPushButton("Quitar")
+        borrar.setObjectName("Peligro")
         borrar.setCursor(Qt.CursorShape.PointingHandCursor)
-        borrar.setStyleSheet(
-            "QPushButton { background: transparent; color: #C42B1C; border: none;"
-            " font-size: 11px; } QPushButton:hover { text-decoration: underline; }"
-        )
+        borrar.setIcon(iconos.icono("menos", 14, theme.color("peligro")))
+        borrar.setIconSize(iconos.medida(14))
         borrar.clicked.connect(lambda: al_borrar(self))
         cabecera.addWidget(self.etiqueta)
         cabecera.addStretch()
@@ -96,11 +82,9 @@ class FilaConcepto(QWidget):
 
         self.descripcion = CampoConcepto(sugerencias)
         self.descripcion.setMinimumHeight(64)
-        self.descripcion.setStyleSheet(
-            f"QPlainTextEdit {{ background-color: white; border: 1px solid {ALMOND};"
-            f" border-radius: 4px; padding: 6px 8px; }}"
-            f"QPlainTextEdit:focus {{ border: 1px solid {BYZANTIUM}; }}"
-        )
+        # Un concepto se describe entero, pero tres renglones bastan para
+        # verlo: si no se le pone techo, el cuadro se come la pantalla.
+        self.descripcion.setMaximumHeight(96)
         raiz.addWidget(self.descripcion)
 
         numeros = QHBoxLayout()
@@ -115,7 +99,7 @@ class FilaConcepto(QWidget):
         self.importe = QLineEdit()
         self.importe.setReadOnly(True)
 
-        for campo, etiqueta in (
+        for control, titulo in (
             (self.cantidad, "Cantidad"),
             (self.unidad, "Unidad"),
             (self.precio, "Precio"),
@@ -123,13 +107,9 @@ class FilaConcepto(QWidget):
         ):
             columna = QVBoxLayout()
             columna.setSpacing(3)
-            titulo = QLabel(etiqueta)
-            titulo.setStyleSheet(f"color: {BYZANTIUM}; font-size: 11px;")
-            campo.setMinimumHeight(30)
-            if isinstance(campo, QLineEdit):
-                campo.setStyleSheet(ESTILO_CAMPO)
-            columna.addWidget(titulo)
-            columna.addWidget(campo)
+            control.setMinimumHeight(30)
+            columna.addWidget(etiqueta(titulo))
+            columna.addWidget(control)
             numeros.addLayout(columna, 1)
 
         raiz.addLayout(numeros)
@@ -190,7 +170,6 @@ class DocumentoEditor(QDialog):
         self.setModal(True)
         self.setMinimumSize(900, 640)
         self.setSizeGripEnabled(True)
-        self.setStyleSheet(f"background-color: {CHAMPAGNE_PINK};")
 
         self._sugerencias = repo_documentos.descripciones_usadas()
 
@@ -199,7 +178,6 @@ class DocumentoEditor(QDialog):
 
         desplazable = QScrollArea()
         desplazable.setWidgetResizable(True)
-        desplazable.setStyleSheet("QScrollArea { border: none; background: transparent; }")
         contenido = QWidget()
         self.columna = QVBoxLayout(contenido)
         self.columna.setContentsMargins(28, 24, 28, 24)
@@ -227,18 +205,12 @@ class DocumentoEditor(QDialog):
     # ───────────────────────────── montaje ─────────────────────────────
 
     def _seccion(self, titulo):
-        caja = QWidget()
-        caja.setStyleSheet(
-            f"QWidget {{ background-color: white; border: 1px solid {ALMOND};"
-            f" border-radius: 8px; }}"
-        )
+        caja = QFrame()
+        caja.setObjectName("Tarjeta")
         dentro = QVBoxLayout(caja)
         dentro.setContentsMargins(18, 16, 18, 18)
         dentro.setSpacing(10)
-        etiqueta = QLabel(titulo)
-        etiqueta.setFont(TITLE_FONT)
-        etiqueta.setStyleSheet(f"color: {TYRIAN_PURPLE}; border: none;")
-        dentro.addWidget(etiqueta)
+        dentro.addWidget(etiqueta(titulo, "Subtitulo"))
         self.columna.addWidget(caja)
         return dentro
 
@@ -246,15 +218,12 @@ class DocumentoEditor(QDialog):
         campo = QLineEdit()
         campo.setPlaceholderText(marcador)
         campo.setMinimumHeight(32)
-        campo.setFont(BODY_FONT)
         campo.setReadOnly(solo_lectura)
-        campo.setStyleSheet(ESTILO_CAMPO)
         return campo
 
     def _montar_titulo(self):
         self.titulo = QLabel()
-        self.titulo.setFont(QFont("Segoe UI", 20, QFont.Weight.Bold))
-        self.titulo.setStyleSheet(f"color: {TYRIAN_PURPLE};")
+        self.titulo.setObjectName("Titulo")
         self.columna.addWidget(self.titulo)
 
     def _montar_cliente(self):
@@ -264,19 +233,16 @@ class DocumentoEditor(QDialog):
         self.cliente_combo.currentIndexChanged.connect(self._cliente_elegido)
         dentro.addWidget(self.cliente_combo)
 
-        self.datos_cliente = QLabel()
+        self.datos_cliente = etiqueta("")
         self.datos_cliente.setWordWrap(True)
-        self.datos_cliente.setStyleSheet(
-            f"color: {BYZANTIUM}; border: none; font-size: 12px;"
-        )
         dentro.addWidget(self.datos_cliente)
 
-        aviso = QLabel(
+        aviso = etiqueta(
             "Los datos fiscales se toman de la ficha del cliente y quedan "
-            "congelados en el documento al emitirlo."
+            "congelados en el documento al emitirlo.",
+            "Apunte",
         )
         aviso.setWordWrap(True)
-        aviso.setStyleSheet("color: #8A8A8A; border: none; font-size: 11px;")
         dentro.addWidget(aviso)
 
     def _montar_fechas(self):
@@ -288,12 +254,10 @@ class DocumentoEditor(QDialog):
         self.plazo = self._campo("dd/mm/aaaa")
         etiqueta_plazo = "Válido hasta" if self.es_presupuesto else "Vencimiento"
 
-        for campo, etiqueta in ((self.fecha, "Fecha"), (self.plazo, etiqueta_plazo)):
+        for campo, titulo in ((self.fecha, "Fecha"), (self.plazo, etiqueta_plazo)):
             columna = QVBoxLayout()
             columna.setSpacing(3)
-            titulo = QLabel(etiqueta)
-            titulo.setStyleSheet(f"color: {BYZANTIUM}; border: none; font-size: 11px;")
-            columna.addWidget(titulo)
+            columna.addWidget(etiqueta(titulo))
             columna.addWidget(campo)
             fila.addLayout(columna, 1)
         fila.addStretch(2)
@@ -305,22 +269,21 @@ class DocumentoEditor(QDialog):
         self.lista_conceptos.setSpacing(10)
         dentro.addLayout(self.lista_conceptos)
 
-        anadir = QPushButton("+  Añadir concepto")
+        anadir = QPushButton("Añadir concepto")
         anadir.setCursor(Qt.CursorShape.PointingHandCursor)
-        anadir.setStyleSheet(
-            f"QPushButton {{ background-color: {LAVENDER_PINK}; color: {TYRIAN_PURPLE};"
-            f" border: none; border-radius: 4px; padding: 8px 16px; font-weight: bold; }}"
-            f"QPushButton:hover {{ background-color: #FF8CB6; }}"
-        )
+        anadir.setIcon(iconos.icono("mas"))
+        anadir.setIconSize(iconos.medida())
+        anadir.setShortcut(QKeySequence("Ctrl+Shift+N"))
+        anadir.setToolTip("Ctrl+Mayús+N")
         anadir.clicked.connect(lambda: self._anadir_fila())
         dentro.addWidget(anadir, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        pista = QLabel(
+        pista = etiqueta(
             "Escribe libremente. Se te sugiere lo que ya has escrito otras veces, "
-            "pero nunca hay que elegir de una lista."
+            "pero nunca hay que elegir de una lista.",
+            "Apunte",
         )
         pista.setWordWrap(True)
-        pista.setStyleSheet("color: #8A8A8A; border: none; font-size: 11px;")
         dentro.addWidget(pista)
 
     def _montar_observaciones(self):
@@ -330,28 +293,21 @@ class DocumentoEditor(QDialog):
         self.observaciones.setPlaceholderText(
             "Forma de pago, referencia de la obra, condiciones…"
         )
-        self.observaciones.setStyleSheet(
-            f"QTextEdit {{ background-color: white; border: 1px solid {ALMOND};"
-            f" border-radius: 4px; padding: 6px 8px; }}"
-        )
         dentro.addWidget(self.observaciones)
 
     def _montar_totales(self):
         dentro = self._seccion("Resumen")
-        self.linea_base = QLabel()
-        self.linea_iva = QLabel()
+        self.linea_base = etiqueta("")
+        self.linea_iva = etiqueta("")
         self.linea_total = QLabel()
-        for etiqueta in (self.linea_base, self.linea_iva):
-            etiqueta.setStyleSheet(f"color: {BYZANTIUM}; border: none;")
-            dentro.addWidget(etiqueta)
+        self.linea_total.setObjectName("Importe")
+        for rotulo in (self.linea_base, self.linea_iva):
+            dentro.addWidget(rotulo)
 
         separador = QFrame()
+        separador.setObjectName("Separador")
         separador.setFrameShape(QFrame.Shape.HLine)
-        separador.setStyleSheet(f"background-color: {ALMOND}; max-height: 1px; border: none;")
         dentro.addWidget(separador)
-
-        self.linea_total.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
-        self.linea_total.setStyleSheet(f"color: {TYRIAN_PURPLE}; border: none;")
         dentro.addWidget(self.linea_total)
 
     def _montar_botones(self):
@@ -361,19 +317,13 @@ class DocumentoEditor(QDialog):
 
         cancelar = QPushButton("Cancelar")
         cancelar.setCursor(Qt.CursorShape.PointingHandCursor)
-        cancelar.setStyleSheet(
-            f"QPushButton {{ background-color: white; color: {TYRIAN_PURPLE};"
-            f" border: 1px solid {TYRIAN_PURPLE}; border-radius: 5px; padding: 9px 20px; }}"
-        )
         cancelar.clicked.connect(self.reject)
 
         self.boton_guardar = QPushButton()
+        self.boton_guardar.setObjectName("Primario")
         self.boton_guardar.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.boton_guardar.setStyleSheet(
-            f"QPushButton {{ background-color: {TYRIAN_PURPLE}; color: white;"
-            f" border: none; border-radius: 5px; padding: 9px 26px; font-weight: bold; }}"
-            f"QPushButton:hover {{ background-color: {BYZANTIUM}; }}"
-        )
+        self.boton_guardar.setDefault(True)
+        self.boton_guardar.setShortcut(QKeySequence("Ctrl+Return"))
         self.boton_guardar.clicked.connect(self.guardar)
 
         fila.addStretch()

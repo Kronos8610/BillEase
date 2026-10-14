@@ -1,0 +1,344 @@
+/*
+ * La hoja de estilos de BillEase. Una, no 54.
+ *
+ * Los `$$token` los sustituye `theme.hoja_de_estilos(modo)` con la paleta de
+ * `theme/tokens.py`, así que este fichero sirve igual para el tema claro y
+ * para el oscuro: aquí está la forma, allí el color.
+ *
+ * Reglas de la casa:
+ *   · nada de colores escritos a mano; siempre un token,
+ *   · se selecciona por nombre de objeto o por propiedad, nunca por posición,
+ *   · ningún widget lleva su propio `setStyleSheet`.
+ */
+
+/* ───────────────────────────── base ───────────────────────────── */
+
+QWidget {
+    background-color: transparent;
+    color: $texto;
+    font-family: $tipografia;
+    font-size: $cuerpo;
+}
+
+QMainWindow, QDialog, QWidget#Ventana {
+    background-color: $fondo;
+}
+
+QToolTip {
+    background-color: $capa;
+    color: $texto;
+    border: 1px solid $borde_fuerte;
+    border-radius: $radio;
+    padding: 6px 8px;
+}
+
+/* ──────────────────────── navegación lateral ──────────────────────── */
+
+QWidget#Lateral {
+    background-color: transparent;
+    border-right: 1px solid $borde;
+    max-width: $ancho_lateral;
+    min-width: $ancho_lateral;
+}
+
+QLabel#Marca {
+    color: $texto;
+    font-size: 19px;
+    font-weight: 600;
+    padding: 18px 16px 6px 18px;
+}
+
+QLabel#MarcaPie {
+    color: $texto_suave;
+    font-size: $pequeno;
+    padding: 10px 18px 14px 18px;
+}
+
+QPushButton#Navegacion {
+    background-color: transparent;
+    color: $texto;
+    border: none;
+    border-radius: $radio;
+    padding: 9px 12px;
+    margin: 1px 10px;
+    text-align: left;
+}
+
+QPushButton#Navegacion:hover   { background-color: $realce; }
+QPushButton#Navegacion:pressed { background-color: $borde; }
+
+QPushButton#Navegacion[activo="true"] {
+    background-color: $seleccion;
+    font-weight: 600;
+}
+
+QLabel#SeccionLateral {
+    color: $texto_suave;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 14px 22px 4px 22px;
+}
+
+/* ───────────────────────────── tarjetas ───────────────────────────── */
+
+QFrame#Tarjeta, QWidget#Tarjeta {
+    background-color: $capa;
+    border: 1px solid $borde;
+    border-radius: $radio_grande;
+}
+
+QWidget#Concepto {
+    background-color: $capa_sutil;
+    border: 1px solid $borde;
+    border-radius: $radio;
+}
+
+QFrame#Separador {
+    background-color: $borde;
+    border: none;
+    max-height: 1px;
+    min-height: 1px;
+}
+
+QLabel#Titulo {
+    color: $texto;
+    font-size: $titulo;
+    font-weight: 600;
+}
+
+QLabel#Subtitulo {
+    color: $texto;
+    font-size: $subtitulo;
+    font-weight: 600;
+}
+
+QLabel#Apunte {
+    color: $texto_suave;
+    font-size: $pequeno;
+}
+
+QLabel#Etiqueta {
+    color: $texto_suave;
+    font-size: $pequeno;
+}
+
+QLabel#Error {
+    color: $peligro;
+    font-size: 11px;
+    min-height: 15px;
+}
+
+QLabel#Importe {
+    color: $texto;
+    font-size: 22px;
+    font-weight: 600;
+}
+
+/* ───────────────────────────── botones ───────────────────────────── */
+
+QPushButton {
+    background-color: $capa;
+    color: $texto;
+    border: 1px solid $borde_fuerte;
+    border-radius: $radio;
+    padding: 6px 14px;
+    min-height: 20px;
+}
+
+QPushButton:hover    { background-color: $realce; }
+QPushButton:pressed  { background-color: $borde; }
+QPushButton:disabled { color: $texto_suave; border-color: $borde; }
+
+QPushButton#Primario {
+    background-color: $acento;
+    color: $texto_sobre_acento;
+    border: 1px solid $acento;
+    font-weight: 600;
+}
+
+QPushButton#Primario:hover    { background-color: $acento_hover; border-color: $acento_hover; }
+QPushButton#Primario:pressed  { background-color: $acento_pulsado; border-color: $acento_pulsado; }
+QPushButton#Primario:disabled { background-color: $borde; border-color: $borde; color: $texto_suave; }
+
+QPushButton#Sutil {
+    background-color: transparent;
+    border: 1px solid transparent;
+    color: $texto;
+}
+
+QPushButton#Sutil:hover   { background-color: $realce; }
+QPushButton#Sutil:pressed { background-color: $borde; }
+
+/* Borrar es una acción sutil hasta que se usa: plana, y solo roja. */
+QPushButton#Peligro {
+    background-color: transparent;
+    border: 1px solid transparent;
+    color: $peligro;
+}
+
+QPushButton#Peligro:hover    { background-color: $peligro_tenue; }
+QPushButton#Peligro:pressed  { background-color: $peligro_tenue; border-color: $peligro; }
+QPushButton#Peligro:disabled { color: $texto_suave; background-color: transparent; }
+
+/* ───────────────────────────── campos ───────────────────────────── */
+
+QLineEdit, QPlainTextEdit, QTextEdit, QSpinBox, QDateEdit {
+    background-color: $capa;
+    color: $texto;
+    border: 1px solid $borde_fuerte;
+    border-bottom: 2px solid $borde_fuerte;
+    border-radius: $radio;
+    padding: 5px 9px;
+    selection-background-color: $acento;
+    selection-color: $texto_sobre_acento;
+}
+
+QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus {
+    border-bottom: 2px solid $acento;
+}
+
+QLineEdit:disabled, QLineEdit[readOnly="true"] {
+    background-color: $capa_sutil;
+    color: $texto_suave;
+    border-bottom: 1px solid $borde_fuerte;
+}
+
+QLineEdit#Buscador {
+    padding-left: 30px;
+    min-width: 240px;
+}
+
+QComboBox {
+    background-color: $capa;
+    color: $texto;
+    border: 1px solid $borde_fuerte;
+    border-bottom: 2px solid $borde_fuerte;
+    border-radius: $radio;
+    padding: 5px 9px;
+    min-height: 20px;
+}
+
+QComboBox:focus      { border-bottom: 2px solid $acento; }
+QComboBox::drop-down { border: none; width: 22px; }
+
+QComboBox QAbstractItemView {
+    background-color: $capa;
+    color: $texto;
+    border: 1px solid $borde_fuerte;
+    border-radius: $radio;
+    selection-background-color: $seleccion;
+    selection-color: $texto;
+    outline: none;
+    padding: 4px;
+}
+
+QRadioButton, QCheckBox { color: $texto; spacing: 8px; }
+
+/* ───────────────────────────── tabla ───────────────────────────── */
+
+QTableView {
+    background-color: $capa;
+    alternate-background-color: $capa_alterna;
+    color: $texto;
+    border: 1px solid $borde;
+    border-radius: $radio_grande;
+    gridline-color: transparent;
+    selection-background-color: $seleccion;
+    selection-color: $texto;
+    outline: none;
+}
+
+QTableView::item {
+    padding: 6px 10px;
+    border: none;
+}
+
+QTableView::item:hover    { background-color: $realce; }
+QTableView::item:selected { background-color: $seleccion; color: $texto; }
+
+QHeaderView::section {
+    background-color: $capa_sutil;
+    color: $texto_suave;
+    border: none;
+    border-bottom: 1px solid $borde;
+    padding: 9px 10px;
+    font-weight: 600;
+    text-align: left;
+}
+
+QHeaderView::section:hover { color: $texto; }
+
+QTableCornerButton::section {
+    background-color: $capa_sutil;
+    border: none;
+}
+
+/* ───────────────────── barras de desplazamiento ───────────────────── */
+
+QScrollArea { border: none; background-color: transparent; }
+
+QScrollBar:vertical {
+    background: transparent;
+    width: 12px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical {
+    background: $borde_fuerte;
+    border-radius: 4px;
+    min-height: 28px;
+}
+
+QScrollBar::handle:vertical:hover { background: $texto_suave; }
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 12px;
+    margin: 2px;
+}
+
+QScrollBar::handle:horizontal {
+    background: $borde_fuerte;
+    border-radius: 4px;
+    min-width: 28px;
+}
+
+QScrollBar::handle:horizontal:hover { background: $texto_suave; }
+
+QScrollBar::add-line, QScrollBar::sub-line { height: 0; width: 0; border: none; }
+QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
+
+/* ───────────────────────────── menús ───────────────────────────── */
+
+QMenu {
+    background-color: $capa;
+    color: $texto;
+    border: 1px solid $borde_fuerte;
+    border-radius: $radio;
+    padding: 4px;
+}
+
+QMenu::item {
+    padding: 7px 24px 7px 14px;
+    border-radius: 4px;
+}
+
+QMenu::item:selected { background-color: $realce; }
+QMenu::separator     { height: 1px; background: $borde; margin: 4px 8px; }
+
+/* ───────────────────── diálogos del sistema ───────────────────── */
+
+QMessageBox, QProgressDialog, QFileDialog { background-color: $fondo; }
+QMessageBox QLabel { color: $texto; }
+QMessageBox QPushButton { min-width: 84px; }
+QDialogButtonBox QPushButton { min-width: 84px; }
+
+QProgressBar {
+    background-color: $capa_sutil;
+    border: none;
+    border-radius: 3px;
+    height: 6px;
+    text-align: center;
+}
+
+QProgressBar::chunk { background-color: $acento; border-radius: 3px; }

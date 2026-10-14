@@ -15,6 +15,7 @@ import sys
 
 from PyQt6.QtWidgets import QApplication, QMessageBox
 
+import theme
 from config import recuperar_base_antigua, ruta_base_datos
 from data.connection import conexion
 
@@ -39,6 +40,10 @@ def preparar_base():
 
 def main():
     app = QApplication(sys.argv)
+    app.setApplicationName("BillEase")
+    # Una sola hoja de estilos para toda la aplicación, del color del tema que
+    # tenga puesto Windows (`theme/`).
+    theme.aplicar_tema(app)
 
     try:
         existia, ruta = preparar_base()
@@ -53,12 +58,12 @@ def main():
 
     if existia:
         print(f"Base de datos: {ruta}")
-        from ui.aplication import MainWindow
-        ventana = MainWindow()
+        from ui.shell import VentanaPrincipal
+        ventana = VentanaPrincipal()
     else:
         print(f"Primera ejecución. La base se creará en: {ruta}")
-        from ui.login_ui import RegisterWindow
-        ventana = RegisterWindow(initial_setup=True)
+        from ui.views.registro import VentanaRegistro
+        ventana = VentanaRegistro(configuracion_inicial=True)
 
     ventana.show()
     return app.exec()

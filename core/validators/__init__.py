@@ -52,6 +52,7 @@ NIF_O_NIE = Regla(es_nif_o_nie, "NIF o NIE inválido: revisa la letra")
 CIF = Regla(es_cif, "CIF inválido: revisa el dígito de control")
 DOCUMENTO = Regla(es_documento_fiscal, "Documento fiscal inválido")
 EMAIL = Regla(es_email, "Formato de correo electrónico inválido")
+EMAIL_OPCIONAL = Regla(es_email, EMAIL.mensaje, obligatorio=False)
 CONTRASENA = Regla(
     es_contrasena, "La contraseña necesita 8 caracteres, con una letra y un número"
 )

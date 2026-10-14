@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 RAIZ = Path(__file__).resolve().parent.parent
-PAQUETES = ("core", "data", "documents", "ui", "tools")
+PAQUETES = ("core", "data", "documents", "ui", "theme", "tools")
 
 
 def modulos(paquete):
@@ -57,9 +57,13 @@ def test_solo_la_capa_de_datos_habla_con_sqlite():
     assert culpables == [], f"estos módulos importan sqlite3 fuera de data/: {culpables}"
 
 
-def test_el_modulo_database_ya_no_existe():
-    assert not (RAIZ / "database").exists()
-    assert not (RAIZ / "validators").exists()
+def test_los_modulos_retirados_ya_no_existen():
+    """`utils/globals.py` se retira en la fase 5: los colores viven en theme/."""
+    for retirado in ("database", "validators", "utils"):
+        assert not (RAIZ / retirado).exists(), f"{retirado}/ sigue ahí"
+    for fichero in ("ui/aplication.py", "ui/homePage.py", "ui/crearCliente.py",
+                    "ui/login_ui.py"):
+        assert not (RAIZ / fichero).exists(), f"{fichero} sigue ahí"
 
 
 # ─────────────────────── dónde puede haber Qt ───────────────────────
@@ -88,6 +92,64 @@ def test_el_nucleo_no_depende_de_la_capa_de_datos():
         str(r.relative_to(RAIZ)) for r in modulos("core") if importa(r, {"data"})
     ]
     assert culpables == [], f"el núcleo depende de data en: {culpables}"
+
+
+# ─────────────────────── dónde pueden haber colores ───────────────────────
+
+COLOR_A_MANO = re.compile(r"#[0-9A-Fa-f]{6}\b")
+
+
+def test_la_interfaz_no_escribe_ni_un_color_a_mano():
+    """
+    Todo el color sale de `theme/tokens.py`.
+
+    Antes había colores escritos a mano en 54 llamadas a `setStyleSheet`
+    repartidas por seis ficheros, y por eso no podía haber tema oscuro: para
+    cambiarlo había que repasarlos uno a uno.
+    """
+    culpables = []
+    for ruta in modulos("ui"):
+        for numero, linea in enumerate(ruta.read_text(encoding="utf-8").splitlines(), 1):
+            if COLOR_A_MANO.search(linea) and "tokens" not in linea:
+                culpables.append(f"{ruta.relative_to(RAIZ)}:{numero}: {linea.strip()}")
+    assert culpables == [], "colores a mano en la interfaz:\n" + "\n".join(culpables)
+
+
+def test_los_tokens_del_tema_no_dependen_de_nada():
+    """
+    `theme/tokens.py` lo leen la interfaz, el PDF y las herramientas.
+
+    Si importara Qt, comprobar el contraste exigiría una pantalla.
+    """
+    arbol = ast.parse((RAIZ / "theme" / "tokens.py").read_text(encoding="utf-8"))
+    importes = [
+        n for n in ast.walk(arbol) if isinstance(n, (ast.Import, ast.ImportFrom))
+    ]
+    assert importes == [], "theme/tokens.py tiene que poder leerse a solas"
+
+
+def test_el_tema_no_sabe_que_existen_las_pantallas():
+    """La dependencia va en un sentido: la interfaz usa el tema, no al revés."""
+    culpables = [
+        str(r.relative_to(RAIZ)) for r in modulos("theme") if importa(r, {"ui", "data"})
+    ]
+    assert culpables == [], f"el tema depende de la interfaz en: {culpables}"
+
+
+def test_el_tema_se_puede_leer_sin_pantalla():
+    """Importar `theme` no puede arrastrar Qt: lo usan las herramientas."""
+    import subprocess
+    import sys
+
+    resultado = subprocess.run(
+        [sys.executable, "-c",
+         "import sys, theme, theme.tokens;"
+         " theme.hoja_de_estilos('oscuro');"
+         " print('PyQt6' in sys.modules)"],
+        cwd=RAIZ, capture_output=True, text=True,
+    )
+    assert resultado.returncode == 0, resultado.stderr
+    assert resultado.stdout.strip() == "False", "importar theme arrastra Qt"
 
 
 # ─────────────────────── tuplas por posición ───────────────────────

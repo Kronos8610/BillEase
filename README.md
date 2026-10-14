@@ -1,6 +1,6 @@
 # 🧾 BillEase — Gestión de Facturas para Autónomos
 
-> Aplicación de escritorio sencilla, moderna y pensada para que cualquier autónomo pueda gestionar sus facturas, clientes y servicios sin complicaciones.
+> Aplicación de escritorio sencilla, moderna y pensada para que cualquier autónomo pueda gestionar sus facturas, presupuestos y clientes sin complicaciones.
 
 ---
 
@@ -12,7 +12,7 @@ Está diseñada para autónomos que necesitan una herramienta ligera y fácil de
 
 - Registrar y gestionar sus clientes
 - Crear y editar facturas profesionales
-- Mantener un catálogo de servicios con precios
+- Escribir cada concepto con su cantidad, su unidad y su precio
 - Exportar facturas en formato **PDF** listas para enviar
 
 No requiere conexión a internet, ni servidores externos. Todo queda guardado localmente en tu ordenador.
@@ -87,8 +87,16 @@ base de demostración con datos ficticios:
 python tools/seed_demo.py
 ```
 
-Crea la base con 5 clientes, 8 servicios y 7 facturas. Para empezar de cero, borra
-el fichero y arranca la aplicación: te pedirá tus datos de autónomo.
+Crea la base con 5 clientes y 7 facturas, en el esquema antiguo, y le aplica las
+migraciones: los 8 servicios del catálogo acaban convertidos en el texto de cada
+concepto. Para empezar de cero, borra el fichero y arranca la aplicación: te pedirá
+tus datos de autónomo.
+
+Para medir con una base grande:
+
+```bash
+python tools/seed_demo.py --facturas 1000 --forzar
+```
 
 Las credenciales de la base de demostración son:
 
@@ -99,15 +107,28 @@ Las credenciales de la base de demostración son:
 
 ---
 
-## 📸 Captura de pantalla
+## 📸 Capturas de pantalla
 
 ![Vista de Facturas](assets/listado_facturas.png)
 
-> **Descripción de la interfaz:**
+> **La interfaz**, siguiendo el lenguaje visual de Windows 11:
 >
-> - **Caja y flecha verde** — Menú de navegación lateral con las secciones principales: Home, Crear Factura, Crear Cliente y Crear Servicio.
-> - **Caja naranja** — Tabla principal de facturas, donde se listan todos los registros con sus acciones disponibles: Crear PDF, Editar y Eliminar.
-> - **Flecha azul/turquesa** — Desplegable de navegación que permite cambiar la vista entre Facturas, Clientes y Servicios.
+> - **Navegación lateral** con las tres secciones —Facturas, Presupuestos y Clientes—, con
+>   iconos propios y la sección abierta señalada. Se salta con `Ctrl+1`, `Ctrl+2` y `Ctrl+3`.
+> - **Buscador** (`Ctrl+F`) que filtra por cualquier columna, sin distinguir mayúsculas ni
+>   tildes: *perez* encuentra a *Pérez*.
+> - **Tabla** que ordena por cualquier columna —los importes como importes y las fechas como
+>   fechas— y que pinta igual de rápido con siete facturas que con mil.
+> - **Barra de acciones** que solo ofrece lo que se puede hacer con la fila elegida.
+
+Los presupuestos llevan su estado en una píldora de color, y se convierten en factura de
+un clic:
+
+![Vista de Presupuestos](assets/listado_presupuestos.png)
+
+El tema sigue al de Windows, y se puede cambiar a mano desde la propia navegación:
+
+![La misma pantalla en tema oscuro](assets/listado_facturas_oscuro.png)
 
 ---
 
@@ -115,7 +136,9 @@ Las credenciales de la base de demostración son:
 ## 🚀 ¿Qué incluye la aplicación?
 
 ### 🏠 Panel principal
-Vista general con listado de facturas, clientes y servicios. Permite eliminar registros y acceder rápidamente a todas las funciones.
+Listado de facturas, presupuestos y clientes, con búsqueda, orden por columna y las
+acciones de cada documento: generar el PDF, editarlo, cambiar el estado de un presupuesto,
+facturarlo o borrarlo.
 
 ### 📄 Crear factura
 Formulario completo para crear facturas. Selecciona un cliente existente y **escribe
@@ -156,6 +179,8 @@ BillEase/
 │   ├── seed_demo.py     # Genera una base de datos de demostración
 │   ├── baseline.py      # Congela el inventario de referencia
 │   ├── verify.py        # Verifica los invariantes de la base
+│   ├── check_contraste.py  # Ningún texto por debajo de 4,5:1 (WCAG)
+│   ├── check_estilos.py    # Una sola hoja de estilos, ningún emoji
 │   └── inventario.py    # Lectura del inventario (compartido)
 ├── docs/                # Auditoría, rediseño y ruta de trabajo
 ├── tests/               # Pruebas automáticas
@@ -176,14 +201,14 @@ BillEase/
 ├── documents/
 │   └── invoice_pdf.py   # Factura y presupuesto, sin Qt
 ├── ui/                  # Pantallas
-│   ├── aplication.py    # Ventana principal y menú lateral
-│   ├── login_ui.py      # Registro inicial del autónomo
-│   ├── homePage.py      # Listado de documentos y clientes
-│   ├── crearCliente.py  # Formulario de nuevo cliente
-│   ├── views/           # documento_editor.py (facturas y presupuestos)
-│   └── widgets/         # concepto.py (el campo con sugerencias)
-└── utils/
-    └── globals.py       # Colores y fuentes globales de la interfaz
+│   ├── shell.py         # Ventana principal y navegación lateral
+│   ├── iconos.py        # Los iconos, en SVG propio (ya no hay emojis)
+│   ├── models/          # QAbstractTableModel: listados y búsqueda
+│   ├── views/           # listado · documento_editor · cliente_editor · registro
+│   └── widgets/         # concepto.py (sugerencias) · pildora.py (estados)
+└── theme/               # Todo el color, en un sitio
+    ├── tokens.py        # Paleta clara y oscura, sin dependencias
+    └── app.qss          # Una hoja de estilos, no 84 llamadas sueltas
 ```
 
 ---
@@ -207,6 +232,9 @@ python tools/seed_demo.py --sin-migrar    # …en el esquema original, para prob
 python -m data.migrations --dry-run       # qué migraciones faltan
 python -m data.migrations                 # aplicarlas (deja copia de seguridad)
 python tools/verify.py --totales --post-migracion
+python tools/verify.py --pintar           # 1.000 facturas: cuánto tarda el listado
+python tools/check_contraste.py           # legibilidad de los dos temas
+python tools/check_estilos.py             # una sola hoja de estilos, ningún emoji
 pytest                                    # pruebas automáticas
 ```
 
@@ -235,12 +263,12 @@ Estas son algunas funcionalidades que se plantean incorporar en próximas versio
 - Protección contra accesos no autorizados a los archivos de la aplicación
 
 ### 🔍 Búsqueda y filtros
-- Buscador en tiempo real para facturas, clientes y servicios
+- ~~Buscador en tiempo real~~ y ~~ordenación de columnas~~ — **ya disponibles**
 - Filtros por fecha, importe, estado o tipo de cliente
-- Ordenación de columnas en las listas del panel principal
 
 ### 🎨 Personalización de la interfaz
-- Apartado de **ajustes de tema**: modo claro, modo oscuro y selección de color de acento
+- ~~Modo claro y modo oscuro~~ — **ya disponible**, siguiendo al tema de Windows
+- Selección del color de acento
 - Posibilidad de cambiar el tamaño de fuente de la aplicación
 - Guardado automático de las preferencias visuales del usuario
 

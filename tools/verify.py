@@ -15,6 +15,7 @@ Cada fase añade aquí sus comprobaciones:
     fase 2 → --post-migracion tipos, fechas ISO y claves ajenas aplicadas  ✓
     fase 3 → --conexiones     una sola conexión para pintar la lista  ✓
     fase 4 → --abrir-todas    todos los documentos se abren y se imprimen  ✓
+    fase 5 → --pintar         el listado se pinta al instante con 1.000  ✓
 """
 
 import argparse
@@ -369,22 +370,133 @@ def verificar_abrir_todas(ruta_base, r):
     connection.cerrar()
 
 
+# Lo que exige la puerta 5 para el listado.
+LIMITE_MS = 300
+LIMITE_WIDGETS = 100
+FACTURAS_DE_PRUEBA = 1000
+
+
+def verificar_pintar(ruta_base, r):
+    """
+    Fase 5 · el listado se pinta al instante, tenga la base siete filas o mil.
+
+    Antes cada fila eran hasta once widgets que se creaban y se destruían en
+    cada recarga: con mil facturas, más de siete mil widgets que Qt tiene que
+    medir, colocar y pintar (defecto 11). Ahora es una `QTableView` sobre un
+    modelo, que solo pinta lo que cabe en la pantalla.
+
+    Se mide de verdad: se genera una base con mil facturas, se abre el listado
+    y se cronometra. Si no se le pasa `--base`, la base de prueba se crea en
+    un directorio temporal y se borra al salir, sin tocar la del usuario.
+    """
+    import os
+    import tempfile
+    import time
+    from pathlib import Path as _Path
+
+    with tempfile.TemporaryDirectory(prefix="billease-pintar-") as tmp:
+        if ruta_base is None:
+            from tools import seed_demo
+
+            ruta_base = _Path(tmp) / "grande.db"
+            conn = abrir_base(ruta_base)
+            try:
+                seed_demo.crear_esquema(conn)
+                seed_demo.rellenar(conn)
+                seed_demo.rellenar_muchas(conn, FACTURAS_DE_PRUEBA)
+                from data.migrations import migrar
+
+                migrar(conn, registrar=lambda *_: None)
+            finally:
+                conn.close()
+
+        os.environ["BILLEASE_DB"] = str(ruta_base)
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+        from data import connection
+
+        connection.cerrar()
+
+        from PyQt6.QtWidgets import QApplication
+
+        import theme
+
+        app = QApplication.instance() or QApplication([])
+        theme.aplicar_tema(app, "claro")
+
+        from data.repositories import documentos as repo_documentos
+        from ui.views.listado import FACTURAS, Listado
+
+        cuantas = len(repo_documentos.listar("factura"))
+        r.comprobar("facturas en la base de prueba", cuantas >= FACTURAS_DE_PRUEBA, True,
+                    detalle=f"{cuantas} facturas")
+
+        widgets_antes = len(app.allWidgets())
+
+        comienzo = time.perf_counter()
+        listado = Listado(FACTURAS)          # consulta + modelo + primera pintura
+        listado.resize(1280, 800)
+        listado.show()
+        app.processEvents()
+        milisegundos = (time.perf_counter() - comienzo) * 1000
+
+        vivos = len(app.allWidgets()) - widgets_antes
+
+        r.comprobar(
+            f"el listado se pinta en menos de {LIMITE_MS} ms",
+            milisegundos < LIMITE_MS,
+            True,
+            detalle=f"{milisegundos:.0f} ms con {cuantas} facturas",
+        )
+        r.comprobar(
+            f"menos de {LIMITE_WIDGETS} widgets vivos",
+            vivos < LIMITE_WIDGETS,
+            True,
+            detalle=f"{vivos} widgets para {cuantas} filas"
+                    f" (antes eran ~11 por fila: {cuantas * 11})",
+        )
+        r.comprobar("todas las filas en el modelo", listado.modelo.rowCount(), cuantas)
+
+        # Y que la búsqueda y el orden de verdad funcionan sobre esos mil.
+        listado.buscador.setText("perez")
+        app.processEvents()
+        filtradas = listado.filtro.rowCount()
+        r.comprobar("la búsqueda filtra", 0 < filtradas < cuantas, True,
+                    detalle=f"«perez» deja {filtradas} de {cuantas}")
+        listado.buscador.clear()
+
+        from PyQt6.QtCore import Qt
+
+        columna_total = len(listado.modelo.columnas) - 1
+        listado.vista.sortByColumn(columna_total, Qt.SortOrder.DescendingOrder)
+        app.processEvents()
+        from ui.models import ROL_ORDEN
+
+        importes = [
+            listado.filtro.index(fila, columna_total).data(ROL_ORDEN)
+            for fila in range(min(50, listado.filtro.rowCount()))
+        ]
+        r.comprobar("el orden por importe es numérico", importes == sorted(importes, reverse=True),
+                    True, detalle=f"de {importes[0]} € a {importes[-1]} €")
+
+        listado.close()
+        listado.deleteLater()
+        connection.cerrar()
+
+
+def abrir_base(ruta):
+    from data.connection import abrir
+
+    return abrir(ruta)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     parser.add_argument("--base", default=None, help="base de datos a verificar (por defecto, la de la aplicación)")
     parser.add_argument("--baseline", default=FICHERO_BASELINE, help="línea base de referencia")
-    for pendiente in ("totales", "post-migracion", "conexiones", "abrir-todas", "pintar"):
-        parser.add_argument(f"--{pendiente}", action="store_true", help=argparse.SUPPRESS)
+    for comprobacion in ("totales", "post-migracion", "conexiones", "abrir-todas", "pintar"):
+        parser.add_argument(f"--{comprobacion}", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
-
-    fase_pendiente = {
-        "pintar": 5,
-    }
-    for nombre, fase in fase_pendiente.items():
-        if getattr(args, nombre):
-            print(f"\n--{nombre.replace('_', '-')} se implementa en la fase {fase}.")
-            print("Consulta docs/RUTA.md.\n")
-            return 2
 
     baseline = Path(args.baseline)
     if not baseline.exists():
@@ -416,6 +528,11 @@ def main():
     if args.abrir_todas:
         print()
         verificar_abrir_todas(args.base or _base_por_defecto(), r)
+    if args.pintar:
+        print()
+        # Sin --base se genera una base de mil facturas aparte: medir sobre la
+        # del usuario, que tiene siete, no dice nada.
+        verificar_pintar(args.base, r)
     return r.resumen()
 
 

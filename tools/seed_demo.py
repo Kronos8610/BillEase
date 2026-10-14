@@ -4,6 +4,7 @@ Genera una base de datos de demostración con datos ficticios.
     python tools/seed_demo.py                                   crea BillEase.db
     python tools/seed_demo.py --salida tests/fixtures/baseline.db
     python tools/seed_demo.py --forzar                          sobrescribe
+    python tools/seed_demo.py --facturas 1000 --forzar          base grande
 
 Sustituye al antiguo `test.py`, que no era una prueba sino un script que
 insertaba un autónomo en la base real. Aquí los datos son claramente
@@ -90,6 +91,57 @@ LINEAS = [
 ]
 
 
+def rellenar_muchas(conn, cuantas):
+    """
+    Añade facturas inventadas hasta llegar a `cuantas`.
+
+    Sirve para medir: con siete facturas cualquier cosa parece rápida. La
+    puerta 5 exige que el listado se pinte al instante con mil, que es lo que
+    tiene un autónomo después de unos años.
+
+    Los datos son deterministas —no hay azar— para que dos ejecuciones midan
+    exactamente lo mismo.
+    """
+    faltan = cuantas - len(FACTURAS)
+    if faltan <= 0:
+        return 0
+
+    facturas, lineas = [], []
+    for indice in range(faltan):
+        numero = len(FACTURAS) + indice + 1
+        dia = indice % 28 + 1
+        mes = indice % 12 + 1
+        cliente = indice % len(CLIENTES) + 1
+        cuantas_lineas = indice % 3 + 1
+
+        base = 0.0
+        for orden in range(cuantas_lineas):
+            servicio = (indice + orden) % len(SERVICIOS) + 1
+            cantidad = (indice + orden) % 9 + 1
+            precio = SERVICIOS[servicio - 1][1]
+            base += cantidad * precio
+            lineas.append((numero, orden + 1, cantidad, precio, servicio))
+
+        facturas.append((
+            f"{dia:02d}/{mes:02d}/2025", round(base, 2), cliente,
+            f"Trabajo de demostración {numero}",
+        ))
+
+    cur = conn.cursor()
+    cur.executemany(
+        "INSERT INTO Factura (fecha, total, Cod_cliente, observaciones)"
+        " VALUES (?, ?, ?, ?)",
+        facturas,
+    )
+    cur.executemany(
+        "INSERT INTO Detalle_linea (Num_Factura, Num_Linea, NumServicios,"
+        " precioPorServicio, cod_servicio) VALUES (?, ?, ?, ?, ?)",
+        lineas,
+    )
+    conn.commit()
+    return len(facturas)
+
+
 def crear_esquema(conn):
     """
     Crea el esquema **original**, con sus defectos incluidos.
@@ -147,6 +199,10 @@ def main():
         "--sin-migrar", action="store_true",
         help="deja la base en el esquema original, sin aplicar las migraciones",
     )
+    parser.add_argument(
+        "--facturas", type=int, default=len(FACTURAS),
+        help="cuántas facturas en total (por defecto las 7 de la demostración)",
+    )
     args = parser.parse_args()
 
     if args.salida:
@@ -161,9 +217,11 @@ def main():
         destino.unlink()
 
     conn = abrir(destino)
+    anadidas = 0
     try:
         crear_esquema(conn)
         rellenar(conn)
+        anadidas = rellenar_muchas(conn, args.facturas)
         if not args.sin_migrar:
             from data.migrations import migrar
             migrar(conn, registrar=lambda *_: None)
@@ -172,7 +230,9 @@ def main():
 
     print(f"\nBase de demostración creada en {destino}")
     print(f"  {len(CLIENTES)} clientes · {len(SERVICIOS)} servicios · "
-          f"{len(FACTURAS)} facturas · {len(LINEAS)} líneas")
+          f"{len(FACTURAS) + anadidas} facturas · {len(LINEAS)} líneas")
+    if anadidas:
+        print(f"  {anadidas} facturas añadidas para medir (--facturas)")
     if args.sin_migrar:
         print("  esquema original, sin migrar (--sin-migrar)")
     print("  acceso: carlos.garcia@billease.es / Pass1234\n")
