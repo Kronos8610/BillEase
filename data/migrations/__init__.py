@@ -125,7 +125,7 @@ def migrar(conn, ruta=None, dry_run=False, registrar=print):
                 " VALUES (?, ?, ?)",
                 (m.VERSION, datetime.now().isoformat(timespec="seconds"), m.DESCRIPCION),
             )
-            conn.execute("COMMIT")
+            conn.commit()
         except Exception:
             conn.execute("ROLLBACK")
             raise

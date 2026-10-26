@@ -35,6 +35,11 @@ ocultos = [
     # no se quede fuera sin avisar.
     *collect_submodules("data.migrations"),
     "argon2",
+    # El cifrado de la base: sin esto el ejecutable arranca y no puede abrir
+    # los datos de nadie.
+    "argon2.low_level",
+    "cryptography",
+    "cryptography.hazmat.primitives.ciphers.aead",
     "reportlab.graphics.barcode",
 ]
 

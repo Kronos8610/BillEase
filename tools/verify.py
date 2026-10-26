@@ -18,6 +18,7 @@ Cada fase añade aquí sus comprobaciones:
     fase 5 → --pintar         el listado se pinta al instante con 1.000  ✓
     fase 6 → --fiscal         el resumen de IVA cuadra con la suma a mano  ✓
     fase 6 → --copia          la copia se hace y se restaura de verdad  ✓
+           → --cifrado        el fichero no deja leer nada sin la contraseña  ✓
 """
 
 import argparse
@@ -659,12 +660,121 @@ def _ida_y_vuelta(r, trabajo):
     )
 
 
+# Lo que no puede aparecer en un fichero cifrado, por si acaso.
+SECRETOS = ("B12345674", "Construcciones", "SQLite format 3", "Instalación")
+
+
+def verificar_cifrado(ruta_base, r):
+    """
+    El cifrado: que el fichero no diga nada sin la contraseña.
+
+    Se trabaja sobre una copia, nunca sobre la base del usuario. Se cifra, se
+    busca dentro del fichero a ver si se cuela algo legible, se prueba con una
+    contraseña equivocada, se abre con la buena y con el código de
+    recuperación, y se comprueba que no falta ni una factura.
+    """
+    import shutil
+    import sqlite3
+    import tempfile
+    from pathlib import Path as _Path
+
+    from core.cifrado import ClaveIncorrecta
+    from data import caja
+
+    with tempfile.TemporaryDirectory(prefix="billease-cifrado-") as tmp:
+        trabajo = _Path(tmp) / "billease.db"
+        shutil.copy2(ruta_base, trabajo)
+
+        with apuntando_a(trabajo):
+            from data import connection
+            from data.repositories import clientes as repo_clientes
+            from data.repositories import documentos as repo_documentos
+
+            antes = [d.referencia for d in repo_documentos.listar("factura")]
+            nombres = [c.nombre for c in repo_clientes.listar()]
+            r.comprobar("datos de partida", len(antes) > 0 and len(nombres) > 0, True,
+                        detalle=f"{len(antes)} facturas y {len(nombres)} clientes")
+            connection.cerrar()
+
+            en_claro = trabajo.read_bytes()
+            r.comprobar(
+                "sin cifrar, el fichero se lee entero",
+                any(s.encode() in en_claro for s in SECRETOS), True,
+                detalle="así están hoy los datos de una instalación sin cifrar",
+            )
+
+            _, codigo = caja.cifrar(trabajo, "Pass1234")
+            cifrado = trabajo.read_bytes()
+
+            r.comprobar("el fichero queda marcado como caja", caja.es_caja(trabajo), True)
+            filtrados = [s for s in SECRETOS if s.encode() in cifrado]
+            r.comprobar("nada legible dentro del fichero", filtrados, [],
+                        detalle=f"{len(cifrado)} bytes revisados")
+
+            # Un visor de SQLite ya no puede con él.
+            try:
+                sqlite3.connect(trabajo).execute("SELECT * FROM Cliente").fetchall()
+                abrible = True
+            except sqlite3.DatabaseError:
+                abrible = False
+            r.comprobar("un visor de SQLite no lo abre", abrible, False)
+
+            # Una contraseña equivocada no abre nada.
+            try:
+                caja.abrir(trabajo, contrasena="la que sea")
+                cede = True
+            except ClaveIncorrecta:
+                cede = False
+            r.comprobar("una contraseña equivocada no abre", cede, False)
+
+            # Y un byte cambiado se nota.
+            tocado = _Path(tmp) / "tocado.db"
+            crudo = bytearray(cifrado)
+            crudo[-1] ^= 0x01
+            tocado.write_bytes(bytes(crudo))
+            try:
+                caja.abrir(tocado, contrasena="Pass1234")
+                pasa = True
+            except Exception:      # noqa: BLE001
+                pasa = False
+            r.comprobar("un fichero manipulado no se abre", pasa, False)
+
+            connection.abrir_caja(trabajo, contrasena="Pass1234")
+            r.comprobar(
+                "con la contraseña vuelven todas las facturas",
+                [d.referencia for d in repo_documentos.listar("factura")], antes,
+            )
+            connection.cerrar()
+
+            connection.abrir_caja(trabajo, codigo=codigo)
+            r.comprobar(
+                "y el código de recuperación también abre",
+                [c.nombre for c in repo_clientes.listar()], nombres,
+            )
+
+            # Cambiar la contraseña no pierde nada y el código sigue valiendo.
+            connection.cambiar_contrasena("OtraNueva9")
+            connection.cerrar()
+            connection.abrir_caja(trabajo, contrasena="OtraNueva9")
+            r.comprobar(
+                "tras cambiar la contraseña siguen todas",
+                len(repo_documentos.listar("factura")), len(antes),
+            )
+            connection.cerrar()
+            try:
+                caja.abrir(trabajo, codigo=codigo)
+                sigue = True
+            except ClaveIncorrecta:
+                sigue = False
+            r.comprobar("el código de recuperación no caduca", sigue, True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     parser.add_argument("--base", default=None, help="base de datos a verificar (por defecto, la de la aplicación)")
     parser.add_argument("--baseline", default=FICHERO_BASELINE, help="línea base de referencia")
     for comprobacion in ("totales", "post-migracion", "conexiones", "abrir-todas",
-                         "pintar", "fiscal", "copia"):
+                         "pintar", "fiscal", "copia", "cifrado"):
         parser.add_argument(f"--{comprobacion}", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
@@ -709,6 +819,9 @@ def main():
     if args.copia:
         print()
         verificar_copia(args.base or _base_por_defecto(), r)
+    if args.cifrado:
+        print()
+        verificar_cifrado(args.base or _base_por_defecto(), r)
     return r.resumen()
 
 

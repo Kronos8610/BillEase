@@ -149,7 +149,7 @@ def crear(fecha, cliente_id, lineas, observaciones="", tipo=FACTURA,
         )
         documento_id = cur.lastrowid
         _escribir_lineas(conn, documento_id, lineas)
-        conn.execute("COMMIT")
+        conn.commit()
         return documento_id
     except sqlite3.Error:
         conn.execute("ROLLBACK")
@@ -178,7 +178,7 @@ def actualizar(documento_id, fecha, cliente_id, lineas, observaciones="",
             "DELETE FROM Detalle_linea WHERE Num_Factura = ?", (int(documento_id),)
         )
         _escribir_lineas(conn, documento_id, lineas)
-        conn.execute("COMMIT")
+        conn.commit()
         return True
     except sqlite3.Error:
         conn.execute("ROLLBACK")

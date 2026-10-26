@@ -169,6 +169,29 @@ def test_el_tema_se_encuentra_tambien_dentro_del_ejecutable(monkeypatch, tmp_pat
     assert theme._hoja().exists()
 
 
+def test_la_receta_lleva_lo_que_hace_falta_para_descifrar():
+    """
+    Si `cryptography` no viaja dentro, el ejecutable no abre los datos de nadie.
+
+    Es el fallo que no se ve hasta que alguien instala el programa en una
+    máquina sin Python y se encuentra con que su base no se abre.
+    """
+    receta = (RAIZ / "billease.spec").read_text(encoding="utf-8")
+    arbol = ast.parse(receta)
+
+    ocultos = None
+    for nodo in ast.walk(arbol):
+        if (isinstance(nodo, ast.Assign)
+                and getattr(nodo.targets[0], "id", "") == "ocultos"):
+            ocultos = [
+                elemento.value for elemento in nodo.value.elts
+                if isinstance(elemento, ast.Constant)
+            ]
+    assert ocultos is not None, "la receta no declara importaciones ocultas"
+    assert "cryptography" in ocultos
+    assert "argon2" in ocultos
+
+
 def test_el_instalador_no_borra_los_datos_al_desinstalar():
     """
     Borrar las facturas de alguien porque desinstala el programa sería

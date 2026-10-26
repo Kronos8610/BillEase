@@ -10,6 +10,7 @@
 
 Está diseñada para autónomos que necesitan una herramienta ligera y fácil de usar para:
 
+- Tener sus datos **cifrados**: el fichero no se puede leer sin su contraseña
 - Registrar y gestionar sus clientes
 - Crear y editar facturas y presupuestos profesionales
 - Escribir cada concepto con su cantidad, su unidad y su precio
@@ -25,7 +26,7 @@ No requiere conexión a internet, ni servidores externos. Todo queda guardado lo
 
 | Requisito | Versión mínima |
 |-----------|---------------|
-| Python    | 3.10 o superior |
+| Python    | 3.11 o superior |
 | Sistema operativo | Windows, macOS o Linux |
 
 ---
@@ -58,6 +59,46 @@ python main_start.py
 ```
 
 La primera vez que arranques la aplicación, se mostrará un formulario de **configuración inicial** donde introducirás tus datos como autónomo (nombre, NIF, dirección, etc.). Esta información aparecerá en todas tus facturas.
+
+### 🔐 ¿Están seguros los datos?
+
+Sí, con dos matices que conviene decir claros.
+
+**Lo que protege.** La base de datos se cifra con **AES-256-GCM**, y la clave que
+la abre está envuelta con tu contraseña usando **Argon2id**. Con BillEase cerrado,
+en el disco solo hay un fichero del que no se puede sacar ni un NIF: ni con un
+visor de SQLite, ni copiándolo a otro ordenador, ni rescatándolo de un disco
+viejo. Mientras el programa está abierto, la base vive **en memoria**; nunca se
+escribe una copia en claro, ni siquiera temporal.
+
+**Lo que no protege.** Un programa malicioso que corra con tu sesión mientras
+tienes BillEase abierto ve los datos, porque en ese momento los estás usando tú.
+Contra eso valen el antivirus y el sentido común. Y cifrar no evita *perder*
+datos: para eso están las copias de seguridad, que se guardan también cifradas.
+
+**El código de recuperación.** Al cifrar, el programa enseña **una sola vez** un
+código de 32 caracteres. Es la única forma de recuperar tus facturas si olvidas
+la contraseña: apúntalo en un papel y guárdalo lejos del ordenador. No cambia
+aunque cambies la contraseña, así que abre también las copias antiguas.
+
+| | |
+|---|---|
+| Cifrado | AES-256-GCM (autenticado: si tocan un byte, se nota) |
+| Contraseña | Argon2id, 64 MiB · 3 pasadas · 4 hilos |
+| Cambiar la contraseña | Instantáneo: se reenvuelve la clave, no se recifran los datos |
+| Copias de seguridad | Cifradas también |
+| Sacar los datos | Ajustes → «Sacar una copia sin cifrar», previa contraseña |
+
+> **¿Por qué no SQLCipher?** Es la opción habitual, pero no publica ruedas para
+> Windows en ninguna versión: habría que compilar una biblioteca en C para poder
+> facturar. El cifrado va aquí dentro, con `cryptography` y `argon2-cffi`, que sí
+> las publican.
+
+Para comprobarlo tú mismo, sin fiarte del README:
+
+```bash
+python tools/verify.py --cifrado    # busca tus datos dentro del fichero cifrado
+```
 
 ### ¿Dónde se guardan los datos?
 
@@ -185,6 +226,11 @@ facturación.
 ### ✏️ Editar factura
 Permite modificar cualquier factura existente: cambiar el cliente, las fechas, los conceptos y las cantidades.
 
+### 🔑 Acceso y contraseña
+El programa pide la contraseña al abrir, y esa misma contraseña descifra los
+datos. Tras tres intentos fallidos hay que esperar, y la espera crece. Si la
+olvidas, el código de recuperación entra y te deja poner una nueva.
+
 ### 📥 Exportar a PDF
 Genera un PDF profesional de cualquier factura con los datos del emisor, del cliente, el
 desglose de conceptos, subtotal, IVA (21%) y total. Si has puesto logotipo, encabeza el
@@ -234,6 +280,7 @@ BillEase/
 │   ├── quotes.py        # Presupuestos y su conversión en factura
 │   ├── cobros.py        # Cobrada, pendiente o vencida
 │   ├── reports.py       # Resumen de IVA por trimestre y por año
+│   ├── cifrado.py       # AES-256-GCM + Argon2id, sin saber de SQL
 │   ├── fechas.py        # ISO en la base, formato español en pantalla
 │   ├── security.py      # Contraseña cifrada con Argon2
 │   └── validators/      # NIF, NIE, CIF, teléfono, CP
@@ -241,6 +288,7 @@ BillEase/
 │   ├── connection.py    # Una conexión, con claves ajenas activadas
 │   ├── schema.py        # Esquema de partida
 │   ├── backup.py        # Copias de seguridad, con la API de copia de SQLite
+│   ├── caja.py          # La base cifrada: en memoria mientras se usa
 │   ├── migrations/      # 001 … 009
 │   └── repositories/    # documentos, clientes, autonomo
 ├── documents/
@@ -250,8 +298,8 @@ BillEase/
 │   ├── shell.py         # Ventana principal y navegación lateral
 │   ├── iconos.py        # Los iconos, en SVG propio (ya no hay emojis)
 │   ├── models/          # QAbstractTableModel: listados y búsqueda
-│   ├── views/           # listado · documento_editor · cliente_editor
-│   │                    # registro · resumen · ajustes
+│   ├── views/           # listado · documento_editor · cliente_editor · registro
+│   │                    # resumen · ajustes · acceso · seguridad
 │   └── widgets/         # concepto.py (sugerencias) · pildora.py (estados)
 ├── theme/               # Todo el color, en un sitio
 │   ├── tokens.py        # Paleta clara y oscura, sin dependencias
@@ -284,6 +332,7 @@ python -m data.migrations                 # aplicarlas (deja copia de seguridad)
 python tools/verify.py --totales --post-migracion
 python tools/verify.py --pintar           # 1.000 facturas: cuánto tarda el listado
 python tools/verify.py --fiscal --copia   # el IVA cuadra y la copia se restaura
+python tools/verify.py --cifrado          # nada legible sin la contraseña
 python tools/check_contraste.py           # legibilidad de los dos temas
 python tools/check_estilos.py             # una sola hoja de estilos, ningún emoji
 pytest                                    # pruebas automáticas
@@ -309,9 +358,9 @@ todo está en verde. Es la puerta de verificación que usa cada fase del plan de
 Estas son algunas funcionalidades que se plantean incorporar en próximas versiones de BillEase:
 
 ### 🔒 Seguridad y cifrado de datos
-- Cifrado de la base de datos local para proteger los datos sensibles de los clientes (nombre, NIF/CIF, email, teléfono)
-- Almacenamiento seguro de la contraseña del autónomo mediante hash (bcrypt)
-- Protección contra accesos no autorizados a los archivos de la aplicación
+- ~~Cifrado de la base de datos local~~, ~~contraseña con hash~~ y ~~acceso protegido~~ — **ya disponibles**
+- Bloqueo automático tras un rato sin usar el programa
+- Registro de accesos y de cambios en documentos emitidos
 
 ### 🔍 Búsqueda y filtros
 - ~~Buscador en tiempo real~~ y ~~ordenación de columnas~~ — **ya disponibles**

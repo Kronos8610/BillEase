@@ -10,6 +10,12 @@ Se copia con la API de copia de SQLite —`Connection.backup()`— y no con
 puede no contener las últimas escrituras. La API hace una copia coherente
 aunque la aplicación esté funcionando.
 
+Con la base cifrada es al revés: ahí el fichero **no es** una base SQLite sino
+una caja (`data/caja.py`) que se reescribe entera en cada `commit()`, así que
+copiarla tal cual es exacto y además **la copia queda cifrada**. Para abrir una
+copia antigua sirve la contraseña de entonces o, siempre, el código de
+recuperación: la clave de datos no cambia al cambiar la contraseña.
+
 Las copias viven junto a la base, en `copias/`, con la fecha en el nombre:
 
     billease-2026-10-14_0932.db
@@ -19,11 +25,13 @@ crezca sin fin.
 """
 
 import re
+import shutil
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 
 from config import ruta_base_datos
+from data import caja
 
 CARPETA = "copias"
 PATRON = "billease-*.db"
@@ -57,16 +65,32 @@ def copiar(base=None, destino=None, cuantas_se_guardan=CUANTAS_SE_GUARDAN):
     destino = Path(destino)
     destino.parent.mkdir(parents=True, exist_ok=True)
 
-    entrada = sqlite3.connect(f"file:{origen}?mode=ro", uri=True)
-    salida = sqlite3.connect(destino)
-    try:
-        entrada.backup(salida)       # copia coherente, aunque haya WAL
-    finally:
-        salida.close()
-        entrada.close()
+    _copiar_fichero(origen, destino)
 
     if cuantas_se_guardan:
         limpiar(origen, cuantas_se_guardan)
+    return destino
+
+
+def _copiar_fichero(origen, destino):
+    """
+    Una copia coherente, cifrada o no.
+
+    La caja es un fichero que se escribe de un golpe, así que copiarlo basta.
+    La base en claro va en modo WAL y necesita la API de copia de SQLite para
+    no dejarse fuera lo último escrito.
+    """
+    if caja.es_caja(origen):
+        shutil.copy2(origen, destino)
+        return destino
+
+    entrada = sqlite3.connect(f"file:{origen}?mode=ro", uri=True)
+    salida = sqlite3.connect(destino)
+    try:
+        entrada.backup(salida)
+    finally:
+        salida.close()
+        entrada.close()
     return destino
 
 
@@ -123,13 +147,7 @@ def restaurar(copia, base=None):
         copiar(destino, anterior, cuantas_se_guardan=0)
 
     destino.parent.mkdir(parents=True, exist_ok=True)
-    entrada = sqlite3.connect(f"file:{copia}?mode=ro", uri=True)
-    salida = sqlite3.connect(destino)
-    try:
-        entrada.backup(salida)
-    finally:
-        salida.close()
-        entrada.close()
+    _copiar_fichero(copia, destino)
 
     # Los ficheros del WAL de la base vieja ya no valen para la nueva.
     for extra in (destino.with_suffix(destino.suffix + "-wal"),

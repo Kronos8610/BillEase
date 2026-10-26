@@ -8,6 +8,11 @@ son los que saldrán impresos en cada factura.
 Cambia el aspecto —lo viste la hoja de estilos, como el resto— y no cambia
 nada de lo que ya funcionaba: las mismas reglas de validación, el mismo alta,
 la misma contraseña cifrada con Argon2.
+
+Lo que sí cambia: **la contraseña que se escribe aquí cifra la base desde el
+primer minuto**. Una instalación nueva nace cifrada, sin que haya que
+acordarse de activar nada. Al terminar se enseña el código de recuperación,
+que es lo único que salva una contraseña olvidada.
 """
 
 from PyQt6.QtCore import Qt
@@ -70,6 +75,7 @@ class VentanaRegistro(QWidget):
         self.campos = {}
         self.errores = {}
         self.ventana_principal = None
+        self.codigo_recuperacion = None
 
         self.setWindowTitle("BillEase")
         self.setMinimumSize(720, 620)
@@ -174,7 +180,7 @@ class VentanaRegistro(QWidget):
         if not correcto:
             return
 
-        if self.configuracion_inicial and not self._crear_base():
+        if self.configuracion_inicial and not self._crear_base(datos["contrasena"]):
             return
 
         creado = repo_autonomo.registrar(
@@ -198,26 +204,44 @@ class VentanaRegistro(QWidget):
             )
             return
 
-        if self.configuracion_inicial:
-            self.abrir_aplicacion()
-        else:
+        if not self.configuracion_inicial:
             QMessageBox.information(self, "Listo", "Los datos se han guardado.")
             self.close()
+            return
 
-    def _crear_base(self):
-        """Crea la base la primera vez. Devuelve si ha ido bien."""
+        # El código de recuperación se enseña una vez, aquí, y no se vuelve a
+        # poder enseñar: en el fichero solo queda la clave envuelta con él.
+        if self.codigo_recuperacion:
+            from ui.views.seguridad import DialogoCodigo
+
+            DialogoCodigo(self.codigo_recuperacion, self).exec()
+        self.abrir_aplicacion()
+
+    def _crear_base(self, contrasena):
+        """
+        Crea la base la primera vez, ya cifrada. Devuelve si ha ido bien.
+
+        La contraseña del formulario es la que envuelve la clave de los datos,
+        así que no hay un segundo momento en el que el usuario tenga que
+        acordarse de proteger nada.
+        """
         from PyQt6.QtWidgets import QApplication
 
-        aviso = QProgressDialog("Preparando BillEase…", None, 0, 2, self)
+        aviso = QProgressDialog("Preparando y cifrando BillEase…", None, 0, 2, self)
         aviso.setWindowTitle("Configuración inicial")
         aviso.setWindowModality(Qt.WindowModality.WindowModal)
         aviso.setValue(0)
         aviso.show()
         QApplication.processEvents()
         try:
+            from config import asegurar_directorio, ruta_base_datos
+            from data import caja, connection
             from data.schema import crear_esquema_y_migrar
 
-            crear_esquema_y_migrar()
+            ruta = asegurar_directorio(ruta_base_datos())
+            conn, self.codigo_recuperacion = caja.crear(ruta, contrasena)
+            connection.adoptar(conn)
+            crear_esquema_y_migrar(conn)
             aviso.setValue(2)
             return True
         except Exception as e:  # noqa: BLE001

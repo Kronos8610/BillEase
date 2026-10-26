@@ -1,5 +1,6 @@
 # BillEase — dependencias
-# Requiere Python 3.10 o superior.
+# Requiere Python 3.11 o superior: la base cifrada se carga en memoria con
+# `sqlite3.Connection.deserialize`, que llegó en la 3.11.
 #
 #   python -m venv .venv
 #   .venv\Scripts\activate        (Windows)
@@ -10,10 +11,14 @@
 PyQt6==6.9.1
 reportlab==4.4.10
 
-# Cifrado de la contraseña del autónomo.
-# Se empieza a usar en la fase 2; se instala ya para que el entorno no
-# cambie a mitad de la ruta.
+# Cifrado de la contraseña del autónomo y derivación de la clave de la caja.
 argon2-cffi==25.1.0
+
+# AES-256-GCM para cifrar la base de datos (`core/cifrado.py`). Se usa solo
+# `AESGCM`, que no ha cambiado desde hace años. La alternativa habitual,
+# SQLCipher, no publica ruedas para Windows en ninguna versión: pedirle a un
+# autónomo que compile una biblioteca en C para facturar no es una opción.
+cryptography==46.0.3
 
 # --- Desarrollo y pruebas ---
 pytest==8.4.2

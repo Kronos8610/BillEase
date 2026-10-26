@@ -180,6 +180,16 @@ QPushButton#Peligro:hover    { background-color: $peligro_tenue; }
 QPushButton#Peligro:pressed  { background-color: $peligro_tenue; border-color: $peligro; }
 QPushButton#Peligro:disabled { color: $texto_suave; background-color: transparent; }
 
+QPushButton#Enlace {
+    background-color: transparent;
+    border: none;
+    color: $acento;
+    padding: 4px 6px;
+    text-align: center;
+}
+
+QPushButton#Enlace:hover { text-decoration: underline; }
+
 /* ───────────────────────────── campos ───────────────────────────── */
 
 QLineEdit, QPlainTextEdit, QTextEdit, QSpinBox, QDateEdit {

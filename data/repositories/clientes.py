@@ -7,6 +7,18 @@ from core.validators import normalizar_cp, normalizar_telefono
 from data.connection import conexion
 
 
+def _o_nulo(valor):
+    """
+    Un campo opcional vacío se guarda como NULL, no como cadena vacía.
+
+    El esquema exige `cod_postal IS NULL OR length(cod_postal) = 5`, así que
+    guardar "" rompía la restricción y el alta fallaba en silencio: la pantalla
+    decía «ya hay un cliente con ese documento», que no tenía nada que ver.
+    Un cliente sin código postal es perfectamente normal.
+    """
+    return valor or None
+
+
 def listar():
     filas = conexion().execute(
         "SELECT * FROM Cliente ORDER BY nombre_o_razon_social"
@@ -39,8 +51,8 @@ def crear(cliente):
                 int(bool(cliente.es_persona_fisica)),
                 cliente.nombre,
                 cliente.direccion,
-                normalizar_telefono(cliente.telefono),
-                normalizar_cp(cliente.codigo_postal),
+                _o_nulo(normalizar_telefono(cliente.telefono)),
+                _o_nulo(normalizar_cp(cliente.codigo_postal)),
                 cliente.nif.upper(),
                 cliente.observaciones,
                 cliente.email,

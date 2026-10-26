@@ -1,10 +1,10 @@
 """
-Ajustes: el logotipo, las copias de seguridad y la exportación.
+Ajustes: seguridad, logotipo, copias de seguridad y exportación.
 
-Las tres cosas que un programa que se instala tiene que ofrecer y que hasta
-ahora no estaban en ninguna parte: poner la marca propia en el papel, poder
-recuperar los datos si algo va mal, y poder sacarlos para la gestoría sin
-depender del programa.
+Las cosas que un programa que se instala tiene que ofrecer y que hasta ahora
+no estaban en ninguna parte: cifrar los datos, poner la marca propia en el
+papel, poder recuperarlos si algo va mal, y poder sacarlos para la gestoría
+sin depender del programa.
 
 También dice **dónde vive la base de datos**. Parece un detalle y no lo es:
 la versión anterior la creaba en el directorio desde el que se arrancara, así
@@ -23,13 +23,14 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMessageBox,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
 import theme
 from config import ruta_base_datos
-from data import backup
+from data import backup, caja
 from data.repositories import autonomo as repo_autonomo
 from data.repositories import clientes as repo_clientes
 from data.repositories import documentos as repo_documentos
@@ -59,13 +60,22 @@ class Ajustes(QWidget):
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(0, 0, 0, 0)
 
-        centrado = QHBoxLayout()
+        # Cuatro tarjetas no caben en una pantalla pequeña, así que esto se
+        # desplaza. Sin ello, la última quedaba cortada por abajo.
+        desplazable = QScrollArea()
+        desplazable.setWidgetResizable(True)
+        desplazable.setFrameShape(QFrame.Shape.NoFrame)
+        raiz.addWidget(desplazable)
+
+        interior = QWidget()
+        centrado = QHBoxLayout(interior)
+        centrado.setContentsMargins(0, 0, 0, 0)
         contenido = QWidget()
         contenido.setMaximumWidth(theme.ancho_maximo())
         centrado.addStretch(1)
         centrado.addWidget(contenido, 100)
         centrado.addStretch(1)
-        raiz.addLayout(centrado)
+        desplazable.setWidget(interior)
 
         self.columna = QVBoxLayout(contenido)
         self.columna.setContentsMargins(32, 28, 32, 28)
@@ -78,6 +88,7 @@ class Ajustes(QWidget):
         self.columna.addWidget(titulo)
         self.columna.addWidget(apunte)
 
+        self._montar_seguridad()
         self._montar_logotipo()
         self._montar_copias()
         self._montar_exportacion()
@@ -110,6 +121,37 @@ class Ajustes(QWidget):
         self._iconos_de_accion[control] = icono
         control.clicked.connect(funcion)
         return control
+
+    def _montar_seguridad(self):
+        dentro = self._tarjeta(
+            "Seguridad",
+            "Si tus datos están cifrados, el fichero no se puede leer sin tu "
+            "contraseña: ni en este ordenador ni en otro. Lo que no protege es "
+            "un virus que corra con tu sesión mientras BillEase está abierto.",
+        )
+
+        self.estado_cifrado = QLabel()
+        self.estado_cifrado.setWordWrap(True)
+        self.escudo = QLabel()
+
+        fila = QHBoxLayout()
+        fila.setSpacing(12)
+        fila.addWidget(self.escudo)
+        fila.addWidget(self.estado_cifrado, 1)
+        dentro.addLayout(fila)
+
+        botones = QHBoxLayout()
+        botones.setSpacing(8)
+        self.boton_cifrar = self._accion("Cifrar ahora", "candado", self._cifrar, "Primario")
+        self.boton_clave = self._accion("Cambiar la contraseña", "llave", self._cambiar_clave)
+        self.boton_exportar_claro = self._accion(
+            "Sacar una copia sin cifrar", "exportar", self._exportar_sin_cifrar
+        )
+        botones.addWidget(self.boton_cifrar)
+        botones.addWidget(self.boton_clave)
+        botones.addWidget(self.boton_exportar_claro)
+        botones.addStretch()
+        dentro.addLayout(botones)
 
     def _montar_logotipo(self):
         dentro = self._tarjeta(
@@ -159,6 +201,7 @@ class Ajustes(QWidget):
 
         self.lista_copias = QListWidget()
         self.lista_copias.setMinimumHeight(132)
+        self.lista_copias.setMaximumHeight(190)
         self.lista_copias.itemSelectionChanged.connect(self._cambio_copia)
         dentro.addWidget(self.lista_copias)
 
@@ -195,8 +238,32 @@ class Ajustes(QWidget):
     # ───────────────────────────── datos ─────────────────────────────
 
     def cargar(self):
+        self._pintar_seguridad()
         self._pintar_logotipo()
         self._pintar_copias()
+
+    def _pintar_seguridad(self):
+        cifrada = caja.es_caja(ruta_base_datos())
+
+        self.escudo.setPixmap(iconos.pixmap(
+            "escudo" if cifrada else "candado", 34,
+            theme.color("ok" if cifrada else "aviso"),
+        ))
+        if cifrada:
+            datos = caja.información(ruta_base_datos())
+            self.estado_cifrado.setText(
+                f"Tus datos están cifrados con AES-256 desde el "
+                f"{datos['creada'][:10]}. Hace falta tu contraseña para abrirlos, "
+                f"y el código de recuperación si la olvidas."
+            )
+        else:
+            self.estado_cifrado.setText(
+                "Tus datos NO están cifrados: cualquiera con acceso al fichero "
+                "puede leer tus clientes y tus facturas con un visor de SQLite."
+            )
+
+        self.boton_cifrar.setVisible(not cifrada)
+        self.boton_exportar_claro.setVisible(cifrada)
 
     def _pintar_logotipo(self):
         emisor = repo_autonomo.obtener()
@@ -251,6 +318,28 @@ class Ajustes(QWidget):
         return Path(ruta) if ruta else None
 
     # ───────────────────────────── acciones ─────────────────────────────
+
+    def _cifrar(self):
+        from ui.views.seguridad import DialogoCifrar, DialogoCodigo
+
+        dialogo = DialogoCifrar(ruta_base_datos(), self)
+        if not dialogo.exec():
+            return
+        DialogoCodigo(dialogo.codigo, self).exec()
+        self.cargar()
+        ventana = self.window()
+        if hasattr(ventana, "recargar_todo"):
+            ventana.recargar_todo()
+
+    def _cambiar_clave(self):
+        from ui.views.seguridad import DialogoCambioContrasena
+
+        DialogoCambioContrasena(ruta_base_datos(), self).exec()
+
+    def _exportar_sin_cifrar(self):
+        from ui.views.seguridad import exportar_sin_cifrar
+
+        exportar_sin_cifrar(ruta_base_datos(), self)
 
     def _elegir_logotipo(self):
         ruta, _ = QFileDialog.getOpenFileName(self, "Elegir logotipo", "", IMAGENES)

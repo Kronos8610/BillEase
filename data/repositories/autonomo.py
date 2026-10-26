@@ -25,8 +25,8 @@ def registrar(autonomo, contrasena):
                 autonomo.nombre,
                 autonomo.apellido,
                 autonomo.direccion,
-                normalizar_cp(autonomo.codigo_postal),
-                normalizar_telefono(autonomo.telefono),
+                normalizar_cp(autonomo.codigo_postal) or None,
+                normalizar_telefono(autonomo.telefono) or None,
                 autonomo.email,
                 hashear(contrasena),
             ),
@@ -56,6 +56,53 @@ def guardar_logotipo(ruta):
     )
     conn.commit()
     return True
+
+
+def verificar_contrasena(contrasena):
+    """
+    Comprueba la contraseña del único autónomo que hay.
+
+    BillEase es de un solo usuario: no hace falta pedir también el correo para
+    entrar. Si la contraseña venía en claro de una versión antigua, se cifra
+    al vuelo, como en `verificar_acceso`.
+    """
+    conn = conexion()
+    fila = conn.execute("SELECT DNI, contrasena FROM Autonomo LIMIT 1").fetchone()
+    if not fila:
+        return False
+
+    correcta, recifrar = verificar(contrasena, fila["contrasena"])
+    if correcta and recifrar:
+        conn.execute(
+            "UPDATE Autonomo SET contrasena = ? WHERE DNI = ?",
+            (hashear(contrasena), fila["DNI"]),
+        )
+        conn.commit()
+    return correcta
+
+
+def cambiar_contrasena(nueva):
+    """
+    Guarda la contraseña nueva, cifrada.
+
+    Quien llama se encarga de comprobar antes la anterior y, si la base está
+    cifrada, de cambiarla también en la caja: son dos cosas distintas que
+    tienen que moverse juntas.
+    """
+    conn = conexion()
+    fila = conn.execute("SELECT DNI FROM Autonomo LIMIT 1").fetchone()
+    if fila is None:
+        return False
+    conn.execute(
+        "UPDATE Autonomo SET contrasena = ? WHERE DNI = ?", (hashear(nueva), fila["DNI"])
+    )
+    conn.commit()
+    return True
+
+
+def hay_autonomo():
+    """¿Hay alguien dado de alta? Si no, no se le puede pedir que se acredite."""
+    return conexion().execute("SELECT COUNT(*) FROM Autonomo").fetchone()[0] > 0
 
 
 def verificar_acceso(email, contrasena):
