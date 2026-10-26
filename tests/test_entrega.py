@@ -126,6 +126,44 @@ def test_una_copia_que_falla_no_impide_cerrar(base, monkeypatch):
     assert not ventana.isVisible()
 
 
+def test_las_rutas_con_espacios_y_acentos_funcionan(tmp_path):
+    """
+    En Windows la base vive en `C:/Users/<nombre>/…`, y los nombres llevan
+    espacios y acentos: «José Luis», «OneDrive - Empresa».
+
+    Pegarle `file:` delante a una ruta así no da una URI válida. Si esto se
+    rompe, el programa falla solo en los ordenadores de quien tiene un nombre
+    con tilde, que es la mitad de España.
+    """
+    from data import backup, caja
+    from data.connection import uri_solo_lectura
+
+    carpeta = tmp_path / "OneDrive - Carpintería José Luis" / "mis facturas"
+    carpeta.mkdir(parents=True)
+    ruta = carpeta / "billease.db"
+
+    import sqlite3
+
+    suelta = sqlite3.connect(ruta)
+    suelta.execute("CREATE TABLE Cliente (nombre TEXT)")
+    suelta.execute("INSERT INTO Cliente VALUES ('María Fernández')")
+    suelta.commit()
+    suelta.close()
+
+    uri = uri_solo_lectura(ruta)
+    assert uri.startswith("file:///") and "%20" in uri      # espacios escapados
+    assert sqlite3.connect(uri, uri=True).execute(
+        "SELECT nombre FROM Cliente"
+    ).fetchone()[0] == "María Fernández"
+
+    # Y las operaciones que la usan: copiar y cifrar.
+    assert backup.copiar(ruta).exists()
+    caja.cifrar(ruta, "Pass1234")
+    conn = caja.abrir(ruta, contrasena="Pass1234")
+    assert conn.execute("SELECT nombre FROM Cliente").fetchone()[0] == "María Fernández"
+    conn.close()
+
+
 # ─────────────────────── el empaquetado ───────────────────────
 
 

@@ -274,7 +274,9 @@ QTableView {
     color: $texto;
     border: 1px solid $borde;
     border-radius: $radio_grande;
-    gridline-color: transparent;
+    /* La rejilla: una línea fina entre columnas y entre filas, del mismo
+       gris que los bordes de las tarjetas. Separa sin hacerse notar. */
+    gridline-color: $borde;
     selection-background-color: $seleccion;
     selection-color: $texto;
     outline: none;
@@ -293,10 +295,14 @@ QHeaderView::section {
     color: $texto_suave;
     border: none;
     border-bottom: 1px solid $borde;
+    /* Los títulos se separan igual que las columnas que encabezan. */
+    border-right: 1px solid $borde;
     padding: 9px 10px;
     font-weight: 600;
     text-align: left;
 }
+
+QHeaderView::section:last { border-right: none; }
 
 QHeaderView::section:hover { color: $texto; }
 

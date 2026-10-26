@@ -179,7 +179,7 @@ class Resumen(QWidget):
         self.vista.setAlternatingRowColors(True)
         self.vista.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.vista.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.vista.setShowGrid(False)
+        self.vista.setShowGrid(True)
         self.vista.verticalHeader().setVisible(False)
         self.vista.verticalHeader().setDefaultSectionSize(38)
         self.vista.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)

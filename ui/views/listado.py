@@ -266,7 +266,9 @@ class Listado(QWidget):
         self.vista.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.vista.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.vista.setSortingEnabled(True)
-        self.vista.setShowGrid(False)
+        # Con seis columnas de números, la rejilla ayuda a seguir la fila:
+        # una línea fina entre columnas y entre filas.
+        self.vista.setShowGrid(True)
         self.vista.setWordWrap(False)
         self.vista.verticalHeader().setVisible(False)
         self.vista.verticalHeader().setDefaultSectionSize(38)

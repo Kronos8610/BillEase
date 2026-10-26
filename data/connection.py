@@ -21,6 +21,7 @@ se guarda cifrada en cada `commit()`. El resto del programa no distingue: pide
 
 import sqlite3
 import threading
+from pathlib import Path
 
 from config import asegurar_directorio, ruta_base_datos
 from data import caja
@@ -39,6 +40,20 @@ def _configurar(conn):
         conn.execute("PRAGMA journal_mode = WAL")
         conn.execute("PRAGMA synchronous = NORMAL")
     return conn
+
+
+def uri_solo_lectura(ruta):
+    """
+    La URI con la que SQLite abre un fichero sin poder escribirlo.
+
+    Hay que montarla con `as_uri()` y no pegando `file:` delante de la ruta:
+    en Windows una ruta lleva barras invertidas, letra de unidad y, muy a
+    menudo, espacios o acentos (C:/Users/José Luis/OneDrive - Empresa/…),
+    y nada de eso es una URI válida tal cual (en el original van barras
+    invertidas). `as_uri()` lo traduce a
+    `file:///C:/Users/Jos%C3%A9%20Luis/…`, que es lo que SQLite espera.
+    """
+    return f"{Path(ruta).resolve().as_uri()}?mode=ro"
 
 
 def abrir(ruta=None):

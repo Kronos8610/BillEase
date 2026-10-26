@@ -194,7 +194,9 @@ def cifrar(origen, contrasena, destino=None):
 
     # Se lee con la API de copia de SQLite y no leyendo el fichero: la base
     # va en modo WAL, así que el `.db` a secas puede no tener lo último.
-    entrada = sqlite3.connect(f"file:{origen}?mode=ro", uri=True)
+    from data.connection import uri_solo_lectura
+
+    entrada = sqlite3.connect(uri_solo_lectura(origen), uri=True)
     memoria = sqlite3.connect(":memory:")
     try:
         entrada.backup(memoria)

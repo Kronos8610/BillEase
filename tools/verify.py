@@ -145,10 +145,11 @@ def verificar_totales(ruta_base, r):
     import tempfile
     from pathlib import Path as _Path
 
+    from data.connection import uri_solo_lectura
     from core.taxes import calcular, desde_base, desde_detalles, formatear
     from documents.invoice_pdf import generar_documento_pdf
 
-    conn = sqlite3.connect(f"file:{ruta_base}?mode=ro", uri=True)
+    conn = sqlite3.connect(uri_solo_lectura(ruta_base), uri=True)
     try:
         cur = conn.cursor()
         # La columna de la base se llamaba `total` antes de la migración 003,

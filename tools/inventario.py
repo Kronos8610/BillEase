@@ -42,7 +42,9 @@ def leer(ruta=None):
     if not ruta.exists():
         raise FileNotFoundError(f"No existe la base de datos: {ruta}")
 
-    conn = sqlite3.connect(f"file:{ruta}?mode=ro", uri=True)
+    from data.connection import uri_solo_lectura
+
+    conn = sqlite3.connect(uri_solo_lectura(ruta), uri=True)
     try:
         cur = conn.cursor()
         tablas_existentes = {

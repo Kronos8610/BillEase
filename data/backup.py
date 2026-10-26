@@ -32,6 +32,7 @@ from pathlib import Path
 
 from config import ruta_base_datos
 from data import caja
+from data.connection import uri_solo_lectura
 
 CARPETA = "copias"
 PATRON = "billease-*.db"
@@ -84,7 +85,7 @@ def _copiar_fichero(origen, destino):
         shutil.copy2(origen, destino)
         return destino
 
-    entrada = sqlite3.connect(f"file:{origen}?mode=ro", uri=True)
+    entrada = sqlite3.connect(uri_solo_lectura(origen), uri=True)
     salida = sqlite3.connect(destino)
     try:
         entrada.backup(salida)
