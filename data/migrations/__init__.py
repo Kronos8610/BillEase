@@ -31,6 +31,7 @@ from data.migrations import (
     m007_sin_catalogo,
     m008_presupuestos,
     m009_logotipo,
+    m010_obra_y_banco,
 )
 
 MIGRACIONES = (
@@ -43,6 +44,7 @@ MIGRACIONES = (
     m007_sin_catalogo,
     m008_presupuestos,
     m009_logotipo,
+    m010_obra_y_banco,
 )
 
 

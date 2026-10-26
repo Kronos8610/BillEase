@@ -112,6 +112,10 @@ class Autonomo:
     # Ruta de la imagen, no la imagen: un PNG dentro de la base engorda cada
     # copia de seguridad y no se puede mirar desde fuera.
     logotipo: str = ""
+    # Dónde se cobra. Sale impreso solo en las facturas: un presupuesto
+    # todavía no se cobra.
+    entidad: str = ""
+    iban: str = ""
 
     @property
     def nombre_completo(self):
@@ -131,6 +135,8 @@ class Autonomo:
             telefono=str(fila["telefono"] or ""),
             email=fila["email"] or "",
             logotipo=(fila["logotipo"] if "logotipo" in claves else "") or "",
+            entidad=(fila["entidad"] if "entidad" in claves else "") or "",
+            iban=(fila["iban"] if "iban" in claves else "") or "",
         )
 
 
@@ -171,6 +177,9 @@ class Documento:
     estado: str = EMITIDA
     vencimiento: str = ""
     validez: str = ""
+    # Dónde se hace el trabajo, que no tiene por qué ser la dirección del
+    # cliente: se le factura a la oficina una obra hecha en otra calle.
+    direccion_obra: str = ""
     origen_id: int = None
     serie: str = ""
     ejercicio: int = 0
@@ -214,6 +223,9 @@ class Documento:
             estado=(fila["estado"] if "estado" in claves else None) or EMITIDA,
             vencimiento=(fila["vencimiento"] if "vencimiento" in claves else "") or "",
             validez=(fila["validez"] if "validez" in claves else "") or "",
+            direccion_obra=(
+                fila["direccion_obra"] if "direccion_obra" in claves else ""
+            ) or "",
             origen_id=fila["origen_id"] if "origen_id" in claves else None,
             serie=fila["serie"] or "",
             ejercicio=fila["ejercicio"] or 0,

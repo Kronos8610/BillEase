@@ -101,6 +101,7 @@ def a_factura(presupuesto, fecha=None):
         fecha=fecha_emision,
         vencimiento=vencimiento_por_defecto(fecha_emision),
         origen_id=presupuesto.id,
+        direccion_obra=presupuesto.direccion_obra,
         cliente_id=presupuesto.cliente_id,
         cliente_nombre=presupuesto.cliente_nombre,
         observaciones=presupuesto.observaciones,

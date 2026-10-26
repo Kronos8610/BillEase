@@ -202,6 +202,18 @@ Listado de facturas, presupuestos y clientes, con búsqueda, orden por columna y
 acciones de cada documento: generar el PDF, editarlo, cambiar el estado de un presupuesto,
 facturarlo o borrarlo.
 
+### 🏗️ Dirección de la obra
+Cada factura y cada presupuesto llevan **dónde se hace el trabajo**, que no
+tiene por qué ser la dirección del cliente: se le factura a la oficina una obra
+hecha en otra calle. En el documento sale entre los datos de las partes y los
+conceptos, que es donde se busca.
+
+### 🏦 Dónde se cobra
+Tu **entidad e IBAN** salen impresos debajo del total, **solo en las facturas**
+—un presupuesto todavía no se cobra—. El IBAN se comprueba con su dígito de
+control antes de guardarlo: uno mal escrito no se nota hasta que el banco
+devuelve el dinero.
+
 ### 📄 Crear factura
 Formulario completo para crear facturas. Selecciona un cliente existente y **escribe
 cada concepto**: la descripción entera del trabajo, su cantidad, su unidad (ud, h, m²…)
@@ -248,10 +260,12 @@ Cada factura dice si está **cobrada**, **pendiente** o **vencida**. Lo de venci
 que marcarlo: se deduce de la fecha de vencimiento, así que la lista siempre está al día
 sin tocar nada.
 
-### ⚙️ Ajustes: logotipo, copias y exportación
-Tu logotipo en el papel, una copia de seguridad al cerrar —y cuando quieras—, y la
-exportación a CSV de documentos, conceptos y clientes. Restaurar una copia guarda antes
-lo que hubiera, así que equivocarse no es un camino de ida.
+### ⚙️ Ajustes: mis datos, logotipo, copias y exportación
+Tus datos de emisor —incluidos la entidad y el IBAN— se corrigen aquí: hasta ahora
+una errata en el NIF obligaba a empezar de cero. Además, tu logotipo en el papel,
+una copia de seguridad al cerrar —y cuando quieras—, y la exportación a CSV de
+documentos, conceptos y clientes. Restaurar una copia guarda antes lo que hubiera,
+así que equivocarse no es un camino de ida.
 
 ![Ajustes](assets/ajustes.png)
 
@@ -283,13 +297,13 @@ BillEase/
 │   ├── cifrado.py       # AES-256-GCM + Argon2id, sin saber de SQL
 │   ├── fechas.py        # ISO en la base, formato español en pantalla
 │   ├── security.py      # Contraseña cifrada con Argon2
-│   └── validators/      # NIF, NIE, CIF, teléfono, CP
+│   └── validators/      # NIF, NIE, CIF, teléfono, CP, IBAN
 ├── data/                # Único sitio con SQL
 │   ├── connection.py    # Una conexión, con claves ajenas activadas
 │   ├── schema.py        # Esquema de partida
 │   ├── backup.py        # Copias de seguridad, con la API de copia de SQLite
 │   ├── caja.py          # La base cifrada: en memoria mientras se usa
-│   ├── migrations/      # 001 … 009
+│   ├── migrations/      # 001 … 010
 │   └── repositories/    # documentos, clientes, autonomo
 ├── documents/
 │   ├── invoice_pdf.py   # Factura y presupuesto, sin Qt
@@ -373,9 +387,8 @@ Estas son algunas funcionalidades que se plantean incorporar en próximas versio
 - Guardado automático de las preferencias visuales del usuario
 
 ### 👤 Ajustes de usuario
-- Pantalla de **perfil del autónomo** para modificar los datos personales (nombre, dirección, NIF, teléfono, email) sin necesidad de reinstalar
-- Cambio de contraseña desde la propia aplicación
-- Subida de logotipo propio para que aparezca en los PDFs generados
+- ~~Perfil del autónomo editable~~, ~~cambio de contraseña~~ y ~~logotipo propio~~ — **ya disponibles**
+- Varios perfiles de emisor para quien factura con más de una actividad
 
 ### 📊 Estadísticas e informes
 - ~~Resumen trimestral y anual de facturación~~ y ~~exportación a CSV~~ — **ya disponibles**
@@ -384,7 +397,7 @@ Estas son algunas funcionalidades que se plantean incorporar en próximas versio
 ### 📄 Mejoras en la generación de PDF
 - ~~Logotipo del autónomo en la cabecera~~ y ~~numeración automática `2025-001`~~ — **ya disponibles**
 - Plantillas de diseño seleccionables para las facturas
-- Campo de número de cuenta bancaria para incluirlo en la factura
+- ~~Número de cuenta bancaria en la factura~~ — **ya disponible**
 
 ### 📧 Envío de facturas
 - Envío directo de facturas por email desde la aplicación

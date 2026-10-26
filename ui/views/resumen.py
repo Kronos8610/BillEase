@@ -38,7 +38,6 @@ from ui.models.tabla import DERECHA, Columna, ModeloTabla, repartir
 from ui.views.listado import boton
 
 TITULO = "Resumen"
-APUNTE = "Lo facturado y lo que queda por cobrar, trimestre a trimestre."
 
 
 def euros(valor):
@@ -129,13 +128,10 @@ class Resumen(QWidget):
     def _cabecera(self):
         titulo = QLabel(TITULO)
         titulo.setObjectName("Titulo")
-        apunte = QLabel(APUNTE)
-        apunte.setObjectName("Apunte")
 
         textos = QVBoxLayout()
         textos.setSpacing(2)
         textos.addWidget(titulo)
-        textos.addWidget(apunte)
 
         etiqueta = QLabel("Ejercicio")
         etiqueta.setObjectName("Etiqueta")

@@ -17,6 +17,12 @@ from core.validators.contacto import (  # noqa: F401
     normalizar_cp,
     normalizar_telefono,
 )
+from core.validators.banco import (  # noqa: F401
+    es_entidad,
+    es_iban,
+    formatear_iban,
+    normalizar_iban,
+)
 from core.validators.documento import (  # noqa: F401
     es_cif,
     es_documento_fiscal,
@@ -60,6 +66,8 @@ TELEFONO = Regla(es_telefono, "Teléfono inválido: 9 cifras empezando por 6, 7,
 TELEFONO_OPCIONAL = Regla(es_telefono, TELEFONO.mensaje, obligatorio=False)
 CODIGO_POSTAL = Regla(es_codigo_postal, "Código postal inválido: 5 cifras, de 01000 a 52999")
 CODIGO_POSTAL_OPCIONAL = Regla(es_codigo_postal, CODIGO_POSTAL.mensaje, obligatorio=False)
+IBAN = Regla(es_iban, "IBAN inválido: revisa el dígito de control")
+IBAN_OPCIONAL = Regla(es_iban, IBAN.mensaje, obligatorio=False)
 
 
 def validar_formulario(datos, reglas):

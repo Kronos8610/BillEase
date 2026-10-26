@@ -176,6 +176,50 @@ def test_las_sugerencias_salen_de_lo_ya_escrito(base, sin_dialogos):
     assert "Instalación de fontanería" in otro._sugerencias
 
 
+# ─────────────────────── la dirección de la obra ───────────────────────
+
+
+def test_la_obra_se_escribe_y_se_guarda(base, sin_dialogos):
+    """No es la dirección del cliente: es dónde se hace el trabajo."""
+    d = editor()
+    elegir_cliente(d, base)
+    escribir(d.filas[0], "Armario a medida", 1, "1240")
+    d.direccion_obra.setText("Calle Alcalá 120, 3.º B · 28009 Madrid")
+    d.guardar()
+
+    guardado = repo.obtener(d.documento_id, con_lineas=False)
+    assert guardado.direccion_obra == "Calle Alcalá 120, 3.º B · 28009 Madrid"
+
+
+def test_la_obra_se_puede_dejar_en_blanco(base, sin_dialogos):
+    d = editor()
+    elegir_cliente(d, base)
+    escribir(d.filas[0], "Trabajo sin obra concreta", 1, "100")
+    d.guardar()
+    assert repo.obtener(d.documento_id, con_lineas=False).direccion_obra == ""
+
+
+def test_al_reabrir_un_documento_la_obra_sigue_ahi(base, sin_dialogos):
+    documento = repo.crear("26/10/2026", base, [Linea("x", cantidad=1, precio_ud=100)],
+                           direccion_obra="Plaza Mayor 1")
+    d = editor(documento_id=documento)
+    assert d.direccion_obra.text() == "Plaza Mayor 1"
+
+    d.direccion_obra.setText("Plaza Mayor 2")
+    d.guardar()
+    assert repo.obtener(documento, con_lineas=False).direccion_obra == "Plaza Mayor 2"
+
+
+def test_al_facturar_un_presupuesto_la_obra_va_con_el(base, sin_dialogos):
+    presupuesto = repo.crear("26/10/2026", base, [Linea("Obra", cantidad=1, precio_ud=800)],
+                             tipo=PRESUPUESTO, direccion_obra="Calle Alcalá 120")
+    repo.cambiar_estado(presupuesto, ENVIADO)
+    repo.cambiar_estado(presupuesto, ACEPTADO)
+
+    factura = repo.facturar_presupuesto(presupuesto)
+    assert repo.obtener(factura, con_lineas=False).direccion_obra == "Calle Alcalá 120"
+
+
 # ─────────────────────── el defecto 06 ───────────────────────
 
 

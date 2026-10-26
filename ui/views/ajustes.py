@@ -17,9 +17,11 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QFileDialog,
+    QFormLayout,
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
@@ -30,6 +32,17 @@ from PyQt6.QtWidgets import (
 
 import theme
 from config import ruta_base_datos
+from core.models import Autonomo
+from core.validators import (
+    CODIGO_POSTAL,
+    EMAIL,
+    IBAN_OPCIONAL,
+    NIF_O_NIE,
+    OBLIGATORIO,
+    TELEFONO,
+    formatear_iban,
+    validar_formulario,
+)
 from data import backup, caja
 from data.repositories import autonomo as repo_autonomo
 from data.repositories import clientes as repo_clientes
@@ -40,6 +53,13 @@ from ui.views.listado import boton
 
 IMAGENES = "Imágenes (*.png *.jpg *.jpeg)"
 ALTO_VISTA = 64
+
+
+def etiqueta(texto, nombre="Etiqueta"):
+    """Un rótulo. El color y el tamaño los pone la hoja de estilos."""
+    marca = QLabel(texto)
+    marca.setObjectName(nombre)
+    return marca
 
 
 def kilobytes(ruta):
@@ -83,11 +103,9 @@ class Ajustes(QWidget):
 
         titulo = QLabel("Ajustes")
         titulo.setObjectName("Titulo")
-        apunte = QLabel("Tu marca en el papel, tus datos a salvo y fuera del programa.")
-        apunte.setObjectName("Apunte")
         self.columna.addWidget(titulo)
-        self.columna.addWidget(apunte)
 
+        self._montar_mis_datos()
         self._montar_seguridad()
         self._montar_logotipo()
         self._montar_copias()
@@ -121,6 +139,63 @@ class Ajustes(QWidget):
         self._iconos_de_accion[control] = icono
         control.clicked.connect(funcion)
         return control
+
+    def _montar_mis_datos(self):
+        """
+        Los datos del emisor, los mismos que encabezan cada documento.
+
+        Hasta ahora se escribían una vez al instalar y no había forma de
+        corregirlos: una errata en el NIF obligaba a empezar de cero. Aquí se
+        cambian, y la cuenta bancaria se añade también, que es lo que hace
+        falta para que a uno le paguen.
+        """
+        dentro = self._tarjeta(
+            "Mis datos",
+            "Son los que salen impresos como emisor en cada factura y en cada "
+            "presupuesto. Lo que cambies aquí sale en los documentos que generes "
+            "a partir de ahora.",
+        )
+
+        self.mis_campos = {}
+        formulario = QFormLayout()
+        formulario.setSpacing(9)
+        formulario.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+        for clave, rotulo, marcador in (
+            ("nombre", "Nombre *", "Carlos"),
+            ("apellido", "Apellidos *", "García López"),
+            ("nif", "NIF o NIE *", "12345678Z"),
+            ("direccion", "Dirección *", "Calle Mayor 12, 2ºA"),
+            ("codigo_postal", "Código postal *", "28001"),
+            ("telefono", "Teléfono *", "612345678"),
+            ("email", "Correo *", "tu@correo.es"),
+            ("entidad", "Entidad bancaria", "Banco Santander"),
+            ("iban", "IBAN", "ES91 2100 0418 4502 0005 1332"),
+        ):
+            campo = QLineEdit()
+            campo.setPlaceholderText(marcador)
+            campo.setMinimumHeight(32)
+            self.mis_campos[clave] = campo
+            formulario.addRow(etiqueta(rotulo), campo)
+        dentro.addLayout(formulario)
+
+        dentro.addWidget(etiqueta(
+            "La entidad y el IBAN salen impresos solo en las facturas, debajo "
+            "del total: un presupuesto todavía no se cobra.",
+            "Apunte",
+        ))
+
+        self.error_datos = etiqueta("", "Error")
+        self.error_datos.setWordWrap(True)
+        dentro.addWidget(self.error_datos)
+
+        botones = QHBoxLayout()
+        botones.setSpacing(8)
+        botones.addWidget(self._accion("Guardar mis datos", "aceptar",
+                                       self._guardar_datos, "Primario"))
+        botones.addWidget(self._accion("Deshacer", "restaurar", self._pintar_mis_datos))
+        botones.addStretch()
+        dentro.addLayout(botones)
 
     def _montar_seguridad(self):
         dentro = self._tarjeta(
@@ -238,9 +313,66 @@ class Ajustes(QWidget):
     # ───────────────────────────── datos ─────────────────────────────
 
     def cargar(self):
+        self._pintar_mis_datos()
         self._pintar_seguridad()
         self._pintar_logotipo()
         self._pintar_copias()
+
+    def _pintar_mis_datos(self):
+        emisor = repo_autonomo.obtener()
+        self.error_datos.setText("")
+        if emisor is None:
+            return
+        valores = {
+            "nombre": emisor.nombre, "apellido": emisor.apellido, "nif": emisor.nif,
+            "direccion": emisor.direccion, "codigo_postal": emisor.codigo_postal,
+            "telefono": emisor.telefono, "email": emisor.email,
+            "entidad": emisor.entidad, "iban": formatear_iban(emisor.iban),
+        }
+        for clave, campo in self.mis_campos.items():
+            campo.setText(valores.get(clave, ""))
+
+    def _guardar_datos(self):
+        datos = {c: campo.text().strip() for c, campo in self.mis_campos.items()}
+        correcto, errores = validar_formulario(datos, {
+            "nombre": OBLIGATORIO,
+            "apellido": OBLIGATORIO,
+            "direccion": OBLIGATORIO,
+            "nif": NIF_O_NIE,
+            "codigo_postal": CODIGO_POSTAL,
+            "telefono": TELEFONO,
+            "email": EMAIL,
+            "iban": IBAN_OPCIONAL,
+        })
+        if not correcto:
+            nombres = {
+                "nombre": "Nombre", "apellido": "Apellidos", "nif": "NIF",
+                "direccion": "Dirección", "codigo_postal": "Código postal",
+                "telefono": "Teléfono", "email": "Correo", "iban": "IBAN",
+            }
+            self.error_datos.setText("\n".join(
+                f"· {nombres.get(campo, campo)}: {fallo}"
+                for campo, fallo in errores.items()
+            ))
+            return
+
+        guardado = repo_autonomo.actualizar(Autonomo(
+            nif=datos["nif"], nombre=datos["nombre"], apellido=datos["apellido"],
+            direccion=datos["direccion"], codigo_postal=datos["codigo_postal"],
+            telefono=datos["telefono"], email=datos["email"],
+            entidad=datos["entidad"], iban=datos["iban"],
+        ))
+        if not guardado:
+            self.error_datos.setText(
+                "· No se han podido guardar los datos. Comprueba el NIF."
+            )
+            return
+
+        self._pintar_mis_datos()
+        QMessageBox.information(
+            self, "Datos guardados",
+            "Los documentos que generes a partir de ahora salen con estos datos.",
+        )
 
     def _pintar_seguridad(self):
         cifrada = caja.es_caja(ruta_base_datos())

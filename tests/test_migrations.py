@@ -236,6 +236,25 @@ def test_las_facturas_de_siempre_quedan_pendientes_de_cobro(base_migrada):
     assert estados == {"emitida"}
 
 
+def test_hay_sitio_para_la_obra_y_para_la_cuenta(base_migrada):
+    """La 010: dónde se hace el trabajo y dónde se cobra."""
+    conn = abrir(base_migrada)
+    de_factura = {f[1] for f in conn.execute("PRAGMA table_info(Factura)")}
+    de_autonomo = {f[1] for f in conn.execute("PRAGMA table_info(Autonomo)")}
+    conn.close()
+
+    assert "direccion_obra" in de_factura
+    assert {"entidad", "iban"} <= de_autonomo
+
+
+def test_las_facturas_de_antes_no_tienen_obra_y_no_pasa_nada(base_migrada):
+    """Una columna nueva nace vacía: ningún documento antiguo cambia."""
+    conn = abrir(base_migrada)
+    obras = {f[0] for f in conn.execute("SELECT direccion_obra FROM Factura")}
+    conn.close()
+    assert obras == {None}
+
+
 # ─────────────────────── se pueden repetir ───────────────────────
 
 
@@ -247,7 +266,7 @@ def test_migrar_dos_veces_no_cambia_nada(base_v0):
     segunda = migrar(conn, registrar=lambda *_: None)
     conn.close()
 
-    assert primera == [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    assert primera == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     assert segunda == []
     assert leer(base_v0)["conteos"] == inventario_tras_la_primera["conteos"]
 
@@ -268,9 +287,9 @@ def test_una_base_a_medio_migrar_solo_aplica_lo_que_falta(base_v0):
         )
         conn.commit()
 
-    assert [m.VERSION for m in pendientes(conn)] == [4, 5, 6, 7, 8, 9]
-    assert migrar(conn, registrar=lambda *_: None) == [4, 5, 6, 7, 8, 9]
-    assert aplicadas(conn) == {1, 2, 3, 4, 5, 6, 7, 8, 9}
+    assert [m.VERSION for m in pendientes(conn)] == [4, 5, 6, 7, 8, 9, 10]
+    assert migrar(conn, registrar=lambda *_: None) == [4, 5, 6, 7, 8, 9, 10]
+    assert aplicadas(conn) == {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
     conn.close()
 
 

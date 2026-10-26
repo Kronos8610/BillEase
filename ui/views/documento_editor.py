@@ -185,6 +185,7 @@ class DocumentoEditor(QDialog):
 
         self._montar_titulo()
         self._montar_cliente()
+        self._montar_obra()
         self._montar_fechas()
         self._montar_conceptos()
         self._montar_observaciones()
@@ -237,13 +238,19 @@ class DocumentoEditor(QDialog):
         self.datos_cliente.setWordWrap(True)
         dentro.addWidget(self.datos_cliente)
 
-        aviso = etiqueta(
-            "Los datos fiscales se toman de la ficha del cliente y quedan "
-            "congelados en el documento al emitirlo.",
-            "Apunte",
+    def _montar_obra(self):
+        """
+        Dónde se hace el trabajo, que no es lo mismo que a quién se le factura.
+
+        Se le factura a la oficina de una empresa una obra que está en otra
+        calle, y quien recibe el papel necesita saber de cuál se habla. Sale
+        impreso justo encima de los conceptos.
+        """
+        dentro = self._seccion("Dirección de la obra")
+        self.direccion_obra = self._campo(
+            "Calle, número y población donde se hace el trabajo"
         )
-        aviso.setWordWrap(True)
-        dentro.addWidget(aviso)
+        dentro.addWidget(self.direccion_obra)
 
     def _montar_fechas(self):
         dentro = self._seccion("Fechas")
@@ -277,14 +284,6 @@ class DocumentoEditor(QDialog):
         anadir.setToolTip("Ctrl+Mayús+N")
         anadir.clicked.connect(lambda: self._anadir_fila())
         dentro.addWidget(anadir, alignment=Qt.AlignmentFlag.AlignLeft)
-
-        pista = etiqueta(
-            "Escribe libremente. Se te sugiere lo que ya has escrito otras veces, "
-            "pero nunca hay que elegir de una lista.",
-            "Apunte",
-        )
-        pista.setWordWrap(True)
-        dentro.addWidget(pista)
 
     def _montar_observaciones(self):
         dentro = self._seccion("Observaciones")
@@ -391,6 +390,7 @@ class DocumentoEditor(QDialog):
         self.plazo.setText(a_espanol(
             documento.validez if documento.es_presupuesto else documento.vencimiento
         ))
+        self.direccion_obra.setText(documento.direccion_obra)
         self.observaciones.setPlainText(documento.observaciones)
 
         for linea in documento.lineas:
@@ -481,17 +481,20 @@ class DocumentoEditor(QDialog):
         vencimiento = "" if self.es_presupuesto else plazo
         validez = plazo if self.es_presupuesto else ""
 
+        obra = self.direccion_obra.text().strip()
+
         if self.documento_id:
             guardado = repo_documentos.actualizar(
                 self.documento_id, self.fecha.text().strip(), cliente.id, lineas,
                 observaciones=observaciones, vencimiento=vencimiento, validez=validez,
+                direccion_obra=obra,
             )
             documento_id = self.documento_id if guardado else None
         else:
             documento_id = repo_documentos.crear(
                 self.fecha.text().strip(), cliente.id, lineas,
                 observaciones=observaciones, tipo=self.tipo,
-                vencimiento=vencimiento, validez=validez,
+                vencimiento=vencimiento, validez=validez, direccion_obra=obra,
             )
 
         if not documento_id:

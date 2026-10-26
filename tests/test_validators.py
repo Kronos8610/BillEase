@@ -213,3 +213,53 @@ def test_se_señalan_todos_los_campos_mal_a_la_vez():
 def test_una_empresa_se_valida_con_cif_y_una_persona_con_nif():
     assert validar_formulario({"cifnif": "X1234567L"}, {"cifnif": NIF_O_NIE})[0]
     assert not validar_formulario({"cifnif": "X1234567L"}, {"cifnif": CIF})[0]
+
+
+# ─────────────────────── la cuenta bancaria ───────────────────────
+
+
+class TestIban:
+    """
+    Un IBAN mal escrito no se nota hasta que el banco devuelve el dinero.
+
+    Se comprueba el dígito de control con el módulo 97, igual que el banco.
+    """
+
+    @pytest.mark.parametrize("iban", [
+        "ES9121000418450200051332",
+        "ES91 2100 0418 4502 0005 1332",
+        "es91-2100-0418-4502-0005-1332",
+        "DE89370400440532013000",
+        "PT50000201231234567890154",
+    ])
+    def test_los_buenos_pasan(self, iban):
+        from core.validators import es_iban
+
+        assert es_iban(iban)
+
+    @pytest.mark.parametrize("iban", [
+        "ES9121000418450200051333",      # un dígito cambiado
+        "ES0021000418450200051332",      # control inventado
+        "ES91 2100 0418",                # corto
+        "ES912100041845020005133200",    # largo de más
+        "1234567890",                    # sin país
+        "", None,
+    ])
+    def test_los_malos_no(self, iban):
+        from core.validators import es_iban
+
+        assert not es_iban(iban)
+
+    def test_se_guarda_limpio_y_se_enseña_en_grupos(self):
+        from core.validators import formatear_iban, normalizar_iban
+
+        sucio = "es91 2100-0418 4502.0005 1332"
+        assert normalizar_iban(sucio) == "ES9121000418450200051332"
+        assert formatear_iban(sucio) == "ES91 2100 0418 4502 0005 1332"
+
+    def test_la_regla_del_formulario_deja_dejarlo_en_blanco(self):
+        from core.validators import IBAN, IBAN_OPCIONAL
+
+        assert IBAN_OPCIONAL.evaluar("") is None
+        assert IBAN.evaluar("") is not None
+        assert IBAN_OPCIONAL.evaluar("ES00 mal") is not None

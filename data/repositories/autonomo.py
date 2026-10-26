@@ -4,7 +4,7 @@ import sqlite3
 
 from core.models import Autonomo
 from core.security import hashear, verificar
-from core.validators import normalizar_cp, normalizar_telefono
+from core.validators import normalizar_cp, normalizar_iban, normalizar_telefono
 from data.connection import conexion
 
 
@@ -29,6 +29,43 @@ def registrar(autonomo, contrasena):
                 normalizar_telefono(autonomo.telefono) or None,
                 autonomo.email,
                 hashear(contrasena),
+            ),
+        )
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        return False
+
+
+def actualizar(autonomo):
+    """
+    Guarda los datos del emisor. La contraseña y el logotipo no se tocan aquí.
+
+    El NIF también se puede corregir: una errata en el documento fiscal hay
+    que poder arreglarla, y hasta ahora solo se podía reinstalando. Lo que se
+    cambie sale impreso en los documentos que se generen a partir de ahora.
+    """
+    conn = conexion()
+    fila = conn.execute("SELECT DNI FROM Autonomo LIMIT 1").fetchone()
+    if fila is None:
+        return False
+    try:
+        conn.execute(
+            "UPDATE Autonomo SET DNI = ?, nombre = ?, apellido = ?, direccion = ?,"
+            " codigo_postal = ?, telefono = ?, email = ?, entidad = ?, iban = ?"
+            " WHERE DNI = ?",
+            (
+                autonomo.nif.upper(),
+                autonomo.nombre,
+                autonomo.apellido,
+                autonomo.direccion,
+                normalizar_cp(autonomo.codigo_postal) or None,
+                normalizar_telefono(autonomo.telefono) or None,
+                autonomo.email,
+                autonomo.entidad.strip() or None,
+                normalizar_iban(autonomo.iban) or None,
+                fila["DNI"],
             ),
         )
         conn.commit()

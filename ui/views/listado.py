@@ -71,11 +71,7 @@ FACTURAS = "Facturas"
 PRESUPUESTOS = "Presupuestos"
 CLIENTES = "Clientes"
 
-TITULOS = {
-    FACTURAS: ("Facturas", "Lo ya emitido, con su número de serie."),
-    PRESUPUESTOS: ("Presupuestos", "Lo ofrecido, a la espera de respuesta."),
-    CLIENTES: ("Clientes", "A quién se le factura."),
-}
+TITULOS = {FACTURAS: "Facturas", PRESUPUESTOS: "Presupuestos", CLIENTES: "Clientes"}
 
 VACIOS = {
     FACTURAS: ("Todavía no has emitido ninguna factura",
@@ -172,17 +168,12 @@ class Listado(QWidget):
     # ───────────────────────────── montaje ─────────────────────────────
 
     def _cabecera(self):
-        titulo, apunte = TITULOS[self.categoria]
-
-        self.titulo = QLabel(titulo)
+        self.titulo = QLabel(TITULOS[self.categoria])
         self.titulo.setObjectName("Titulo")
-        self.apunte = QLabel(apunte)
-        self.apunte.setObjectName("Apunte")
 
         textos = QVBoxLayout()
         textos.setSpacing(2)
         textos.addWidget(self.titulo)
-        textos.addWidget(self.apunte)
 
         self.buscador = QLineEdit()
         self.buscador.setObjectName("Buscador")
@@ -572,6 +563,8 @@ class Listado(QWidget):
                 "telefono": emisor.telefono,
                 "email": emisor.email,
                 "logotipo": emisor.logotipo,
+                "entidad": emisor.entidad,
+                "iban": emisor.iban,
             },
             "cliente": {
                 "nombre": cliente.nombre,
@@ -581,6 +574,7 @@ class Listado(QWidget):
                 "telefono": cliente.telefono,
                 "email": cliente.email,
             },
+            "obra": documento.direccion_obra,
             "lineas": documento.lineas,
             "nota": documento.observaciones,
         }

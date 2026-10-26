@@ -542,6 +542,89 @@ def test_se_marca_una_factura_como_cobrada_desde_la_lista(base, app, sin_dialogo
     assert repo.obtener(documento.id, con_lineas=False).estado == COBRADA
 
 
+# ─────────────────── mis datos y los subtítulos ───────────────────
+
+
+def test_en_ajustes_se_pueden_corregir_los_propios_datos(base, app, sin_dialogos):
+    """
+    Hasta ahora los datos del emisor se escribían al instalar y no había
+    forma de tocarlos: una errata en el NIF obligaba a empezar de cero.
+    """
+    from data.repositories import autonomo as repo_autonomo
+    from ui.views.ajustes import Ajustes
+
+    repo_autonomo.registrar(
+        Autonomo(nif="12345678Z", nombre="Carlos", apellido="García",
+                 direccion="Calle Mayor 12", codigo_postal="28001",
+                 telefono="612345678", email="carlos@billease.es"),
+        "Pass1234",
+    )
+
+    pantalla = Ajustes()
+    assert pantalla.mis_campos["nombre"].text() == "Carlos"
+
+    pantalla.mis_campos["apellido"].setText("García López")
+    pantalla.mis_campos["entidad"].setText("Banco Santander")
+    pantalla.mis_campos["iban"].setText("ES91 2100 0418 4502 0005 1332")
+    pantalla._guardar_datos()
+
+    assert pantalla.error_datos.text() == ""
+    emisor = repo_autonomo.obtener()
+    assert emisor.nombre_completo == "Carlos García López"
+    assert emisor.entidad == "Banco Santander"
+    assert emisor.iban == "ES9121000418450200051332"
+
+
+def test_los_datos_propios_se_validan_igual_que_los_del_cliente(base, app, sin_dialogos):
+    from data.repositories import autonomo as repo_autonomo
+    from ui.views.ajustes import Ajustes
+
+    repo_autonomo.registrar(
+        Autonomo(nif="12345678Z", nombre="Carlos", apellido="García",
+                 direccion="Calle Mayor 12", codigo_postal="28001",
+                 telefono="612345678", email="carlos@billease.es"),
+        "Pass1234",
+    )
+    pantalla = Ajustes()
+
+    pantalla.mis_campos["nif"].setText("12345678A")        # la letra no cuadra
+    pantalla._guardar_datos()
+    assert "NIF" in pantalla.error_datos.text()
+    assert repo_autonomo.obtener().nif == "12345678Z"      # no se ha guardado
+
+    pantalla.mis_campos["nif"].setText("12345678Z")
+    pantalla.mis_campos["iban"].setText("ES0021000418450200051332")
+    pantalla._guardar_datos()
+    assert "IBAN" in pantalla.error_datos.text()
+
+    # Y «Deshacer» devuelve lo que hay guardado.
+    pantalla._pintar_mis_datos()
+    assert pantalla.mis_campos["iban"].text() == ""
+    assert pantalla.error_datos.text() == ""
+
+
+def test_las_pantallas_no_llevan_comentarios_bajo_el_titulo(base, app):
+    """
+    Debajo del título de cada pantalla había una frase explicando la pantalla.
+    Sobra: el título ya lo dice.
+    """
+    from ui.views.ajustes import Ajustes
+    from ui.views.resumen import Resumen
+
+    from PyQt6.QtWidgets import QLabel
+
+    sobrantes = [
+        "Lo ya emitido", "Lo ofrecido", "A quién se le factura",
+        "trimestre a trimestre", "Tu marca en el papel",
+    ]
+    for pantalla in (Listado(FACTURAS), Listado(PRESUPUESTOS), Listado(CLIENTES),
+                     Resumen(), Ajustes()):
+        textos = " ".join(rotulo.text() for rotulo in pantalla.findChildren(QLabel))
+        assert textos, f"{type(pantalla).__name__} no tiene ni un rótulo"
+        for frase in sobrantes:
+            assert frase not in textos, f"{type(pantalla).__name__} sigue con «{frase}»"
+
+
 # ─────────────────────── la ventana ───────────────────────
 
 

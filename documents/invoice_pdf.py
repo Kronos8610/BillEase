@@ -22,7 +22,9 @@ Estructura del diccionario:
       "vencimiento": "16/03/2025",     # opcional (facturas)
       "validez":     "19/09/2025",     # opcional (presupuestos)
       "emisor":   {"nombre", "nif", "direccion", "poblacion", "telefono", "email",
-                   "logotipo"},   # ruta de una imagen, opcional
+                   "logotipo",    # ruta de una imagen, opcional
+                   "entidad", "iban"},   # dónde se cobra; solo en facturas
+      "obra":     "Calle Alcalá 120, 3.º B",   # opcional: dónde es el trabajo
       "cliente":  {"nombre", "nif", "direccion", "poblacion", "telefono", "email"},
       "lineas":   [core.taxes.Linea, ...],
       "nota":     "Forma de pago: …",  # opcional
@@ -158,6 +160,9 @@ def _estilos():
             leading=18, alignment=TA_RIGHT,
         ),
         "nota": ParagraphStyle("nota", parent=base, fontSize=7.5, leading=11, textColor=GRIS),
+        "iban": ParagraphStyle(
+            "iban", parent=base, fontName=FUENTE_NEGRITA, fontSize=10, leading=14
+        ),
     }
 
 
@@ -266,6 +271,64 @@ def _banda(datos, est):
             ]
         ),
     )
+
+
+def _obra(datos, est):
+    """
+    La dirección de la obra, entre las partes y los conceptos.
+
+    No es la dirección del cliente: se le factura a la oficina un trabajo
+    hecho en otra calle, y quien recibe el papel necesita saber de qué obra se
+    está hablando. Por eso va justo encima de los conceptos, que es donde se
+    busca, y no escondida en las observaciones.
+    """
+    direccion = _texto(datos.get("obra", ""))
+    if not direccion:
+        return None
+
+    return Table(
+        [[Paragraph("DIRECCIÓN DE LA OBRA", est["etiqueta"])],
+         [Paragraph(direccion, est["parte"])]],
+        colWidths=[None],
+        style=TableStyle(
+            [
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (0, 0), 2),
+                ("BOTTOMPADDING", (0, 1), (0, 1), 0),
+                ("LINEABOVE", (0, 0), (-1, 0), 0.5, FILETE),
+                ("TOPPADDING", (0, 0), (-1, 0), 6),
+            ]
+        ),
+    )
+
+
+def _cuenta(datos, est):
+    """
+    Dónde se hace la transferencia. Solo en las facturas.
+
+    Un presupuesto no se cobra todavía, así que poner ahí el número de cuenta
+    sería pedir un dinero que nadie debe aún.
+    """
+    if datos.get("tipo", "factura") == "presupuesto":
+        return None
+
+    emisor = datos.get("emisor", {})
+    iban = _texto(emisor.get("iban", ""))
+    if not iban:
+        return None
+
+    from core.validators.banco import formatear_iban
+
+    entidad = _texto(emisor.get("entidad", ""))
+    lineas = [Paragraph("FORMA DE PAGO", est["etiqueta"])]
+    lineas.append(Paragraph(
+        f"Transferencia a {entidad}" if entidad else "Transferencia bancaria",
+        est["parte"],
+    ))
+    lineas.append(Paragraph(formatear_iban(iban), est["iban"]))
+    return lineas
 
 
 def _bloque_parte(etiqueta, parte, est):
@@ -435,14 +498,25 @@ def generar_documento_pdf(datos, ruta, totales=None):
         _banda(datos, est),
         Spacer(1, 4 * mm),
         _partes(datos, est),
+    ]
+
+    obra = _obra(datos, est)
+    if obra is not None:
+        historia += [Spacer(1, 6 * mm), obra]
+
+    historia += [
         Spacer(1, 7 * mm),
         _tabla_conceptos(lineas, est, ancho),
         Spacer(1, 6 * mm),
     ]
 
-    # El cuadro de totales no se separa de la nota: o caben juntos al final
-    # de la página o pasan los dos a la siguiente.
+    # El cuadro de totales no se separa de la cuenta ni de la nota: o caben
+    # juntos al final de la página o pasan todos a la siguiente. Donde se cobra
+    # debajo de cuánto se cobra, que es donde se mira.
     cierre = [_tabla_totales(totales, est)]
+    cuenta = _cuenta(datos, est)
+    if cuenta:
+        cierre += [Spacer(1, 7 * mm), *cuenta]
     if datos.get("nota"):
         cierre += [Spacer(1, 7 * mm), Paragraph(_texto(datos["nota"]), est["nota"])]
     historia.append(KeepTogether(cierre))

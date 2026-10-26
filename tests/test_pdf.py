@@ -370,6 +370,95 @@ def test_un_logotipo_que_no_se_puede_leer_no_impide_emitir(
     assert "FACTURA" in texto_de(ruta)[0]
 
 
+# ─────────────────── la obra y la cuenta ───────────────────
+
+OBRA = "Calle Alcalá 120, 3.º B · 28009 Madrid"
+CUENTA = {"entidad": "Banco Santander", "iban": "ES9121000418450200051332"}
+
+
+def test_la_obra_va_entre_las_partes_y_los_conceptos(tmp_path, factura_4):
+    """
+    Es donde se busca: después de saber quién factura a quién, de qué obra se
+    habla, y luego el detalle. En las observaciones del final no la ve nadie.
+    """
+    ruta = tmp_path / "factura.pdf"
+    generar_documento_pdf(documento(factura_4, obra=OBRA), ruta)
+
+    pos = posiciones(ruta, {"EMISOR", "CLIENTE", "DIRECCIÓN DE LA OBRA", "CONCEPTO"})
+    assert "DIRECCIÓN DE LA OBRA" in pos, f"rótulos: {sorted(pos)}"
+
+    # En un PDF la Y crece hacia arriba: más abajo es menor.
+    assert pos["DIRECCIÓN DE LA OBRA"][1] < pos["EMISOR"][1]
+    assert pos["DIRECCIÓN DE LA OBRA"][1] > pos["CONCEPTO"][1]
+    assert OBRA in texto_de(ruta)[0]
+
+
+def test_sin_obra_el_documento_no_la_menciona(tmp_path, factura_4):
+    ruta = tmp_path / "factura.pdf"
+    generar_documento_pdf(documento(factura_4), ruta)
+    assert "DIRECCIÓN DE LA OBRA" not in texto_de(ruta)[0]
+
+
+def test_el_presupuesto_tambien_lleva_la_obra(tmp_path, factura_4):
+    """Se presupuesta una obra concreta, no una idea."""
+    ruta = tmp_path / "presupuesto.pdf"
+    generar_documento_pdf(
+        documento(factura_4, tipo="presupuesto", numero="P-2026-001", obra=OBRA), ruta
+    )
+    assert OBRA in texto_de(ruta)[0]
+
+
+def test_la_factura_dice_donde_se_transfiere(tmp_path, factura_4):
+    """Debajo del total, que es donde se mira cuánto hay que pagar."""
+    ruta = tmp_path / "factura.pdf"
+    emisor = dict(EMISOR, **CUENTA)
+    generar_documento_pdf(documento(factura_4, emisor=emisor), ruta)
+
+    texto = texto_de(ruta)[0]
+    assert "FORMA DE PAGO" in texto
+    assert "Banco Santander" in texto
+    # El IBAN se imprime en grupos de cuatro: así se copia sin equivocarse.
+    assert "ES91 2100 0418 4502 0005 1332" in texto
+
+    pos = posiciones(ruta, {"TOTAL", "FORMA DE PAGO"})
+    assert pos["FORMA DE PAGO"][1] < pos["TOTAL"][1], "la cuenta va debajo del total"
+
+
+def test_el_presupuesto_no_lleva_la_cuenta(tmp_path, factura_4):
+    """Un presupuesto todavía no se cobra: pedir ahí el dinero no toca."""
+    ruta = tmp_path / "presupuesto.pdf"
+    emisor = dict(EMISOR, **CUENTA)
+    generar_documento_pdf(
+        documento(factura_4, tipo="presupuesto", numero="P-2026-001", emisor=emisor), ruta
+    )
+
+    texto = texto_de(ruta)[0]
+    assert "FORMA DE PAGO" not in texto
+    assert "ES91" not in texto
+
+
+def test_sin_iban_no_se_inventa_una_forma_de_pago(tmp_path, factura_4):
+    ruta = tmp_path / "factura.pdf"
+    emisor = dict(EMISOR, entidad="Banco Santander")      # entidad pero sin IBAN
+    generar_documento_pdf(documento(factura_4, emisor=emisor), ruta)
+    assert "FORMA DE PAGO" not in texto_de(ruta)[0]
+
+
+def test_con_obra_y_cuenta_nada_se_sale_del_papel(tmp_path, factura_4):
+    """Lo de siempre: que añadir bloques no empuje nada fuera de la página."""
+    ruta = tmp_path / "factura.pdf"
+    emisor = dict(EMISOR, **CUENTA)
+    generar_documento_pdf(
+        documento(factura_4 * 12, emisor=emisor, obra=OBRA), ruta
+    )
+
+    fuera = [
+        (texto, x, y) for pagina, texto, x, y, ancho, alto in fragmentos(ruta)
+        if x < 0 or y < 0 or x > ancho or y > alto
+    ]
+    assert fuera == [], f"texto fuera del papel: {fuera[:3]}"
+
+
 def test_el_generador_no_necesita_qt():
     """
     El PDF tiene que poder generarse en un servidor sin pantalla. El generador
