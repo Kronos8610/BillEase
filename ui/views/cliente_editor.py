@@ -51,10 +51,19 @@ NOMBRES = {
 }
 
 
-def campo(marcador=""):
+def campo(marcador="", grande=False):
+    """
+    Un campo de texto. `grande` le pone el cuerpo de las ventanas anchas.
+
+    El tamaño sale de la hoja de estilos, por el nombre del objeto: así sigue
+    habiendo una sola hoja y en tema oscuro se pinta sola.
+    """
     control = QLineEdit()
     control.setPlaceholderText(marcador)
-    control.setMinimumHeight(32)
+    if grande:
+        control.setObjectName("Grande")
+    else:
+        control.setMinimumHeight(32)
     return control
 
 
@@ -71,9 +80,9 @@ class EditorCliente(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Nuevo cliente")
         self.setModal(True)
-        self.setMinimumWidth(580)
+        self.setMinimumWidth(620)
         self.cliente_id = None
-        agrandable(self, 760, 720)
+        agrandable(self, 1020, 780)
 
         # El formulario se desplaza y los botones se quedan abajo: al
         # agrandar la ventana «Guardar cliente» no se va de viaje.
@@ -89,17 +98,17 @@ class EditorCliente(QDialog):
         desplazable.setWidget(interior)
 
         columna = QVBoxLayout(contenido)
-        columna.setContentsMargins(28, 24, 28, 20)
-        columna.setSpacing(14)
+        columna.setContentsMargins(36, 30, 36, 24)
+        columna.setSpacing(18)
 
-        columna.addWidget(etiqueta("Nuevo cliente", "Subtitulo"))
-        columna.addWidget(etiqueta(
-            "Sus datos fiscales son los que saldrán impresos en cada documento.",
-            "Apunte",
-        ))
+        # El mismo titular que el editor de documentos, que es la otra ventana
+        # que se abre grande: dos pantallas hermanas se escriben igual.
+        columna.addWidget(etiqueta("Nuevo cliente", "Titulo"))
 
         self.radio_fisica = QRadioButton("Persona física")
         self.radio_juridica = QRadioButton("Persona jurídica")
+        for boton in (self.radio_fisica, self.radio_juridica):
+            boton.setObjectName("Grande")
         self.radio_fisica.setChecked(True)
         self.radio_fisica.toggled.connect(self._cambiar_tipo)
 
@@ -109,45 +118,49 @@ class EditorCliente(QDialog):
         tipo.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         fila_tipo = QHBoxLayout(tipo)
         fila_tipo.setContentsMargins(0, 0, 0, 0)
+        fila_tipo.setSpacing(18)
         fila_tipo.addWidget(self.radio_fisica)
         fila_tipo.addWidget(self.radio_juridica)
         fila_tipo.addStretch()
 
-        self.nombre = campo("Nombre y apellidos, o razón social")
-        self.documento = campo("NIF")
-        self.direccion = campo("Calle, número y piso")
-        self.codigo_postal = campo("28001")
-        self.telefono = campo("612345678")
-        self.email = campo("cliente@correo.es")
+        self.nombre = campo("Nombre y apellidos, o razón social", grande=True)
+        self.documento = campo("NIF", grande=True)
+        self.direccion = campo("Calle, número y piso", grande=True)
+        self.codigo_postal = campo("28001", grande=True)
+        self.telefono = campo("612345678", grande=True)
+        self.email = campo("cliente@correo.es", grande=True)
         self.observaciones = QTextEdit()
+        self.observaciones.setObjectName("Grande")
         self.observaciones.setPlaceholderText("Forma de pago habitual, avisos…")
-        self.observaciones.setMaximumHeight(80)
+        self.observaciones.setMaximumHeight(120)
 
-        self.etiqueta_documento = etiqueta("NIF *")
+        self.etiqueta_documento = etiqueta("NIF *", "EtiquetaGrande")
 
         formulario = QFormLayout()
-        formulario.setSpacing(10)
+        formulario.setSpacing(14)
         formulario.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        formulario.addRow(etiqueta("Tipo"), tipo)
-        formulario.addRow(etiqueta("Nombre *"), self.nombre)
+        formulario.addRow(etiqueta("Tipo", "EtiquetaGrande"), tipo)
+        formulario.addRow(etiqueta("Nombre *", "EtiquetaGrande"), self.nombre)
         formulario.addRow(self.etiqueta_documento, self.documento)
-        formulario.addRow(etiqueta("Dirección"), self.direccion)
-        formulario.addRow(etiqueta("Código postal"), self.codigo_postal)
-        formulario.addRow(etiqueta("Teléfono"), self.telefono)
-        formulario.addRow(etiqueta("Correo"), self.email)
-        formulario.addRow(etiqueta("Observaciones"), self.observaciones)
+        formulario.addRow(etiqueta("Dirección", "EtiquetaGrande"), self.direccion)
+        formulario.addRow(etiqueta("Código postal", "EtiquetaGrande"), self.codigo_postal)
+        formulario.addRow(etiqueta("Teléfono", "EtiquetaGrande"), self.telefono)
+        formulario.addRow(etiqueta("Correo", "EtiquetaGrande"), self.email)
+        formulario.addRow(etiqueta("Observaciones", "EtiquetaGrande"), self.observaciones)
         columna.addLayout(formulario)
 
-        self.error = etiqueta("", "Error")
+        self.error = etiqueta("", "ErrorGrande")
         self.error.setWordWrap(True)
         columna.addWidget(self.error)
 
         cancelar = QPushButton("Cancelar")
         cancelar.setCursor(Qt.CursorShape.PointingHandCursor)
+        cancelar.setMinimumHeight(38)
         cancelar.clicked.connect(self.reject)
         guardar = QPushButton("Guardar cliente")
         guardar.setObjectName("Primario")
         guardar.setCursor(Qt.CursorShape.PointingHandCursor)
+        guardar.setMinimumHeight(38)
         guardar.setDefault(True)
         guardar.clicked.connect(self.guardar)
 
@@ -155,7 +168,8 @@ class EditorCliente(QDialog):
 
         pie = QWidget()
         botones = QHBoxLayout(pie)
-        botones.setContentsMargins(28, 14, 28, 16)
+        botones.setContentsMargins(36, 16, 36, 20)
+        botones.setSpacing(12)
         botones.addStretch()
         botones.addWidget(cancelar)
         botones.addWidget(guardar)

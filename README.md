@@ -240,8 +240,9 @@ Permite modificar cualquier factura existente: cambiar el cliente, la fecha, los
 
 Las ventanas de crear factura, presupuesto y cliente se **maximizan**: con el botón de
 la barra de título, con doble clic en ella o con **F11**. Con veinte conceptos en
-pantalla se agradece. El contenido no se estira sin fin aunque la pantalla sea enorme:
-se queda centrado y legible.
+pantalla se agradece. Se abren ya grandes —la de cliente con los campos y las
+etiquetas a cuerpo mayor, que no hay que leerla con lupa— y el contenido no se estira
+sin fin aunque la pantalla sea enorme: se queda centrado y legible.
 
 ### 🔑 Acceso y contraseña
 El programa pide la contraseña al abrir, y esa misma contraseña descifra los

@@ -347,3 +347,53 @@ def test_al_agrandar_la_ventana_el_contenido_no_se_estira_sin_fin(base, app):
             if hijo.maximumWidth() == tope
         ]
         assert anchos and max(anchos) <= tope
+
+
+def test_el_editor_de_cliente_se_ve_en_grande(base, app):
+    """
+    La ventana se abría pequeña y con el cuerpo de 13 px había que acercarse
+    a la pantalla. Ahora los campos llevan el nombre «Grande», que es lo que
+    la hoja de estilos usa para darles cuerpo y alto.
+    """
+    from PyQt6.QtWidgets import QLabel
+
+    import theme
+    from ui.views.cliente_editor import EditorCliente
+
+    # El alto sale de la hoja de estilos, así que hay que vestir la ventana:
+    # sin hoja un QLineEdit mide 23 px y la prueba no diría nada. Se viste
+    # solo esta ventana y no la aplicación entera, porque cambiar la hoja de
+    # la aplicación vuelve a repasar todos los widgets vivos de la sesión de
+    # pruebas, y alguno ya está cerrado: eso revienta Qt.
+    ventana = EditorCliente()
+    ventana.setStyleSheet(theme.hoja_de_estilos())
+    ventana.show()
+    app.processEvents()
+
+    campos = [ventana.nombre, ventana.documento, ventana.direccion,
+              ventana.codigo_postal, ventana.telefono, ventana.email,
+              ventana.observaciones]
+    for control in campos:
+        assert control.objectName() == "Grande", f"{control} se quedó pequeño"
+        assert control.height() >= 40, f"{control} mide {control.height()} px"
+
+    # Las etiquetas acompañan al campo: una etiqueta de 12 px al lado de un
+    # campo de 15 px se ve descolgada.
+    etiquetas = {
+        hija.objectName() for hija in ventana.findChildren(QLabel)
+        if hija.text().startswith(("Nombre", "NIF", "Correo", "Teléfono"))
+    }
+    assert etiquetas == {"EtiquetaGrande"}
+
+    # Y el titular es un título, como en el editor de documentos, sin ningún
+    # comentario debajo: eso se quitó de todas las pantallas.
+    titulos = [
+        hija.text() for hija in ventana.findChildren(QLabel)
+        if hija.objectName() == "Titulo"
+    ]
+    assert titulos == ["Nuevo cliente"]
+    assert not [
+        hija for hija in ventana.findChildren(QLabel)
+        if hija.objectName() == "Apunte" and hija.text()
+    ]
+    ventana.close()

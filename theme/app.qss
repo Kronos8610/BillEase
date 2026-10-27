@@ -218,6 +218,29 @@ QLineEdit#Buscador {
     min-width: 240px;
 }
 
+/* El sufijo «Grande» es el mismo control con más cuerpo, para las ventanas
+   que se abren a pantalla entera. Lo usa el editor de clientes. */
+QLineEdit#Grande, QTextEdit#Grande {
+    font-size: $cuerpo_grande;
+    min-height: $alto_control_grande;
+    padding: 6px 12px;
+}
+
+QLabel#EtiquetaGrande {
+    color: $texto_suave;
+    font-size: $cuerpo_grande;
+}
+
+QLabel#ErrorGrande {
+    color: $peligro;
+    font-size: $cuerpo;
+    min-height: 17px;
+}
+
+QRadioButton#Grande {
+    font-size: $cuerpo_grande;
+}
+
 QComboBox {
     background-color: $capa;
     color: $texto;

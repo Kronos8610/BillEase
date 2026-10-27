@@ -83,7 +83,11 @@ MEDIDAS = {
     "alto_fila":        "38px",
     "ancho_lateral":    "220px",
     "ancho_maximo":     1280,      # el contenido no se estira sin fin
-    "ancho_formulario": 760,       # un formulario más ancho no se lee mejor
+    "ancho_formulario": 980,       # un formulario más ancho no se lee mejor
+    # La ventana de crear cliente se abre grande y con el cuerpo pequeño se
+    # leía con lupa. Estas dos medidas son las de su ropa de domingo.
+    "alto_control_grande": "42px",
+    "cuerpo_grande":       "15px",
     "tipografia":       "'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif",
     "cuerpo":           "13px",
     "pequeno":          "12px",
