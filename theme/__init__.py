@@ -97,6 +97,11 @@ def ancho_maximo():
     return MEDIDAS["ancho_maximo"]
 
 
+def ancho_formulario():
+    """Lo que puede ensancharse un formulario antes de dejar de leerse bien."""
+    return MEDIDAS["ancho_formulario"]
+
+
 # ─────────────────────────────── aplicar ───────────────────────────────
 
 

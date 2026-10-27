@@ -83,6 +83,7 @@ MEDIDAS = {
     "alto_fila":        "38px",
     "ancho_lateral":    "220px",
     "ancho_maximo":     1280,      # el contenido no se estira sin fin
+    "ancho_formulario": 760,       # un formulario más ancho no se lee mejor
     "tipografia":       "'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif",
     "cuerpo":           "13px",
     "pequeno":          "12px",

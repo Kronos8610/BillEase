@@ -12,7 +12,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 pytest.importorskip("PyQt6")
 
-from PyQt6.QtWidgets import QApplication, QMessageBox  # noqa: E402
+from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget  # noqa: E402
 
 from core.models import ACEPTADO, ENVIADO, FACTURA, PRESUPUESTO, Cliente, Linea  # noqa: E402
 from core.taxes import calcular  # noqa: E402
@@ -283,3 +283,67 @@ def test_el_editor_no_pide_ninguna_fecha_de_plazo(base, sin_dialogos):
         escribir(ventana.filas[0], "Obra", 1, "1000")
         ventana.guardar()
         assert repo.obtener(ventana.documento_id) is not None
+
+
+# ─────────────────────── la ventana se agranda ───────────────────────
+
+
+def test_los_editores_se_pueden_maximizar(base, app):
+    """
+    En Windows un diálogo no trae botón de maximizar salvo que se le pida.
+    Sin él, para ver una factura larga había que arrastrar la esquina.
+    """
+    from PyQt6.QtCore import Qt
+
+    from ui.views.cliente_editor import EditorCliente
+
+    for ventana in (editor(tipo=FACTURA), editor(tipo=PRESUPUESTO), EditorCliente()):
+        banderas = ventana.windowFlags()
+        assert banderas & Qt.WindowType.WindowMaximizeButtonHint, (
+            f"{type(ventana).__name__} no se puede maximizar"
+        )
+        assert ventana.isSizeGripEnabled()
+
+
+def test_f11_maximiza_y_devuelve_al_tamano_de_antes(base, app):
+    from PyQt6.QtGui import QKeySequence
+
+    from ui.widgets.ventana import alternar_tamano
+
+    ventana = editor(tipo=FACTURA)
+    atajos = [a.key().toString() for a in ventana.findChildren(type(ventana.atajo_maximizar))]
+    assert QKeySequence("F11").toString() in atajos
+
+    ventana.show()
+    assert not ventana.isMaximized()
+    alternar_tamano(ventana)
+    assert ventana.isMaximized()
+    alternar_tamano(ventana)
+    assert not ventana.isMaximized()
+    ventana.close()
+
+
+def test_al_agrandar_la_ventana_el_contenido_no_se_estira_sin_fin(base, app):
+    """
+    Una ventana maximizada en un monitor de 27 pulgadas enseñaría campos de
+    texto de dos palmos. El contenido se queda centrado con su ancho máximo,
+    que es lo que ya hacían las pantallas principales.
+    """
+    import theme
+    from ui.views.cliente_editor import EditorCliente
+
+    for ventana, tope in ((editor(tipo=FACTURA), theme.ancho_maximo()),
+                          (EditorCliente(), theme.ancho_formulario())):
+        topes = {
+            hijo.maximumWidth() for hijo in ventana.findChildren(QWidget)
+            if hijo.maximumWidth() == tope
+        }
+        assert topes == {tope}, f"{type(ventana).__name__} no limita su ancho"
+
+        ventana.resize(1920, 1080)
+        app.processEvents()
+        anchos = [
+            hijo.width() for hijo in ventana.findChildren(QWidget)
+            if hijo.maximumWidth() == tope
+        ]
+        assert anchos and max(anchos) <= tope

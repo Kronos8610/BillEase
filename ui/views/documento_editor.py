@@ -42,6 +42,7 @@ from data.repositories import clientes as repo_clientes
 from data.repositories import documentos as repo_documentos
 from ui import iconos
 from ui.widgets.concepto import CampoConcepto
+from ui.widgets.ventana import agrandable, centrado
 
 
 def etiqueta(texto, nombre="Etiqueta"):
@@ -168,7 +169,9 @@ class DocumentoEditor(QDialog):
 
         self.setModal(True)
         self.setMinimumSize(900, 640)
-        self.setSizeGripEnabled(True)
+        # Se puede maximizar: con veinte conceptos la ventana de antes
+        # obligaba a arrastrar la esquina cada vez.
+        agrandable(self, 1180, 860)
 
         self._sugerencias = repo_documentos.descripciones_usadas()
 
@@ -177,7 +180,7 @@ class DocumentoEditor(QDialog):
 
         desplazable = QScrollArea()
         desplazable.setWidgetResizable(True)
-        contenido = QWidget()
+        interior, contenido = centrado(theme.ancho_maximo())
         self.columna = QVBoxLayout(contenido)
         self.columna.setContentsMargins(28, 24, 28, 24)
         self.columna.setSpacing(16)
@@ -191,7 +194,7 @@ class DocumentoEditor(QDialog):
         self._montar_totales()
         self.columna.addStretch()
 
-        desplazable.setWidget(contenido)
+        desplazable.setWidget(interior)
         raiz.addWidget(desplazable)
         raiz.addWidget(self._montar_botones())
 

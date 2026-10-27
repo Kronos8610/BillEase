@@ -15,16 +15,20 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
     QFormLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
     QRadioButton,
+    QScrollArea,
+    QSizePolicy,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
+import theme
 from core.models import Cliente
 from core.validators import (
     CIF,
@@ -36,6 +40,7 @@ from core.validators import (
     validar_formulario,
 )
 from data.repositories import clientes as repo_clientes
+from ui.widgets.ventana import agrandable, centrado
 
 NOMBRES = {
     "nombre": "Nombre o razón social",
@@ -68,8 +73,22 @@ class EditorCliente(QDialog):
         self.setModal(True)
         self.setMinimumWidth(580)
         self.cliente_id = None
+        agrandable(self, 760, 720)
 
-        columna = QVBoxLayout(self)
+        # El formulario se desplaza y los botones se quedan abajo: al
+        # agrandar la ventana «Guardar cliente» no se va de viaje.
+        raiz = QVBoxLayout(self)
+        raiz.setContentsMargins(0, 0, 0, 0)
+        raiz.setSpacing(0)
+
+        desplazable = QScrollArea()
+        desplazable.setWidgetResizable(True)
+        desplazable.setFrameShape(QFrame.Shape.NoFrame)
+        interior, contenido = centrado(theme.ancho_formulario())
+        raiz.addWidget(desplazable)
+        desplazable.setWidget(interior)
+
+        columna = QVBoxLayout(contenido)
         columna.setContentsMargins(28, 24, 28, 20)
         columna.setSpacing(14)
 
@@ -85,6 +104,9 @@ class EditorCliente(QDialog):
         self.radio_fisica.toggled.connect(self._cambiar_tipo)
 
         tipo = QWidget()
+        # Alto fijo: si no, al agrandar la ventana esta fila se estira y abre
+        # un hueco que las demás no tienen.
+        tipo.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         fila_tipo = QHBoxLayout(tipo)
         fila_tipo.setContentsMargins(0, 0, 0, 0)
         fila_tipo.addWidget(self.radio_fisica)
@@ -129,11 +151,15 @@ class EditorCliente(QDialog):
         guardar.setDefault(True)
         guardar.clicked.connect(self.guardar)
 
-        botones = QHBoxLayout()
+        columna.addStretch()
+
+        pie = QWidget()
+        botones = QHBoxLayout(pie)
+        botones.setContentsMargins(28, 14, 28, 16)
         botones.addStretch()
         botones.addWidget(cancelar)
         botones.addWidget(guardar)
-        columna.addLayout(botones)
+        raiz.addWidget(pie)
 
     def _cambiar_tipo(self):
         fisica = self.radio_fisica.isChecked()

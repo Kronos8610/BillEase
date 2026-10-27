@@ -238,6 +238,11 @@ con un clic: copia los conceptos y le asigna su número de la serie de facturaci
 ### ✏️ Editar factura
 Permite modificar cualquier factura existente: cambiar el cliente, la fecha, los conceptos y las cantidades.
 
+Las ventanas de crear factura, presupuesto y cliente se **maximizan**: con el botón de
+la barra de título, con doble clic en ella o con **F11**. Con veinte conceptos en
+pantalla se agradece. El contenido no se estira sin fin aunque la pantalla sea enorme:
+se queda centrado y legible.
+
 ### 🔑 Acceso y contraseña
 El programa pide la contraseña al abrir, y esa misma contraseña descifra los
 datos. Tras tres intentos fallidos hay que esperar, y la espera crece. Si la
