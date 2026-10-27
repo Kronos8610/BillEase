@@ -1,15 +1,16 @@
 """
 Presupuestos.
 
-Un presupuesto no tiene valor contable: es una oferta con fecha de caducidad.
-Cuando el cliente la acepta, se convierte en factura, y ahí sí entra en la
-serie de facturación y en los libros.
+Un presupuesto no tiene valor contable: es una oferta. Cuando el cliente la
+acepta, se convierte en factura, y ahí sí entra en la serie de facturación y
+en los libros.
+
+No caduca solo: aquí no se trabaja con plazos. Una oferta sigue en pie hasta
+que se acepta, se rechaza o se borra, y eso lo decide una persona.
 
 Este módulo no toca la base de datos: decide qué se puede hacer y qué sale de
 una conversión. Quien guarda es el repositorio.
 """
-
-from datetime import date, timedelta
 
 from core.fechas import a_iso, hoy_iso
 from core.models import (
@@ -23,9 +24,6 @@ from core.models import (
     Documento,
 )
 
-DIAS_VALIDEZ = 30
-DIAS_VENCIMIENTO = 30
-
 # Un presupuesto se envía, y desde ahí lo aceptan o lo rechazan. Un rechazado
 # se puede volver a enviar: el cliente cambia de idea más veces de las que uno
 # querría.
@@ -35,34 +33,6 @@ TRANSICIONES = {
     ACEPTADO: (),
     RECHAZADO: (ENVIADO,),
 }
-
-
-def sumar_dias(fecha_iso, dias):
-    """Fecha ISO más N días, en ISO."""
-    if not fecha_iso:
-        return ""
-    try:
-        base = date.fromisoformat(a_iso(fecha_iso))
-    except ValueError:
-        return ""
-    return (base + timedelta(days=dias)).isoformat()
-
-
-def validez_por_defecto(fecha_iso=None):
-    return sumar_dias(fecha_iso or hoy_iso(), DIAS_VALIDEZ)
-
-
-def vencimiento_por_defecto(fecha_iso=None):
-    return sumar_dias(fecha_iso or hoy_iso(), DIAS_VENCIMIENTO)
-
-
-def esta_caducado(documento, hoy=None):
-    """¿Se le ha pasado el plazo a este presupuesto sin respuesta?"""
-    if not documento.es_presupuesto or not documento.validez:
-        return False
-    if documento.estado in (ACEPTADO, RECHAZADO):
-        return False
-    return documento.validez < (hoy or hoy_iso())
 
 
 def puede_pasar_a(documento, estado):
@@ -99,7 +69,6 @@ def a_factura(presupuesto, fecha=None):
         tipo=FACTURA,
         estado=EMITIDA,
         fecha=fecha_emision,
-        vencimiento=vencimiento_por_defecto(fecha_emision),
         origen_id=presupuesto.id,
         direccion_obra=presupuesto.direccion_obra,
         cliente_id=presupuesto.cliente_id,

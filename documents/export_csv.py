@@ -25,7 +25,7 @@ SEPARADOR = ";"
 CODIFICACION = "utf-8-sig"      # el BOM que Excel necesita para los acentos
 
 CABECERA_DOCUMENTOS = (
-    "Número", "Tipo", "Fecha", "Vencimiento", "Cliente", "NIF/CIF",
+    "Número", "Tipo", "Fecha", "Cliente", "NIF/CIF",
     "Base imponible", "Tipo IVA", "Cuota IVA", "Total", "Situación",
     "Observaciones",
 )
@@ -65,7 +65,6 @@ def exportar_documentos(documentos, ruta, nif_de=None):
                 documento.referencia,
                 documento.rotulo.capitalize(),
                 a_espanol(documento.fecha),
-                a_espanol(documento.vencimiento or documento.validez),
                 documento.cliente_nombre or "",
                 nif_de(documento) if nif_de else "",
                 formatear(totales.base),

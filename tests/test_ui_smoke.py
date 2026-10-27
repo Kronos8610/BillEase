@@ -37,7 +37,6 @@ from core.models import (  # noqa: E402
     Cliente,
     Linea,
 )
-from core.quotes import validez_por_defecto  # noqa: E402
 from data.connection import cerrar  # noqa: E402
 from data.repositories import clientes as repo_clientes  # noqa: E402
 from data.repositories import documentos as repo  # noqa: E402
@@ -84,7 +83,7 @@ def base(tmp_path, monkeypatch, app):
                [Linea("Desmontaje", cantidad=1, precio_ud=195)])
     repo.crear(a_espanol(hoy), cliente_id,
                [Linea("Obra ofertada", cantidad=1, precio_ud=800)],
-               tipo=PRESUPUESTO, validez=validez_por_defecto(hoy))
+               tipo=PRESUPUESTO)
     yield cliente_id
     cerrar()
 
@@ -357,21 +356,20 @@ def test_el_estado_del_presupuesto_se_pinta_como_pildora(base, app):
     assert isinstance(listado.vista.itemDelegateForColumn(columna), PildoraEstado)
 
 
-def test_un_presupuesto_pasado_de_fecha_se_enseña_como_caducado(base, app):
+def test_un_presupuesto_viejo_sigue_en_el_estado_que_le_pusieron(base, app):
     """
-    Lo dice la lista, no el usuario mirando el calendario.
-
-    `esta_caducado` compara la validez con hoy; la píldora se pinta en rojo
-    aunque el estado guardado siga siendo «borrador».
+    Antes, uno pasado de su validez se enseñaba «Caducado» en rojo aunque
+    nadie lo hubiera tocado. Ya no hay plazos: una oferta de hace tres meses
+    sigue en borrador hasta que alguien diga otra cosa.
     """
     presupuesto = repo.listar(PRESUPUESTO)[0]
     repo.actualizar(presupuesto.id, a_espanol(dentro_de(-90)), presupuesto.cliente_id,
-                    repo.lineas_de(presupuesto.id), validez=dentro_de(-60))
+                    repo.lineas_de(presupuesto.id))
 
     listado = Listado(PRESUPUESTOS)
     indice = listado.filtro.index(0, 3)
-    assert indice.data() == "Caducado"
-    assert indice.data(ROL_ESTADO) == "peligro"
+    assert indice.data() == "Borrador"
+    assert indice.data(ROL_ESTADO) == "neutro"
 
 
 def test_eliminar_una_factura_avisa_del_hueco_en_la_serie(base, app, sin_dialogos):
@@ -517,18 +515,23 @@ def test_la_factura_ensena_si_esta_cobrada(base, app):
     assert listado.filtro.index(0, cobro).data(ROL_ESTADO) == "ok"
 
 
-def test_una_factura_pasada_de_vencimiento_sale_como_vencida(base, app):
+def test_una_factura_vieja_sin_cobrar_sigue_pendiente(base, app):
+    """
+    Antes se volvía «Vencida» en rojo al pasarse del plazo. Ya no hay plazo:
+    una factura de hace tres meses sin cobrar sigue pendiente, que es lo
+    mismo que estaba el día que se emitió.
+    """
     documento = repo.listar()[0]
     repo.actualizar(documento.id, a_espanol(dentro_de(-90)), documento.cliente_id,
-                    repo.lineas_de(documento.id), vencimiento=dentro_de(-60))
+                    repo.lineas_de(documento.id))
 
     listado = Listado(FACTURAS)
     cobro = columna_de(listado, "Cobro")
     fila = [f for f in range(listado.filtro.rowCount())
             if listado.filtro.index(f, 0).data() == documento.referencia][0]
 
-    assert listado.filtro.index(fila, cobro).data() == "Vencida"
-    assert listado.filtro.index(fila, cobro).data(ROL_ESTADO) == "peligro"
+    assert listado.filtro.index(fila, cobro).data() == "Pendiente"
+    assert listado.filtro.index(fila, cobro).data(ROL_ESTADO) == "neutro"
 
 
 def test_se_marca_una_factura_como_cobrada_desde_la_lista(base, app, sin_dialogos):

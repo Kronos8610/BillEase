@@ -44,7 +44,7 @@ def base(tmp_path, monkeypatch):
     ])
     repo.crear("20/02/2026", cliente_id, [Linea("Pintura", cantidad=15, precio_ud="12,50")])
     repo.crear("25/02/2026", cliente_id, [Linea("Obra ofertada", cantidad=1, precio_ud=800)],
-               tipo=PRESUPUESTO, validez="2026-03-27")
+               tipo=PRESUPUESTO)
     yield ruta
     cerrar()
 
@@ -177,11 +177,15 @@ def test_el_csv_de_documentos_lleva_el_desglose_de_iva(base, tmp_path):
     assert filas[0][0] == "Número"
 
     # 1.240 + 2 × 97,50 = 1.435,00 de base · 21 % = 301,35 · total 1.736,35
+    # Las columnas se buscan por su nombre, no por su número: así mover una
+    # columna no rompe la prueba por donde no es.
+    donde = {nombre: i for i, nombre in enumerate(filas[0])}
     fila = next(f for f in filas[1:] if f[0] == "2026-001")
-    assert fila[6] == "1.435,00"
-    assert fila[8] == "301,35"
-    assert fila[9] == "1.736,35"
-    assert fila[10] == "Pendiente"
+    assert fila[donde["Base imponible"]] == "1.435,00"
+    assert fila[donde["Cuota IVA"]] == "301,35"
+    assert fila[donde["Total"]] == "1.736,35"
+    assert fila[donde["Situación"]] == "Pendiente"
+    assert "Vencimiento" not in donde, "aquí no se trabaja con plazos"
 
 
 def test_el_csv_lo_entiende_un_excel_en_espanol(base, tmp_path):
@@ -267,5 +271,6 @@ def test_el_csv_marca_las_cobradas(base, tmp_path):
     destino = tmp_path / "documentos.csv"
     exportar_documentos(repo.listar(), destino)
     filas = leer_csv(destino)
-    situaciones = {f[0]: f[10] for f in filas[1:]}
+    situacion = filas[0].index("Situación")
+    situaciones = {f[0]: f[situacion] for f in filas[1:]}
     assert situaciones[documento.referencia] == "Cobrada"

@@ -9,14 +9,7 @@ la serie de facturación.
 import pytest
 
 from core.models import ACEPTADO, BORRADOR, ENVIADO, FACTURA, PRESUPUESTO, RECHAZADO, Linea
-from core.quotes import (
-    a_factura,
-    esta_caducado,
-    puede_convertirse,
-    puede_pasar_a,
-    validez_por_defecto,
-    vencimiento_por_defecto,
-)
+from core.quotes import a_factura, puede_convertirse, puede_pasar_a
 from data.connection import abrir, cerrar
 from data.repositories import clientes as repo_clientes
 from data.repositories import documentos as repo
@@ -159,23 +152,28 @@ def test_se_puede_saber_qué_factura_salio_de_un_presupuesto(base):
     assert repo.factura_de(presupuesto).id == factura_id
 
 
-# ─────────────────────── plazos ───────────────────────
+# ─────────────────────── sin plazos ───────────────────────
 
 
-def test_los_plazos_por_defecto_son_de_treinta_dias():
-    assert validez_por_defecto("2026-09-23") == "2026-10-23"
-    assert vencimiento_por_defecto("2026-09-23") == "2026-10-23"
+def test_un_presupuesto_viejo_sigue_en_pie():
+    """
+    Antes caducaba solo al pasarse de su validez. Ya no: aquí no se trabaja
+    con plazos, así que una oferta sigue enviada hasta que alguien la acepta,
+    la rechaza o la borra.
+    """
+    from core.models import Documento
+    from ui.models.documentos import estado_de
+
+    enviado = Documento(tipo=PRESUPUESTO, estado=ENVIADO, fecha="2020-01-01")
+    assert estado_de(enviado) == ENVIADO
 
 
-def test_un_presupuesto_caduca_si_pasa_su_validez():
+def test_un_presupuesto_no_guarda_ninguna_fecha_de_plazo():
+    """El documento no tiene dónde apuntar un plazo: el campo no existe."""
     from core.models import Documento
 
-    enviado = Documento(tipo=PRESUPUESTO, estado=ENVIADO, validez="2020-01-01")
-    assert esta_caducado(enviado)
-    # Uno ya aceptado no caduca: el trabajo está cerrado.
-    assert not esta_caducado(Documento(tipo=PRESUPUESTO, estado=ACEPTADO, validez="2020-01-01"))
-    # Y una factura no caduca nunca.
-    assert not esta_caducado(Documento(tipo=FACTURA, validez="2020-01-01"))
+    assert not hasattr(Documento(), "validez")
+    assert not hasattr(Documento(), "vencimiento")
 
 
 def test_la_conversion_a_factura_exige_estar_aceptado():

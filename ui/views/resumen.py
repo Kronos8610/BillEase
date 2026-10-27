@@ -26,7 +26,7 @@ from PyQt6.QtWidgets import (
 )
 
 import theme
-from core.cobros import PENDIENTE, VENCIDA, reparto
+from core.cobros import PENDIENTE, reparto
 from core.fechas import ejercicio_de, hoy_iso
 from core.models import COBRADA
 from core.money import formatear
@@ -158,11 +158,11 @@ class Resumen(QWidget):
         self.facturado = Cifra("Facturado", "Base imponible más IVA")
         self.iva = Cifra("IVA repercutido", "Lo que se declara en el modelo 303")
         self.cobrado = Cifra("Cobrado", "Lo que ya ha entrado")
-        self.vencido = Cifra("Vencido sin cobrar", "Facturas con el plazo pasado")
+        self.pendiente = Cifra("Pendiente de cobro", "Emitido que aún no ha entrado")
 
         fila = QHBoxLayout()
         fila.setSpacing(12)
-        for cifra in (self.facturado, self.iva, self.cobrado, self.vencido):
+        for cifra in (self.facturado, self.iva, self.cobrado, self.pendiente):
             fila.addWidget(cifra, 1)
         return fila
 
@@ -230,8 +230,8 @@ class Resumen(QWidget):
         repartir(self.vista)
 
         cuentas = reparto(documentos)
-        vencido = cuentas["importes"][VENCIDA]
-        cuantas_vencidas = cuentas["documentos"][VENCIDA]
+        pendiente = cuentas["importes"][PENDIENTE]
+        cuantas_pendientes = cuentas["documentos"][PENDIENTE]
 
         self.facturado.poner(euros(anual.total), f"{anual.documentos} facturas en {anio}")
         self.iva.poner(euros(anual.cuota_iva), f"sobre {euros(anual.base)} de base")
@@ -239,17 +239,15 @@ class Resumen(QWidget):
             euros(cuentas["importes"][COBRADA]),
             f"{cuentas['documentos'][COBRADA]} facturas cobradas",
         )
-        self.vencido.poner(
-            euros(vencido),
-            f"{cuantas_vencidas} factura{'s' if cuantas_vencidas != 1 else ''}"
-            f" con el plazo pasado" if cuantas_vencidas else "nada fuera de plazo",
+        self.pendiente.poner(
+            euros(pendiente),
+            f"{cuantas_pendientes} factura{'s' if cuantas_pendientes != 1 else ''}"
+            f" sin cobrar" if cuantas_pendientes else "no queda nada por cobrar",
         )
 
-        pendiente = cuentas["importes"][PENDIENTE]
         self.pie.setText(
             f"Los presupuestos no entran: una oferta no es un ingreso. "
-            f"Quedan {euros(pendiente)} pendientes dentro de plazo y "
-            f"{euros(vencido)} fuera de plazo."
+            f"De lo facturado en {anio} quedan {euros(pendiente)} por cobrar."
         )
 
     # ───────────────────────────── acciones ─────────────────────────────

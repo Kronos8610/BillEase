@@ -37,7 +37,6 @@ def documento(lineas, **extra):
         "tipo": "factura",
         "numero": "2025-004",
         "fecha": "14/02/2025",
-        "vencimiento": "16/03/2025",
         "emisor": EMISOR,
         "cliente": CLIENTE,
         "lineas": lineas,
@@ -271,18 +270,15 @@ def test_el_codigo_postal_no_sale_con_decimales(tmp_path, factura_4):
 # ─────────────────────── presupuestos ───────────────────────
 
 
-def test_el_presupuesto_lleva_su_rotulo_y_su_validez(tmp_path, factura_4):
+def test_el_presupuesto_lleva_su_rotulo_y_su_sello(tmp_path, factura_4):
     ruta = tmp_path / "presupuesto.pdf"
-    datos = documento(
-        factura_4, tipo="presupuesto", numero="P-2025-011", validez="19/09/2025"
-    )
-    datos.pop("vencimiento")
+    datos = documento(factura_4, tipo="presupuesto", numero="P-2025-011")
     generar_documento_pdf(datos, ruta)
 
     texto = "\n".join(texto_de(ruta))
     assert "PRESUPUESTO" in texto
-    assert "19/09/2025" in texto
     assert "SIN VALOR CONTABLE" in texto
+    assert "Válido hasta" not in texto, "tampoco el presupuesto lleva plazo"
 
 
 def test_emisor_y_cliente_van_en_la_misma_fila(tmp_path, factura_4):
@@ -485,7 +481,7 @@ def test_el_generador_no_necesita_qt():
     assert salida == "", f"el generador arrastra: {salida}"
 
 
-# ─────────────────────── el color y el vencimiento ───────────────────────
+# ─────────────────────── el color y los plazos ───────────────────────
 
 
 def rectangulos(ruta, pagina=1):
@@ -511,19 +507,20 @@ def rectangulos(ruta, pagina=1):
     return salida
 
 
-def test_el_vencimiento_no_se_imprime(tmp_path, factura_4):
+def test_no_se_imprime_ninguna_fecha_de_plazo(tmp_path, factura_4):
     """
-    La fecha de vencimiento se guarda y mueve el estado de la factura, pero
-    en el papel no sale: se quitó a petición del usuario. Lo que se le dice
-    al cliente es cuánto debe y a qué cuenta.
+    Aquí no se trabaja con plazos. Aunque alguien meta un vencimiento en el
+    diccionario, el papel no lo enseña: lo que se le dice al cliente es
+    cuánto debe y a qué cuenta.
     """
     ruta = tmp_path / "factura.pdf"
-    datos = documento(factura_4)          # lleva vencimiento="16/03/2025"
+    datos = documento(factura_4, vencimiento="16/03/2025", validez="19/09/2025")
     generar_documento_pdf(datos, ruta)
 
     texto = "\n".join(texto_de(ruta))
-    assert "16/03/2025" not in texto
+    assert "16/03/2025" not in texto and "19/09/2025" not in texto
     assert "Vence" not in texto and "VENCIMIENTO" not in texto
+    assert "Válido" not in texto
     assert "14/02/2025" in texto, "la fecha de emisión sí tiene que salir"
 
 

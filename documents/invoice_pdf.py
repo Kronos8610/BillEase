@@ -19,8 +19,6 @@ Estructura del diccionario:
       "tipo":     "factura" | "presupuesto",
       "numero":   "2025-004",
       "fecha":    "14/02/2025",
-      "vencimiento": "16/03/2025",     # se acepta pero no se imprime
-      "validez":     "19/09/2025",     # opcional (presupuestos)
       "emisor":   {"nombre", "nif", "direccion", "poblacion", "telefono", "email",
                    "logotipo",    # ruta de una imagen, opcional
                    "entidad", "iban"},   # dónde se cobra; solo en facturas
@@ -30,9 +28,9 @@ Estructura del diccionario:
       "nota":     "…",                 # las observaciones; solo si las hay
     }
 
-El vencimiento se guarda y se usa en la aplicación —de ahí salen las
-facturas vencidas— pero no se imprime: el papel dice qué se debe y a qué
-cuenta, y el plazo se habla aparte.
+Aquí no se trabaja con plazos: ni el papel ni la aplicación llevan fecha de
+vencimiento ni de validez. La factura dice qué se debe y a qué cuenta, y
+cuándo se paga se habla aparte.
 """
 
 from pathlib import Path
@@ -290,8 +288,8 @@ def _cabecera(datos, est, ancho):
     """
     Rótulo subrayado con el acento a la izquierda, y los datos en una caja.
 
-    El vencimiento no sale: se quitó a petición del usuario. En un
-    presupuesto sí va la validez, que es lo que le da sentido a una oferta.
+    En la caja van el número y la fecha, y nada más: no hay plazos que
+    imprimir.
     """
     es_presupuesto = datos.get("tipo", "factura") == "presupuesto"
     rotulo = "PRESUPUESTO" if es_presupuesto else "FACTURA"
@@ -313,8 +311,6 @@ def _cabecera(datos, est, ancho):
         izquierda += [Spacer(1, 2 * mm), Paragraph("SIN VALOR CONTABLE", est["sello"])]
 
     filas_meta = [("Nº", datos.get("numero", "")), ("Fecha", datos.get("fecha", ""))]
-    if es_presupuesto and datos.get("validez"):
-        filas_meta.append(("Válido hasta", datos["validez"]))
 
     meta = Table(
         [

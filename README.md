@@ -14,7 +14,7 @@ Está diseñada para autónomos que necesitan una herramienta ligera y fácil de
 - Registrar y gestionar sus clientes
 - Crear y editar facturas y presupuestos profesionales
 - Escribir cada concepto con su cantidad, su unidad y su precio
-- Saber qué está cobrado, qué está pendiente y qué se ha pasado de plazo
+- Saber qué está cobrado y qué queda por cobrar
 - Sacar el **resumen de IVA de cada trimestre** para el modelo 303
 - Exportar facturas en **PDF** y los datos en **CSV** para la gestoría
 
@@ -229,14 +229,14 @@ Registro de clientes con soporte para **persona física** (NIF) y **persona jur�
 ![Crear cliente](assets/crear_cliente.png)
 
 ### 📝 Presupuestos
-Presupuestos con su propia serie (`P-2025-001`), fecha de validez y estados
-—borrador, enviado, aceptado, rechazado—. Un presupuesto aceptado se convierte en
-factura con un clic: copia los conceptos y le asigna su número de la serie de
-facturación.
+Presupuestos con su propia serie (`P-2025-001`) y sus estados —borrador, enviado,
+aceptado, rechazado—. No caducan solos: una oferta sigue en pie hasta que alguien
+la acepta, la rechaza o la borra. Un presupuesto aceptado se convierte en factura
+con un clic: copia los conceptos y le asigna su número de la serie de facturación.
 
 
 ### ✏️ Editar factura
-Permite modificar cualquier factura existente: cambiar el cliente, las fechas, los conceptos y las cantidades.
+Permite modificar cualquier factura existente: cambiar el cliente, la fecha, los conceptos y las cantidades.
 
 ### 🔑 Acceso y contraseña
 El programa pide la contraseña al abrir, y esa misma contraseña descifra los
@@ -248,6 +248,8 @@ Genera el PDF de cualquier factura o presupuesto con los datos del emisor, del c
 la dirección de la obra, el desglose de conceptos, la base, el IVA y el total. Si has
 puesto logotipo, encabeza el documento.
 
+No lleva fechas de plazo: ni vencimiento en la factura ni validez en el presupuesto.
+
 El papel va a dos tintas: la oscura hace la estructura y el teja resalta lo que se busca
 —el total, la obra, el rótulo del cliente—. Las filas alternas van tintadas para que el
 ojo siga el renglón hasta el importe, y el total va en una pastilla de color, que es la
@@ -256,7 +258,7 @@ que gasta poco tóner y la factura se sigue leyendo entera impresa en blanco y n
 
 Debajo del total, solo en las facturas, van la entidad y el IBAN de **Ajustes → Mis
 datos**: el cliente sabe a dónde transferir sin tener que preguntarlo. Un presupuesto no
-los lleva, porque todavía no se cobra; lleva «SIN VALOR CONTABLE» y hasta cuándo vale.
+los lleva, porque todavía no se cobra: lleva «SIN VALOR CONTABLE» debajo del rótulo.
 
 ![Factura en PDF](assets/factura_pdf.png)
 
@@ -268,9 +270,10 @@ CSV para mandárselo a la gestoría.
 ![Resumen trimestral](assets/resumen_trimestral.png)
 
 ### 💶 Estados de cobro
-Cada factura dice si está **cobrada**, **pendiente** o **vencida**. Lo de vencida no hay
-que marcarlo: se deduce de la fecha de vencimiento, así que la lista siempre está al día
-sin tocar nada.
+Cada factura dice si está **cobrada** o **pendiente**, y nada más. Aquí no se trabaja
+con plazos de vencimiento: una factura no cambia de estado porque pase el tiempo, solo
+cuando dices que ha entrado el dinero. Y se puede deshacer, porque un recibo devuelto
+existe.
 
 ### ⚙️ Ajustes: mis datos, logotipo, copias y exportación
 Tus datos de emisor —incluidos la entidad y el IBAN— se corrigen aquí: hasta ahora
@@ -304,7 +307,7 @@ BillEase/
 │   ├── taxes.py         # Base, IVA y total: el único cálculo
 │   ├── numbering.py     # Serie fiscal por ejercicio
 │   ├── quotes.py        # Presupuestos y su conversión en factura
-│   ├── cobros.py        # Cobrada, pendiente o vencida
+│   ├── cobros.py        # Cobrada o pendiente
 │   ├── reports.py       # Resumen de IVA por trimestre y por año
 │   ├── cifrado.py       # AES-256-GCM + Argon2id, sin saber de SQL
 │   ├── fechas.py        # ISO en la base, formato español en pantalla
@@ -416,4 +419,4 @@ Estas son algunas funcionalidades que se plantean incorporar en próximas versio
 - Historial de facturas enviadas por correo
 
 ### 🗄️ Gestión avanzada de datos
-- ~~Copias de seguridad automáticas~~ y ~~facturas cobradas / pendientes / vencidas~~ — **ya disponibles**
+- ~~Copias de seguridad automáticas~~ y ~~facturas cobradas / pendientes~~ — **ya disponibles**

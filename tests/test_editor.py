@@ -268,20 +268,18 @@ def test_editar_no_cambia_el_numero_de_serie(base, sin_dialogos):
 # ─────────────────────── presupuestos ───────────────────────
 
 
-def test_el_editor_de_presupuesto_pide_validez_y_el_de_factura_vencimiento(base, sin_dialogos):
-    presupuesto = editor(tipo=PRESUPUESTO)
-    elegir_cliente(presupuesto, base)
-    escribir(presupuesto.filas[0], "Obra presupuestada", 1, "1000")
-    presupuesto.guardar()
+def test_el_editor_no_pide_ninguna_fecha_de_plazo(base, sin_dialogos):
+    """
+    Había dos campos de plazo —«Vencimiento» en la factura y «Válido hasta»
+    en el presupuesto— y ya no hay ninguno: solo la fecha de emisión. Un
+    campo que nadie usa es un campo que se rellena mal.
+    """
+    for tipo in (PRESUPUESTO, FACTURA):
+        ventana = editor(tipo=tipo)
+        assert not hasattr(ventana, "plazo")
+        assert hasattr(ventana, "fecha")
 
-    guardado = repo.obtener(presupuesto.documento_id)
-    assert guardado.es_presupuesto
-    assert guardado.validez and not guardado.vencimiento
-
-    factura = editor(tipo=FACTURA)
-    elegir_cliente(factura, base)
-    escribir(factura.filas[0], "Obra facturada", 1, "1000")
-    factura.guardar()
-
-    emitida = repo.obtener(factura.documento_id)
-    assert emitida.vencimiento and not emitida.validez
+        elegir_cliente(ventana, base)
+        escribir(ventana.filas[0], "Obra", 1, "1000")
+        ventana.guardar()
+        assert repo.obtener(ventana.documento_id) is not None

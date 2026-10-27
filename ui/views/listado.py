@@ -553,8 +553,6 @@ class Listado(QWidget):
             "tipo": documento.tipo,
             "numero": documento.referencia,
             "fecha": a_espanol(documento.fecha),
-            "vencimiento": a_espanol(documento.vencimiento),
-            "validez": a_espanol(documento.validez),
             "emisor": {
                 "nombre": emisor.nombre_completo,
                 "nif": emisor.nif,

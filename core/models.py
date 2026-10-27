@@ -147,8 +147,8 @@ PRESUPUESTO = "presupuesto"
 
 # Estados. Los cuatro primeros son de los presupuestos, que tienen ciclo de
 # vida; los dos últimos, de las facturas: emitida es «pendiente de cobro», y
-# el día que entra el dinero pasa a cobrada. «Vencida» no se guarda, se deduce
-# del vencimiento (`core/cobros.py`).
+# el día que entra el dinero pasa a cobrada. No hay más: aquí no se trabaja
+# con plazos, así que nada se pasa de fecha solo (`core/cobros.py`).
 BORRADOR = "borrador"
 ENVIADO = "enviado"
 ACEPTADO = "aceptado"
@@ -175,8 +175,6 @@ class Documento:
     id: int = None
     tipo: str = FACTURA
     estado: str = EMITIDA
-    vencimiento: str = ""
-    validez: str = ""
     # Dónde se hace el trabajo, que no tiene por qué ser la dirección del
     # cliente: se le factura a la oficina una obra hecha en otra calle.
     direccion_obra: str = ""
@@ -221,8 +219,6 @@ class Documento:
             id=fila["Num_factura"],
             tipo=(fila["tipo"] if "tipo" in claves else None) or FACTURA,
             estado=(fila["estado"] if "estado" in claves else None) or EMITIDA,
-            vencimiento=(fila["vencimiento"] if "vencimiento" in claves else "") or "",
-            validez=(fila["validez"] if "validez" in claves else "") or "",
             direccion_obra=(
                 fila["direccion_obra"] if "direccion_obra" in claves else ""
             ) or "",

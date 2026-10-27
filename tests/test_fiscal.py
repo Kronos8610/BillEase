@@ -11,15 +11,7 @@ from decimal import Decimal
 
 import pytest
 
-from core.cobros import (
-    PENDIENTE,
-    VENCIDA,
-    dias_de_retraso,
-    esta_vencida,
-    puede_pasar_a,
-    reparto,
-    situacion,
-)
+from core.cobros import PENDIENTE, puede_pasar_a, reparto, situacion
 from core.models import COBRADA, EMITIDA, FACTURA, PRESUPUESTO, Documento
 from core.reports import (
     ejercicios,
@@ -31,7 +23,7 @@ from core.reports import (
 )
 
 
-def factura(fecha, base, estado=EMITIDA, vencimiento="", cliente="Pérez S.L.",
+def factura(fecha, base, estado=EMITIDA, cliente="Pérez S.L.",
             cliente_id=1, tipo=FACTURA, iva=21):
     """Una factura ya guardada, como la devuelve el repositorio."""
     bruto = Decimal(str(base))
@@ -41,7 +33,6 @@ def factura(fecha, base, estado=EMITIDA, vencimiento="", cliente="Pérez S.L.",
         tipo=tipo,
         estado=estado,
         fecha=fecha,
-        vencimiento=vencimiento,
         cliente_id=cliente_id,
         cliente_nombre=cliente,
         base=bruto,
@@ -186,28 +177,26 @@ def test_una_factura_emitida_esta_pendiente():
     assert situacion(factura("2026-01-10", 100)) == PENDIENTE
 
 
-def test_una_factura_cobrada_no_vence_aunque_pase_la_fecha():
-    cobrada = factura("2026-01-10", 100, estado=COBRADA, vencimiento="2026-02-10")
-    assert situacion(cobrada, hoy="2026-10-14") == COBRADA
-    assert not esta_vencida(cobrada, hoy="2026-10-14")
+def test_una_factura_cobrada_sigue_cobrada_pase_el_tiempo_que_pase():
+    """
+    No hay plazos: una factura no cambia de estado porque pase el tiempo.
+    Solo cambia cuando alguien dice que ha entrado el dinero.
+    """
+    cobrada = factura("2020-01-10", 100, estado=COBRADA)
+    assert situacion(cobrada) == COBRADA
 
 
-def test_una_factura_sin_cobrar_vence_al_pasar_el_plazo():
-    pendiente = factura("2026-01-10", 100, vencimiento="2026-02-10")
-    assert situacion(pendiente, hoy="2026-02-09") == PENDIENTE
-    assert situacion(pendiente, hoy="2026-02-10") == PENDIENTE   # el mismo día, no
-    assert situacion(pendiente, hoy="2026-02-11") == VENCIDA
-    assert dias_de_retraso(pendiente, hoy="2026-03-13") == 31
-
-
-def test_una_factura_sin_vencimiento_nunca_vence():
-    assert not esta_vencida(factura("2020-01-01", 100), hoy="2026-10-14")
+def test_una_factura_vieja_sin_cobrar_sigue_pendiente_y_no_vencida():
+    """
+    La de 2020 lleva años sin cobrarse y aun así está «pendiente». Antes se
+    volvía «vencida» sola al pasarse del plazo; ya no hay plazo que pasar.
+    """
+    assert situacion(factura("2020-01-01", 100)) == PENDIENTE
 
 
 def test_un_presupuesto_no_tiene_estado_de_cobro():
     oferta = factura("2026-01-10", 100, tipo=PRESUPUESTO, estado="enviado")
     assert situacion(oferta) == "enviado"
-    assert not esta_vencida(oferta, hoy="2030-01-01")
     assert not puede_pasar_a(oferta, COBRADA)
 
 
@@ -225,12 +214,11 @@ def test_el_cobro_se_puede_deshacer():
 def test_el_reparto_dice_cuanto_hay_de_cada():
     documentos = [
         factura("2026-01-10", 1000, estado=COBRADA),
-        factura("2026-02-10", 500, vencimiento="2026-03-12"),      # vencida
-        factura("2026-09-10", 200, vencimiento="2030-01-01"),      # pendiente
+        factura("2026-02-10", 500),                                # pendiente
+        factura("2026-09-10", 200),                                # pendiente
         factura("2026-03-10", 7000, tipo=PRESUPUESTO),             # no cuenta
     ]
-    cuentas = reparto(documentos, hoy="2026-10-14")
-    assert cuentas["documentos"] == {COBRADA: 1, PENDIENTE: 1, VENCIDA: 1}
+    cuentas = reparto(documentos)
+    assert cuentas["documentos"] == {COBRADA: 1, PENDIENTE: 2}
     assert cuentas["importes"][COBRADA] == Decimal("1210.00")
-    assert cuentas["importes"][VENCIDA] == Decimal("605.00")
-    assert cuentas["importes"][PENDIENTE] == Decimal("242.00")
+    assert cuentas["importes"][PENDIENTE] == Decimal("847.00")     # 605 + 242

@@ -34,10 +34,9 @@ from PyQt6.QtWidgets import (
 )
 
 import theme
-from core.fechas import a_espanol, a_iso, hoy_iso
+from core.fechas import a_espanol, hoy_iso
 from core.models import FACTURA, PRESUPUESTO, UNIDADES, Linea
 from core.money import a_decimal, formatear
-from core.quotes import validez_por_defecto, vencimiento_por_defecto
 from core.taxes import calcular
 from data.repositories import clientes as repo_clientes
 from data.repositories import documentos as repo_documentos
@@ -156,8 +155,8 @@ class DocumentoEditor(QDialog):
     """
     Crea o edita una factura o un presupuesto.
 
-    `tipo` decide la cabecera, la serie y si el plazo es de vencimiento (las
-    facturas) o de validez (los presupuestos).
+    `tipo` decide la cabecera y la serie. No hay fechas de plazo: aquí no se
+    trabaja con vencimientos ni con validez.
     """
 
     def __init__(self, tipo=FACTURA, documento_id=None, parent=None):
@@ -186,7 +185,7 @@ class DocumentoEditor(QDialog):
         self._montar_titulo()
         self._montar_cliente()
         self._montar_obra()
-        self._montar_fechas()
+        self._montar_fecha()
         self._montar_conceptos()
         self._montar_observaciones()
         self._montar_totales()
@@ -252,21 +251,20 @@ class DocumentoEditor(QDialog):
         )
         dentro.addWidget(self.direccion_obra)
 
-    def _montar_fechas(self):
-        dentro = self._seccion("Fechas")
+    def _montar_fecha(self):
+        """
+        La fecha de emisión, y ninguna más.
+
+        Aquí había además un plazo —«Vencimiento» en las facturas y «Válido
+        hasta» en los presupuestos—. Se quitó: no se trabaja con plazos, y un
+        campo que nadie usa es un campo que se rellena mal.
+        """
+        dentro = self._seccion("Fecha")
         fila = QHBoxLayout()
         fila.setSpacing(14)
 
         self.fecha = self._campo("dd/mm/aaaa")
-        self.plazo = self._campo("dd/mm/aaaa")
-        etiqueta_plazo = "Válido hasta" if self.es_presupuesto else "Vencimiento"
-
-        for campo, titulo in ((self.fecha, "Fecha"), (self.plazo, etiqueta_plazo)):
-            columna = QVBoxLayout()
-            columna.setSpacing(3)
-            columna.addWidget(etiqueta(titulo))
-            columna.addWidget(campo)
-            fila.addLayout(columna, 1)
+        fila.addWidget(self.fecha, 1)
         fila.addStretch(2)
         dentro.addLayout(fila)
 
@@ -354,17 +352,13 @@ class DocumentoEditor(QDialog):
         self.datos_cliente.setText(" · ".join(partes))
 
     def _nuevo(self):
-        rotulo = "presupuesto" if self.es_presupuesto else "factura"
-        self.setWindowTitle(f"Nuevo {rotulo}")
-        self.titulo.setText(f"Nuevo {rotulo}")
+        rotulo = "Nuevo presupuesto" if self.es_presupuesto else "Nueva factura"
+        self.setWindowTitle(rotulo)
+        self.titulo.setText(rotulo)
         self.boton_guardar.setText(
             "Guardar presupuesto" if self.es_presupuesto else "Emitir factura"
         )
-        hoy = hoy_iso()
-        self.fecha.setText(a_espanol(hoy))
-        self.plazo.setText(a_espanol(
-            validez_por_defecto(hoy) if self.es_presupuesto else vencimiento_por_defecto(hoy)
-        ))
+        self.fecha.setText(a_espanol(hoy_iso()))
         self._anadir_fila()
 
     def _precargar(self):
@@ -387,9 +381,6 @@ class DocumentoEditor(QDialog):
                 break
 
         self.fecha.setText(a_espanol(documento.fecha))
-        self.plazo.setText(a_espanol(
-            documento.validez if documento.es_presupuesto else documento.vencimiento
-        ))
         self.direccion_obra.setText(documento.direccion_obra)
         self.observaciones.setPlainText(documento.observaciones)
 
@@ -477,24 +468,19 @@ class DocumentoEditor(QDialog):
                 return
 
         observaciones = self.observaciones.toPlainText().strip()
-        plazo = a_iso(self.plazo.text().strip())
-        vencimiento = "" if self.es_presupuesto else plazo
-        validez = plazo if self.es_presupuesto else ""
-
         obra = self.direccion_obra.text().strip()
 
         if self.documento_id:
             guardado = repo_documentos.actualizar(
                 self.documento_id, self.fecha.text().strip(), cliente.id, lineas,
-                observaciones=observaciones, vencimiento=vencimiento, validez=validez,
-                direccion_obra=obra,
+                observaciones=observaciones, direccion_obra=obra,
             )
             documento_id = self.documento_id if guardado else None
         else:
             documento_id = repo_documentos.crear(
                 self.fecha.text().strip(), cliente.id, lineas,
                 observaciones=observaciones, tipo=self.tipo,
-                vencimiento=vencimiento, validez=validez, direccion_obra=obra,
+                direccion_obra=obra,
             )
 
         if not documento_id:

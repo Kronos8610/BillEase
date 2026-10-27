@@ -117,14 +117,17 @@ def descripciones_usadas(limite=400):
 
 
 def crear(fecha, cliente_id, lineas, observaciones="", tipo=FACTURA,
-          estado=None, vencimiento="", validez="", origen_id=None,
-          tipo_iva=IVA_GENERAL, direccion_obra=""):
+          estado=None, origen_id=None, tipo_iva=IVA_GENERAL, direccion_obra=""):
     """
     Emite un documento con sus líneas, todo o nada.
 
     `fecha` llega en formato español y se guarda en ISO. Los importes se
     calculan con `core.taxes`, la misma función que usan el listado y el PDF.
     El número sale de la serie que le toque a su tipo.
+
+    Las columnas `vencimiento` y `validez` siguen en la tabla pero ya no se
+    escriben: aquí no se trabaja con plazos. Se dejan como están para no
+    tirar lo que haya guardado de antes.
     """
     conn = conexion()
     iso = a_iso(fecha)
@@ -139,13 +142,12 @@ def crear(fecha, cliente_id, lineas, observaciones="", tipo=FACTURA,
         conn.execute("BEGIN")
         cur = conn.execute(
             "INSERT INTO Factura (fecha, base, tipo_iva, importe_total, Cod_cliente,"
-            " observaciones, serie, ejercicio, numero, tipo, estado, vencimiento,"
-            " validez, origen_id, direccion_obra)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            " observaciones, serie, ejercicio, numero, tipo, estado,"
+            " origen_id, direccion_obra)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (iso, float(totales.base), float(tipo_iva), float(totales.total),
              int(cliente_id), observaciones, serie, ejercicio, numero.numero,
-             tipo, estado, a_iso(vencimiento) or None, a_iso(validez) or None,
-             origen_id, direccion_obra.strip() or None),
+             tipo, estado, origen_id, direccion_obra.strip() or None),
         )
         documento_id = cur.lastrowid
         _escribir_lineas(conn, documento_id, lineas)
@@ -157,7 +159,7 @@ def crear(fecha, cliente_id, lineas, observaciones="", tipo=FACTURA,
 
 
 def actualizar(documento_id, fecha, cliente_id, lineas, observaciones="",
-               vencimiento="", validez="", tipo_iva=IVA_GENERAL, direccion_obra=""):
+               tipo_iva=IVA_GENERAL, direccion_obra=""):
     """Cambia un documento entero. Su número de serie no se toca nunca."""
     conn = conexion()
     totales = calcular(lineas)
@@ -165,11 +167,10 @@ def actualizar(documento_id, fecha, cliente_id, lineas, observaciones="",
         conn.execute("BEGIN")
         cur = conn.execute(
             "UPDATE Factura SET fecha = ?, base = ?, tipo_iva = ?, importe_total = ?,"
-            " Cod_cliente = ?, observaciones = ?, vencimiento = ?, validez = ?,"
+            " Cod_cliente = ?, observaciones = ?,"
             " direccion_obra = ? WHERE Num_factura = ?",
             (a_iso(fecha), float(totales.base), float(tipo_iva), float(totales.total),
-             int(cliente_id), observaciones, a_iso(vencimiento) or None,
-             a_iso(validez) or None, direccion_obra.strip() or None,
+             int(cliente_id), observaciones, direccion_obra.strip() or None,
              int(documento_id)),
         )
         if cur.rowcount == 0:
@@ -238,7 +239,6 @@ def facturar_presupuesto(presupuesto_id, fecha=None):
         factura.lineas,
         observaciones=factura.observaciones,
         tipo=FACTURA,
-        vencimiento=factura.vencimiento,
         origen_id=presupuesto.id,
         tipo_iva=factura.tipo_iva,
         direccion_obra=presupuesto.direccion_obra,
