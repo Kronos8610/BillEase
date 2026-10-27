@@ -244,9 +244,21 @@ datos. Tras tres intentos fallidos hay que esperar, y la espera crece. Si la
 olvidas, el código de recuperación entra y te deja poner una nueva.
 
 ### 📥 Exportar a PDF
-Genera un PDF profesional de cualquier factura con los datos del emisor, del cliente, el
-desglose de conceptos, subtotal, IVA (21%) y total. Si has puesto logotipo, encabeza el
-documento.
+Genera el PDF de cualquier factura o presupuesto con los datos del emisor, del cliente,
+la dirección de la obra, el desglose de conceptos, la base, el IVA y el total. Si has
+puesto logotipo, encabeza el documento.
+
+El papel va a dos tintas: la oscura hace la estructura y el teja resalta lo que se busca
+—el total, la obra, el rótulo del cliente—. Las filas alternas van tintadas para que el
+ojo siga el renglón hasta el importe, y el total va en una pastilla de color, que es la
+cifra que se mira al coger la hoja. El color está en filetes y en una sola pastilla, así
+que gasta poco tóner y la factura se sigue leyendo entera impresa en blanco y negro.
+
+Debajo del total, solo en las facturas, van la entidad y el IBAN de **Ajustes → Mis
+datos**: el cliente sabe a dónde transferir sin tener que preguntarlo. Un presupuesto no
+los lleva, porque todavía no se cobra; lleva «SIN VALOR CONTABLE» y hasta cuándo vale.
+
+![Factura en PDF](assets/factura_pdf.png)
 
 ### 📊 Resumen trimestral de IVA
 Lo facturado y el IVA repercutido de cada trimestre y del año entero, que es lo que pide
@@ -396,8 +408,8 @@ Estas son algunas funcionalidades que se plantean incorporar en próximas versio
 
 ### 📄 Mejoras en la generación de PDF
 - ~~Logotipo del autónomo en la cabecera~~ y ~~numeración automática `2025-001`~~ — **ya disponibles**
-- Plantillas de diseño seleccionables para las facturas
-- ~~Número de cuenta bancaria en la factura~~ — **ya disponible**
+- ~~Número de cuenta bancaria en la factura~~ y ~~dirección de la obra~~ — **ya disponibles**
+- Plantillas de diseño seleccionables para las facturas (hoy hay una, a dos tintas)
 
 ### 📧 Envío de facturas
 - Envío directo de facturas por email desde la aplicación

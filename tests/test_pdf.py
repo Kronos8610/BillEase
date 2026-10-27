@@ -483,3 +483,130 @@ def test_el_generador_no_necesita_qt():
         cwd=raiz, capture_output=True, text=True, check=True,
     ).stdout.strip()
     assert salida == "", f"el generador arrastra: {salida}"
+
+
+# ─────────────────────── el color y el vencimiento ───────────────────────
+
+
+def rectangulos(ruta, pagina=1):
+    """
+    Los rectángulos macizos de una página, con su color y su caja.
+
+    ReportLab los dibuja como `x y ancho alto re f*` dentro de un bloque con
+    su propia matriz `cm`, así que la posición real es la suma de las dos.
+    Devuelve `(color, izquierda, derecha, ancho)` en puntos.
+    """
+    import re
+
+    contenido = PdfReader(str(ruta)).pages[pagina - 1].get_contents().get_data()
+    patron = re.compile(
+        r"([\d.]+) ([\d.]+) cm\s*q\s*([\d.]+) ([\d.]+) ([\d.]+) rg\s*"
+        r"n ([-\d.]+) ([-\d.]+) ([\d.]+) ([-\d.]+) re"
+    )
+    salida = []
+    for m in patron.finditer(contenido.decode("latin-1")):
+        dx, dy, r, g, b, x, _y, ancho, _alto = (float(v) for v in m.groups())
+        color = "#%02X%02X%02X" % tuple(round(c * 255) for c in (r, g, b))
+        salida.append((color, round(dx + x, 1), round(dx + x + ancho, 1), round(ancho, 1)))
+    return salida
+
+
+def test_el_vencimiento_no_se_imprime(tmp_path, factura_4):
+    """
+    La fecha de vencimiento se guarda y mueve el estado de la factura, pero
+    en el papel no sale: se quitó a petición del usuario. Lo que se le dice
+    al cliente es cuánto debe y a qué cuenta.
+    """
+    ruta = tmp_path / "factura.pdf"
+    datos = documento(factura_4)          # lleva vencimiento="16/03/2025"
+    generar_documento_pdf(datos, ruta)
+
+    texto = "\n".join(texto_de(ruta))
+    assert "16/03/2025" not in texto
+    assert "Vence" not in texto and "VENCIMIENTO" not in texto
+    assert "14/02/2025" in texto, "la fecha de emisión sí tiene que salir"
+
+
+def test_el_total_va_sobre_el_acento(tmp_path, factura_4):
+    """
+    El total es la cifra que se busca al coger el papel: va en una pastilla
+    de color con las letras en blanco. Se comprueba sobre el PDF, que es
+    donde se ve, y no sobre la constante del módulo.
+    """
+    from documents.invoice_pdf import ACENTO
+
+    ruta = tmp_path / "factura.pdf"
+    generar_documento_pdf(documento(factura_4), ruta)
+
+    acento = ACENTO.hexval().replace("0x", "#").upper()[:7]
+    pastillas = [r for r in rectangulos(ruta) if r[0] == acento and r[3] > 50]
+    assert pastillas, f"no hay ninguna banda del acento; hay {rectangulos(ruta)}"
+
+
+def test_los_conceptos_y_el_total_acaban_en_la_misma_vertical(tmp_path, factura_4):
+    """
+    La zebra de los conceptos y la pastilla del total tienen que morir en el
+    mismo canto derecho. `hAlign="RIGHT"` de ReportLab deja seis puntos de
+    aire contra el margen y descuadraba la pastilla, que es justo lo que se
+    nota al mirar la hoja de lejos.
+    """
+    from documents.invoice_pdf import ACENTO, ZEBRA
+
+    ruta = tmp_path / "factura.pdf"
+    generar_documento_pdf(documento(factura_4), ruta)
+
+    def canto(color):
+        """El canto derecho de la banda más ancha de ese color.
+
+        La más ancha y no la primera: en el acento hay dos, y la otra es el
+        filete corto que va debajo del rótulo.
+        """
+        hexa = color.hexval().replace("0x", "#").upper()[:7]
+        bandas = [r for r in rectangulos(ruta) if r[0] == hexa]
+        assert bandas, f"no hay bandas de {hexa}"
+        return max(bandas, key=lambda r: r[3])[2]
+
+    assert abs(canto(ZEBRA) - canto(ACENTO)) < 0.5
+
+
+def test_las_filas_alternas_van_tintadas_tambien_en_la_segunda_pagina(tmp_path):
+    """
+    La zebra se escribe fila a fila para que al partirse la tabla cada una
+    conserve su fondo. Si se perdiera, la segunda página saldría toda blanca.
+    """
+    from documents.invoice_pdf import ZEBRA
+
+    lineas = [
+        Linea(f"Concepto {i} de una obra larga", cantidad=2, precio_ud=47.3, unidad="ud")
+        for i in range(1, 46)
+    ]
+    ruta = tmp_path / "factura.pdf"
+    paginas = generar_documento_pdf(documento(lineas), ruta)["paginas"]
+    assert paginas > 1, "hacen falta varias páginas para probar esto"
+
+    hexa = ZEBRA.hexval().replace("0x", "#").upper()[:7]
+    con_conceptos = [
+        numero for numero, texto in enumerate(texto_de(ruta), 1) if "CONCEPTO" in texto
+    ]
+    assert len(con_conceptos) > 1, "la tabla no llegó a partirse"
+    for pagina in con_conceptos:
+        bandas = [r for r in rectangulos(ruta, pagina) if r[0] == hexa]
+        assert bandas, f"la página {pagina} no tiene ninguna fila tintada"
+
+
+def test_todo_lo_que_se_lee_en_el_papel_llega_al_minimo():
+    """
+    Puerta 5, pero del PDF: una factura también hay que poder leerla. El
+    par justo es el blanco sobre el acento, que es el único texto del
+    documento que no va en tinta oscura.
+    """
+    from theme.tokens import MINIMO, contraste
+
+    from documents.invoice_pdf import PARES_PAPEL
+
+    flojos = [
+        (descripcion, round(razon, 2))
+        for frente, fondo, descripcion in PARES_PAPEL
+        if (razon := contraste(frente.hexval()[2:], fondo.hexval()[2:])) < MINIMO
+    ]
+    assert flojos == [], f"pares por debajo de {MINIMO}:1: {flojos}"

@@ -1,8 +1,9 @@
 """
 Comprueba que todo el texto de la interfaz se puede leer.
 
-    python tools/check_contraste.py            los dos temas
+    python tools/check_contraste.py            los dos temas y el papel
     python tools/check_contraste.py --tema oscuro
+    python tools/check_contraste.py --papel        solo el PDF
     python tools/check_contraste.py --minimo 7     exigencia AAA
 
 La WCAG 2.1 pide una razón de contraste de 4,5:1 para texto normal. El menú
@@ -19,7 +20,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from theme.tokens import MINIMO, PARES, paleta, revisar, temas
+from documents.invoice_pdf import PARES_PAPEL
+from theme.tokens import MINIMO, PARES, contraste, paleta, revisar, temas
 
 OK = "  OK  "
 FALLA = " FALLA"
@@ -40,15 +42,43 @@ def comprobar(modo, minimo):
     return fallos
 
 
+def revisar_papel():
+    """Los mismos pares, pero los del PDF. El papel también hay que leerlo."""
+    return sorted(
+        (contraste(frente.hexval()[2:], fondo.hexval()[2:]),
+         f"#{frente.hexval()[2:].upper()}", f"#{fondo.hexval()[2:].upper()}",
+         descripcion)
+        for frente, fondo, descripcion in PARES_PAPEL
+    )
+
+
+def comprobar_papel(minimo):
+    fallos = []
+    print(f"\nPapel — {len(PARES_PAPEL)} pares, mínimo {minimo:.1f}:1\n")
+    for razon, frente, fondo, descripcion in revisar_papel():
+        bien = razon >= minimo
+        if not bien:
+            fallos.append((razon, frente, fondo, descripcion))
+        print(
+            f"[{OK if bien else FALLA}] {razon:5.2f}:1  "
+            f"{frente} sobre {fondo}   {descripcion}"
+        )
+    return fallos
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     parser.add_argument("--tema", choices=temas(), default=None)
+    parser.add_argument("--papel", action="store_true", help="solo los colores del PDF")
     parser.add_argument("--minimo", type=float, default=MINIMO)
     args = parser.parse_args()
 
     fallos = []
-    for modo in ((args.tema,) if args.tema else temas()):
-        fallos += comprobar(modo, args.minimo)
+    if not args.papel:
+        for modo in ((args.tema,) if args.tema else temas()):
+            fallos += comprobar(modo, args.minimo)
+    if args.papel or not args.tema:
+        fallos += comprobar_papel(args.minimo)
 
     print()
     if fallos:

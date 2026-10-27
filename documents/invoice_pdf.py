@@ -19,7 +19,7 @@ Estructura del diccionario:
       "tipo":     "factura" | "presupuesto",
       "numero":   "2025-004",
       "fecha":    "14/02/2025",
-      "vencimiento": "16/03/2025",     # opcional (facturas)
+      "vencimiento": "16/03/2025",     # se acepta pero no se imprime
       "validez":     "19/09/2025",     # opcional (presupuestos)
       "emisor":   {"nombre", "nif", "direccion", "poblacion", "telefono", "email",
                    "logotipo",    # ruta de una imagen, opcional
@@ -27,8 +27,12 @@ Estructura del diccionario:
       "obra":     "Calle Alcalá 120, 3.º B",   # opcional: dónde es el trabajo
       "cliente":  {"nombre", "nif", "direccion", "poblacion", "telefono", "email"},
       "lineas":   [core.taxes.Linea, ...],
-      "nota":     "Forma de pago: …",  # opcional
+      "nota":     "…",                 # las observaciones; solo si las hay
     }
+
+El vencimiento se guarda y se usa en la aplicación —de ahí salen las
+facturas vencidas— pero no se imprime: el papel dice qué se debe y a qué
+cuenta, y el plazo se habla aparte.
 """
 
 from pathlib import Path
@@ -39,6 +43,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas as rl_canvas
 from reportlab.platypus import (
     Image,
@@ -52,12 +57,33 @@ from reportlab.platypus import (
 
 from core.taxes import calcular, formatear
 
-# Monocromo, como la plantilla aprobada: imprime igual de bien en una
-# impresora en blanco y negro y no compite con el contenido.
-TINTA = colors.HexColor("#0A0A0B")
-GRIS = colors.HexColor("#5A5A5A")
-GRIS_CLARO = colors.HexColor("#8A8A8A")
-FILETE = colors.HexColor("#E8E8E4")
+# Dos tintas: la oscura hace la estructura y el acento resalta lo que se
+# busca —el total, la obra, el número de cuenta—. El color va en filetes,
+# rótulos y una sola pastilla, nunca en fondos grandes: así gasta poco tóner
+# y la factura se sigue leyendo entera si se imprime en blanco y negro.
+TINTA = colors.HexColor("#1C1917")
+ACENTO = colors.HexColor("#9A3412")          # teja
+GRIS = colors.HexColor("#44403C")
+GRIS_CLARO = colors.HexColor("#57534E")
+FILETE = colors.HexColor("#E7E2DC")
+FILETE_FUERTE = colors.HexColor("#DDD8D2")
+# El acento al 6 % sobre blanco: las filas alternas de la tabla.
+ZEBRA = colors.HexColor("#FAF3F0")
+PAPEL = colors.white
+
+# Lo que el cliente lee como «texto sobre fondo» en el papel. El PDF pasa por
+# la misma vara de medir que la pantalla: `tools/check_contraste.py --papel`
+# recorre estos pares y ninguno puede bajar de 4,5:1. Importa sobre todo el
+# primero, que es el único texto en blanco del documento.
+PARES_PAPEL = (
+    (PAPEL, ACENTO, "el total, en blanco sobre la pastilla"),
+    (TINTA, PAPEL, "el texto corriente sobre el papel"),
+    (TINTA, ZEBRA, "un concepto sobre una fila tintada"),
+    (GRIS, PAPEL, "los datos del emisor y del cliente"),
+    (GRIS, ZEBRA, "los importes sobre una fila tintada"),
+    (GRIS_CLARO, PAPEL, "los rótulos pequeños y el pie"),
+    (ACENTO, PAPEL, "el rótulo CLIENTE"),
+)
 
 # Helvetica es una de las catorce fuentes que todo lector de PDF trae de
 # serie, así que el documento se ve igual en cualquier ordenador sin
@@ -67,6 +93,11 @@ FUENTE = "Helvetica"
 FUENTE_NEGRITA = "Helvetica-Bold"
 
 MARGEN = 18 * mm
+
+# Lo que se mete el texto dentro de las tablas con fondo (la zebra de los
+# conceptos y la pastilla del total): la banda llega hasta el margen de la
+# página y las letras no se pegan a su borde.
+SANGRIA = 3 * mm
 
 # El logotipo encabeza el documento sin competir con él: cabe en una caja de
 # este tamaño y se escala conservando su proporción.
@@ -115,53 +146,59 @@ def _logotipo(datos):
 
 def _estilos():
     base = ParagraphStyle(
-        "base", fontName=FUENTE, fontSize=8.5, leading=11.5, textColor=TINTA
+        "base", fontName=FUENTE, fontSize=9, leading=12.5, textColor=TINTA
     )
     return {
         "titulo": ParagraphStyle(
-            "titulo", parent=base, fontName=FUENTE_NEGRITA, fontSize=22, leading=24
+            "titulo", parent=base, fontName=FUENTE_NEGRITA, fontSize=23, leading=25
+        ),
+        "sello": ParagraphStyle(
+            "sello", parent=base, fontSize=6.5, leading=10, textColor=GRIS_CLARO
         ),
         "meta": ParagraphStyle(
-            "meta", parent=base, fontSize=8, leading=12, alignment=TA_RIGHT, textColor=GRIS
+            "meta", parent=base, fontSize=7.5, leading=12, textColor=GRIS_CLARO
         ),
         "meta_dato": ParagraphStyle(
             "meta_dato", parent=base, fontName=FUENTE_NEGRITA, fontSize=8.5, alignment=TA_RIGHT
         ),
-        "banda": ParagraphStyle(
-            "banda", parent=base, fontSize=6.5, leading=9, textColor=GRIS_CLARO
-        ),
-        "banda_der": ParagraphStyle(
-            "banda_der", parent=base, fontSize=6.5, leading=9,
-            textColor=GRIS_CLARO, alignment=TA_RIGHT,
-        ),
         "etiqueta": ParagraphStyle(
-            "etiqueta", parent=base, fontSize=6.5, leading=10, textColor=GRIS_CLARO
+            "etiqueta", parent=base, fontSize=7, leading=10, textColor=GRIS_CLARO
+        ),
+        "etiqueta_acento": ParagraphStyle(
+            "etiqueta_acento", parent=base, fontSize=7, leading=10, textColor=ACENTO
+        ),
+        "obra": ParagraphStyle(
+            "obra", parent=base, fontName=FUENTE_NEGRITA, fontSize=9.5, leading=13
         ),
         "parte": ParagraphStyle("parte", parent=base, fontSize=8.5, leading=11.5, textColor=GRIS),
         "parte_nombre": ParagraphStyle(
             "parte_nombre", parent=base, fontName=FUENTE_NEGRITA, fontSize=9.5, leading=13
         ),
         "th": ParagraphStyle(
-            "th", parent=base, fontSize=6.5, leading=9, textColor=GRIS_CLARO
+            "th", parent=base, fontSize=7, leading=9, textColor=TINTA
         ),
         "th_der": ParagraphStyle(
-            "th_der", parent=base, fontSize=6.5, leading=9,
-            textColor=GRIS_CLARO, alignment=TA_RIGHT,
+            "th_der", parent=base, fontSize=7, leading=9,
+            textColor=TINTA, alignment=TA_RIGHT,
         ),
-        "concepto": ParagraphStyle("concepto", parent=base, fontSize=8.5, leading=11.5),
-        "celda_der": ParagraphStyle("celda_der", parent=base, fontSize=8.5, alignment=TA_RIGHT),
+        "concepto": ParagraphStyle("concepto", parent=base, fontSize=9, leading=12.5),
+        "celda_der": ParagraphStyle("celda_der", parent=base, fontSize=9, alignment=TA_RIGHT),
+        "celda_fuerte": ParagraphStyle(
+            "celda_fuerte", parent=base, fontName=FUENTE_NEGRITA, fontSize=9,
+            alignment=TA_RIGHT,
+        ),
         "total_etq": ParagraphStyle("total_etq", parent=base, fontSize=8, textColor=GRIS),
         "total_val": ParagraphStyle("total_val", parent=base, fontSize=8, alignment=TA_RIGHT, textColor=GRIS),
         "total_final_etq": ParagraphStyle(
-            "tfe", parent=base, fontSize=7, textColor=TINTA
+            "tfe", parent=base, fontSize=7.5, textColor=PAPEL, leading=14
         ),
         "total_final_val": ParagraphStyle(
-            "tfv", parent=base, fontName=FUENTE_NEGRITA, fontSize=15,
-            leading=18, alignment=TA_RIGHT,
+            "tfv", parent=base, fontName=FUENTE_NEGRITA, fontSize=16,
+            leading=19, alignment=TA_RIGHT, textColor=PAPEL,
         ),
         "nota": ParagraphStyle("nota", parent=base, fontSize=7.5, leading=11, textColor=GRIS),
         "iban": ParagraphStyle(
-            "iban", parent=base, fontName=FUENTE_NEGRITA, fontSize=10, leading=14
+            "iban", parent=base, fontName=FUENTE_NEGRITA, fontSize=11, leading=15
         ),
     }
 
@@ -206,40 +243,15 @@ class _LienzoNumerado(rl_canvas.Canvas):
         )
 
 
-def _cabecera(datos, est):
-    """Rótulo del documento a la izquierda y sus datos a la derecha."""
-    es_presupuesto = datos.get("tipo", "factura") == "presupuesto"
-    rotulo = "PRESUPUESTO" if es_presupuesto else "FACTURA"
-
-    filas_meta = [("Nº", datos.get("numero", "")), ("Fecha", datos.get("fecha", ""))]
-    if es_presupuesto and datos.get("validez"):
-        filas_meta.append(("Validez", datos["validez"]))
-    elif datos.get("vencimiento"):
-        filas_meta.append(("Vence", datos["vencimiento"]))
-
-    meta = Table(
-        [
-            [Paragraph(etiqueta, est["meta"]), Paragraph(_texto(valor), est["meta_dato"])]
-            for etiqueta, valor in filas_meta
-        ],
-        colWidths=[18 * mm, 32 * mm],
-        style=TableStyle(
-            [
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("TOPPADDING", (0, 0), (-1, -1), 1),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ]
-        ),
-    )
-
+def _barra(ancho, alto, color):
+    """Un rectángulo macizo. Es como se dibuja un filete grueso con platypus."""
     return Table(
-        [[Paragraph(rotulo, est["titulo"]), meta]],
-        colWidths=[None, 50 * mm],
+        [[""]],
+        colWidths=[ancho],
+        rowHeights=[alto],
         style=TableStyle(
             [
-                ("VALIGN", (0, 0), (0, 0), "TOP"),
-                ("VALIGN", (1, 0), (1, 0), "TOP"),
+                ("BACKGROUND", (0, 0), (-1, -1), color),
                 ("LEFTPADDING", (0, 0), (-1, -1), 0),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 0),
                 ("TOPPADDING", (0, 0), (-1, -1), 0),
@@ -249,21 +261,88 @@ def _cabecera(datos, est):
     )
 
 
-def _banda(datos, est):
-    """Línea de contexto bajo el filete: serie a la izquierda, plazo a la derecha."""
-    es_presupuesto = datos.get("tipo", "factura") == "presupuesto"
-    if es_presupuesto:
-        izquierda = "PRESUPUESTO SIN VALOR CONTABLE"
-        derecha = f"VÁLIDO HASTA {_texto(datos.get('validez', '')).upper()}" if datos.get("validez") else ""
-    else:
-        izquierda = f"FACTURA {_texto(datos.get('numero', '')).upper()}"
-        derecha = f"VENCIMIENTO {_texto(datos.get('vencimiento', '')).upper()}" if datos.get("vencimiento") else ""
+def _con_barra(contenido, color=None):
+    """
+    Un bloque con una barra de color pegada a la izquierda.
 
+    Es lo que distingue de un vistazo la obra y la forma de pago del resto del
+    papel, sin encerrarlas en una caja.
+    """
     return Table(
-        [[Paragraph(izquierda, est["banda"]), Paragraph(derecha, est["banda_der"])]],
-        colWidths=[None, 70 * mm],
+        [[" ", contenido]],
+        colWidths=[1.4 * mm, None],
         style=TableStyle(
             [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("BACKGROUND", (0, 0), (0, 0), color or ACENTO),
+                ("LEFTPADDING", (0, 0), (0, 0), 0),
+                ("RIGHTPADDING", (0, 0), (0, 0), 0),
+                ("LEFTPADDING", (1, 0), (1, 0), 4 * mm),
+                ("RIGHTPADDING", (1, 0), (1, 0), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]
+        ),
+    )
+
+
+def _cabecera(datos, est, ancho):
+    """
+    Rótulo subrayado con el acento a la izquierda, y los datos en una caja.
+
+    El vencimiento no sale: se quitó a petición del usuario. En un
+    presupuesto sí va la validez, que es lo que le da sentido a una oferta.
+    """
+    es_presupuesto = datos.get("tipo", "factura") == "presupuesto"
+    rotulo = "PRESUPUESTO" if es_presupuesto else "FACTURA"
+
+    # El filete se mide sobre la palabra, no a ojo: así queda igual de
+    # proporcionado debajo de FACTURA que debajo de PRESUPUESTO, que es la
+    # mitad de larga otra vez.
+    estilo = est["titulo"]
+    izquierda = [
+        Paragraph(rotulo, estilo),
+        Spacer(1, 2 * mm),
+        _barra(
+            0.8 * stringWidth(rotulo, estilo.fontName, estilo.fontSize),
+            1.6 * mm,
+            ACENTO,
+        ),
+    ]
+    if es_presupuesto:
+        izquierda += [Spacer(1, 2 * mm), Paragraph("SIN VALOR CONTABLE", est["sello"])]
+
+    filas_meta = [("Nº", datos.get("numero", "")), ("Fecha", datos.get("fecha", ""))]
+    if es_presupuesto and datos.get("validez"):
+        filas_meta.append(("Válido hasta", datos["validez"]))
+
+    meta = Table(
+        [
+            [Paragraph(etiqueta, est["meta"]), Paragraph(_texto(valor), est["meta_dato"])]
+            for etiqueta, valor in filas_meta
+        ],
+        colWidths=[24 * mm, 28 * mm],
+        style=TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("BOX", (0, 0), (-1, -1), 0.6, FILETE_FUERTE),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("LEFTPADDING", (0, 0), (0, -1), 4 * mm),
+                ("RIGHTPADDING", (-1, 0), (-1, -1), 4 * mm),
+                ("TOPPADDING", (0, 0), (-1, 0), 5),
+                ("BOTTOMPADDING", (0, -1), (-1, -1), 5),
+            ]
+        ),
+    )
+
+    return Table(
+        [[izquierda, meta]],
+        colWidths=[ancho - 52 * mm, 52 * mm],
+        style=TableStyle(
+            [
+                ("VALIGN", (0, 0), (0, 0), "TOP"),
+                ("VALIGN", (1, 0), (1, 0), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 0),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 0),
                 ("TOPPADDING", (0, 0), (-1, -1), 0),
@@ -286,22 +365,11 @@ def _obra(datos, est):
     if not direccion:
         return None
 
-    return Table(
-        [[Paragraph("DIRECCIÓN DE LA OBRA", est["etiqueta"])],
-         [Paragraph(direccion, est["parte"])]],
-        colWidths=[None],
-        style=TableStyle(
-            [
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-                ("TOPPADDING", (0, 0), (-1, -1), 0),
-                ("BOTTOMPADDING", (0, 0), (0, 0), 2),
-                ("BOTTOMPADDING", (0, 1), (0, 1), 0),
-                ("LINEABOVE", (0, 0), (-1, 0), 0.5, FILETE),
-                ("TOPPADDING", (0, 0), (-1, 0), 6),
-            ]
-        ),
-    )
+    return _con_barra([
+        Paragraph("DIRECCIÓN DE LA OBRA", est["etiqueta"]),
+        Spacer(1, 0.8 * mm),
+        Paragraph(direccion, est["obra"]),
+    ])
 
 
 def _cuenta(datos, est):
@@ -322,17 +390,17 @@ def _cuenta(datos, est):
     from core.validators.banco import formatear_iban
 
     entidad = _texto(emisor.get("entidad", ""))
-    lineas = [Paragraph("FORMA DE PAGO", est["etiqueta"])]
-    lineas.append(Paragraph(
+    dentro = [Paragraph("FORMA DE PAGO", est["etiqueta"]), Spacer(1, 0.8 * mm)]
+    dentro.append(Paragraph(
         f"Transferencia a {entidad}" if entidad else "Transferencia bancaria",
         est["parte"],
     ))
-    lineas.append(Paragraph(formatear_iban(iban), est["iban"]))
-    return lineas
+    dentro.append(Paragraph(formatear_iban(iban), est["iban"]))
+    return [_con_barra(dentro, color=TINTA)]
 
 
-def _bloque_parte(etiqueta, parte, est):
-    lineas = [Paragraph(etiqueta.upper(), est["etiqueta"])]
+def _bloque_parte(etiqueta, parte, est, estilo="etiqueta"):
+    lineas = [Paragraph(etiqueta.upper(), est[estilo])]
     lineas.append(Paragraph(_texto(parte.get("nombre", "")), est["parte_nombre"]))
     detalles = []
     if parte.get("nif"):
@@ -351,21 +419,29 @@ def _bloque_parte(etiqueta, parte, est):
 
 
 def _partes(datos, est):
-    """Emisor a la izquierda y cliente a la derecha, en la misma fila."""
+    """
+    Emisor a la izquierda y cliente a la derecha, en la misma fila.
+
+    Cada bloque cuelga de su propio filete: el del emisor en tinta y el del
+    cliente en el acento. Es lo que hace que se vean como dos columnas y no
+    como un párrafo partido. La columna del medio está vacía y solo abre el
+    hueco: así los dos filetes no se tocan y no parecen uno solo de dos
+    colores.
+    """
     izquierda = _bloque_parte("Emisor", datos.get("emisor", {}), est)
-    derecha = _bloque_parte("Cliente", datos.get("cliente", {}), est)
+    derecha = _bloque_parte("Cliente", datos.get("cliente", {}), est, "etiqueta_acento")
     return Table(
-        [[izquierda, derecha]],
-        colWidths=["50%", "50%"],
+        [[izquierda, "", derecha]],
+        colWidths=["46%", "8%", "46%"],
         style=TableStyle(
             [
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LINEABOVE", (0, 0), (-1, 0), 0.9, TINTA),
+                ("LINEABOVE", (0, 0), (0, 0), 1.2, TINTA),
+                ("LINEABOVE", (2, 0), (2, 0), 1.2, ACENTO),
                 ("TOPPADDING", (0, 0), (-1, -1), 5),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-                ("LEFTPADDING", (0, 0), (0, 0), 0),
-                ("RIGHTPADDING", (1, 0), (1, 0), 0),
-                ("LEFTPADDING", (1, 0), (1, 0), 10),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
             ]
         ),
     )
@@ -394,9 +470,20 @@ def _tabla_conceptos(lineas, est, ancho):
                 Paragraph(linea.descripcion or "", est["concepto"]),
                 Paragraph(f"{cantidad_txt} {linea.unidad}".strip(), est["celda_der"]),
                 Paragraph(formatear(linea.precio_ud), est["celda_der"]),
-                Paragraph(formatear(linea.importe), est["celda_der"]),
+                Paragraph(formatear(linea.importe), est["celda_fuerte"]),
             ]
         )
+
+    # Filas alternas tintadas en lugar de una raya entre cada dos: el ojo
+    # sigue el renglón hasta el importe sin perderse, y un concepto de tres
+    # líneas se ve como un solo bloque. Se escriben una a una, y no con
+    # ROWBACKGROUNDS, para que al partirse la tabla entre páginas cada fila
+    # conserve el fondo que le toca.
+    zebra = [
+        ("BACKGROUND", (0, fila), (-1, fila), ZEBRA)
+        for fila in range(1, len(filas))
+        if fila % 2 == 1
+    ]
 
     anchos = [ancho - (62 * mm), 18 * mm, 21 * mm, 23 * mm]
     return Table(
@@ -406,22 +493,31 @@ def _tabla_conceptos(lineas, est, ancho):
         style=TableStyle(
             [
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LINEBELOW", (0, 0), (-1, 0), 0.9, TINTA),
-                ("LINEBELOW", (0, 1), (-1, -1), 0.4, FILETE),
+                *zebra,
+                ("LINEBELOW", (0, 0), (-1, 0), 1.4, TINTA),
+                ("LINEBELOW", (0, -1), (-1, -1), 0.5, FILETE_FUERTE),
                 ("TOPPADDING", (0, 0), (-1, 0), 0),
                 ("BOTTOMPADDING", (0, 0), (-1, 0), 5),
-                ("TOPPADDING", (0, 1), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
-                ("LEFTPADDING", (0, 0), (0, -1), 0),
-                ("RIGHTPADDING", (-1, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 1), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 7),
+                ("LEFTPADDING", (0, 0), (0, -1), SANGRIA),
+                ("RIGHTPADDING", (-1, 0), (-1, -1), SANGRIA),
             ]
         ),
     )
 
 
-def _tabla_totales(totales, est):
+def _tabla_totales(totales, est, ancho):
+    """
+    Los importes a la derecha, con el total en una pastilla del acento.
+
+    La tabla ocupa toda la caja de texto y deja vacía la primera columna en
+    vez de alinearse a la derecha: `hAlign="RIGHT"` deja seis puntos de aire
+    contra el margen, y entonces la pastilla no acaba donde acaban los
+    conceptos. Así los dos cantos derechos caen en la misma vertical.
+    """
     filas = [
-        [Paragraph("Base imponible", est["total_etq"]),
+        ["", Paragraph("Base imponible", est["total_etq"]),
          Paragraph(f"{formatear(totales.base)} €", est["total_val"])],
     ]
     for tramo in totales.desglose:
@@ -429,29 +525,35 @@ def _tabla_totales(totales, est):
         if len(totales.desglose) > 1:
             etiqueta += f" (sobre {formatear(tramo.base)} €)"
         filas.append(
-            [Paragraph(etiqueta, est["total_etq"]),
+            ["", Paragraph(etiqueta, est["total_etq"]),
              Paragraph(f"{formatear(tramo.cuota)} €", est["total_val"])]
         )
     filas.append(
-        [Paragraph("TOTAL", est["total_final_etq"]),
+        ["", Paragraph("TOTAL", est["total_final_etq"]),
          Paragraph(f"{formatear(totales.total)} €", est["total_final_val"])]
     )
 
+    # El total va en una pastilla del acento con las letras en blanco: es la
+    # cifra que se busca al coger el papel, y así se encuentra sin leer nada.
+    # Encima queda un hueco en blanco para que la pastilla no parezca otra
+    # fila más del cuadro.
     ultima = len(filas) - 1
     return Table(
         filas,
-        colWidths=[46 * mm, 32 * mm],
-        hAlign="RIGHT",
+        colWidths=[ancho - 78 * mm, 46 * mm, 32 * mm],
         style=TableStyle(
             [
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("VALIGN", (0, ultima), (-1, ultima), "BOTTOM"),
-                ("LINEABOVE", (0, ultima), (-1, ultima), 0.9, TINTA),
                 ("TOPPADDING", (0, 0), (-1, -1), 2),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                ("TOPPADDING", (0, ultima), (-1, ultima), 6),
-                ("RIGHTPADDING", (-1, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, ultima - 1), (-1, ultima - 1), 9),
+                ("BACKGROUND", (1, ultima), (-1, ultima), ACENTO),
+                ("TOPPADDING", (0, ultima), (-1, ultima), 5),
+                ("BOTTOMPADDING", (0, ultima), (-1, ultima), 6),
                 ("LEFTPADDING", (0, 0), (0, -1), 0),
+                ("RIGHTPADDING", (0, 0), (0, -1), 0),
+                ("LEFTPADDING", (1, 0), (1, -1), SANGRIA),
+                ("RIGHTPADDING", (-1, 0), (-1, -1), SANGRIA),
             ]
         ),
     )
@@ -493,10 +595,8 @@ def generar_documento_pdf(datos, ruta, totales=None):
         historia += [logotipo, Spacer(1, 6 * mm)]
 
     historia += [
-        _cabecera(datos, est),
-        Spacer(1, 5 * mm),
-        _banda(datos, est),
-        Spacer(1, 4 * mm),
+        _cabecera(datos, est, ancho),
+        Spacer(1, 7 * mm),
         _partes(datos, est),
     ]
 
@@ -513,7 +613,7 @@ def generar_documento_pdf(datos, ruta, totales=None):
     # El cuadro de totales no se separa de la cuenta ni de la nota: o caben
     # juntos al final de la página o pasan todos a la siguiente. Donde se cobra
     # debajo de cuánto se cobra, que es donde se mira.
-    cierre = [_tabla_totales(totales, est)]
+    cierre = [_tabla_totales(totales, est, ancho)]
     cuenta = _cuenta(datos, est)
     if cuenta:
         cierre += [Spacer(1, 7 * mm), *cuenta]

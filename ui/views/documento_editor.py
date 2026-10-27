@@ -290,7 +290,7 @@ class DocumentoEditor(QDialog):
         self.observaciones = QTextEdit()
         self.observaciones.setMinimumHeight(70)
         self.observaciones.setPlaceholderText(
-            "Forma de pago, referencia de la obra, condiciones…"
+            "Referencia de la obra, condiciones, avisos…"
         )
         dentro.addWidget(self.observaciones)
 
