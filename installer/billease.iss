@@ -13,7 +13,11 @@
 ;     imperdonable; se le dice dónde están y decide él.
 
 #define Nombre "BillEase"
-#define Version "1.0.0"
+; La versión se puede pasar al compilar —ISCC /DVersion=1.2.3—, que es lo que
+; hace la construcción automática cuando se publica con una etiqueta.
+#ifndef Version
+  #define Version "1.0.0"
+#endif
 #define Autor "BillEase"
 #define Ejecutable "BillEase.exe"
 

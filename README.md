@@ -33,7 +33,40 @@ No requiere conexión a internet, ni servidores externos. Todo queda guardado lo
 
 ---
 
-## ⚙️ Instalación
+## ⬇️ Descargar el programa ya hecho
+
+Si solo quieres **usar** BillEase en un ordenador con Windows, no hace falta instalar
+Python ni clonar nada:
+
+1. Entra en la pestaña **Actions** del repositorio y elige **Windows** en la lista de
+   la izquierda.
+2. Abre la última ejecución con el círculo verde y baja hasta **Artifacts**:
+   - **BillEase-instalador** — el instalador, para dejarlo instalado como cualquier
+     otro programa.
+   - **BillEase-portable** — la carpeta suelta, para llevarla en un pendrive y abrir
+     `BillEase.exe` sin instalar nada.
+3. GitHub te lo da en `.zip`. **Descomprímelo antes de ejecutarlo**: desde dentro del
+   zip, Windows no deja.
+
+Lo construye una máquina Windows de GitHub en cada cambio, con las pruebas pasadas
+antes. También se puede lanzar a mano con el botón **Run workflow**.
+
+> Windows SmartScreen avisará la primera vez («Windows protegió tu PC»): el ejecutable
+> no está firmado con un certificado, que cuesta dinero y hay que renovar cada año.
+> *Más información* → *Ejecutar de todas formas*. Es el aviso que sale con cualquier
+> programa sin firmar, no un problema del programa.
+
+Para publicar una versión con enlace permanente, basta con una etiqueta:
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+y los dos ficheros quedan colgados en **Releases**.
+
+---
+
+## ⚙️ Instalación para desarrollar
 
 ### 1. Clona el repositorio
 
@@ -120,9 +153,11 @@ Al arrancar se aplican las **migraciones** pendientes, guardando antes una copia
 seguridad con la fecha en el nombre. La variable de entorno `BILLEASE_DB` permite apuntar
 a otro fichero, útil para pruebas.
 
-### Generar el ejecutable (Windows)
+### Generar el ejecutable a mano (Windows)
 
-Para repartirlo a alguien que no tiene Python instalado:
+Lo normal es dejárselo a GitHub —ver «Descargar el programa ya hecho» arriba—, pero
+también se construye en tu propia máquina. **Tiene que ser Windows**: PyInstaller no
+compila para otro sistema que el suyo, así que desde Linux o macOS no sale un `.exe`.
 
 ```bash
 pip install pyinstaller
@@ -367,6 +402,8 @@ BillEase/
 ├── theme/               # Todo el color, en un sitio
 │   ├── tokens.py        # Paleta clara y oscura, sin dependencias
 │   └── app.qss          # Una hoja de estilos, no 84 llamadas sueltas
+├── .github/workflows/
+│   └── windows.yml      # Construye el .exe y el instalador en GitHub
 ├── billease.spec        # Receta de PyInstaller
 └── installer/
     └── billease.iss     # Instalador para Windows (Inno Setup)

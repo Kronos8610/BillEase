@@ -1,0 +1,114 @@
+# Construye BillEase para Windows y deja el resultado descargable.
+#
+# Hace falta porque PyInstaller no compila para otro sistema que el suyo: un
+# .exe de Windows hay que construirlo en Windows. Esto usa una máquina
+# Windows de GitHub, así que no hace falta tener Python ni nada instalado
+# para conseguir el programa.
+#
+# Cómo bajarlo:
+#
+#   1. Pestaña «Actions» del repositorio → «Windows» en la lista de la
+#      izquierda → «Run workflow» (o espera: se lanza solo en cada push).
+#   2. Cuando el círculo se ponga verde, entra en la ejecución y baja de
+#      «Artifacts»:
+#        · BillEase-instalador  → el instalador, para poner el programa en
+#          otro ordenador como cualquier otro.
+#        · BillEase-portable    → la carpeta suelta, para llevarla en un
+#          pendrive y abrir BillEase.exe sin instalar nada.
+#   3. GitHub los empaqueta en .zip al descargarlos. Hay que descomprimir
+#      antes de ejecutar: desde dentro del zip, Windows no deja.
+#
+# Con una etiqueta `v1.0.0` además publica los dos ficheros en una «release»,
+# que es un enlace directo y permanente, sin tener que entrar en Actions.
+
+name: Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "master", "claude/**"]
+    tags: ["v*"]
+
+permissions:
+  contents: write          # para publicar la release cuando hay etiqueta
+
+jobs:
+  construir:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Pasar las pruebas
+        # No corta la construcción a propósito: si algo falla aquí por una
+        # manía de Windows —un fichero temporal que no se suelta, una ruta—,
+        # es mejor tener el programa y el aviso que quedarse sin programa.
+        # El fallo se ve igual en el registro de esta ejecución.
+        continue-on-error: true
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m pytest -q
+
+      - name: Construir el programa
+        run: pyinstaller --noconfirm billease.spec
+
+      - name: Comprobar que el .exe está donde debe
+        run: |
+          if (-not (Test-Path "dist\BillEase\BillEase.exe")) {
+            throw "No se ha generado dist\BillEase\BillEase.exe"
+          }
+          Get-Item "dist\BillEase\BillEase.exe" | Format-List Name, Length
+          # Sin esto, el botón «Vista previa» abriría una ventana en blanco.
+          if (-not (Get-ChildItem "dist\BillEase\_internal" -Recurse -Filter "Qt6Pdf.dll")) {
+            throw "Falta Qt6Pdf.dll: la vista previa no funcionaría"
+          }
+
+      - name: Instalar Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Construir el instalador
+        run: |
+          $version = if ($env:GITHUB_REF -like "refs/tags/v*") {
+            $env:GITHUB_REF -replace "refs/tags/v", ""
+          } else {
+            "1.0.0"
+          }
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            "/DVersion=$version" "installer\billease.iss"
+
+      - name: Dejar el instalador descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: BillEase-instalador
+          path: installer/Output/*.exe
+          if-no-files-found: error
+
+      - name: Dejar la versión portable descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: BillEase-portable
+          path: dist/BillEase/
+          if-no-files-found: error
+
+      - name: Publicar la release (solo con etiqueta)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Compress-Archive -Path "dist\BillEase\*" `
+            -DestinationPath "BillEase-portable-$($env:GITHUB_REF_NAME).zip"
+          gh release create $env:GITHUB_REF_NAME `
+            --title "BillEase $env:GITHUB_REF_NAME" `
+            --notes "Instalador para Windows y versión portable." `
+            (Get-ChildItem installer\Output\*.exe).FullName `
+            "BillEase-portable-$($env:GITHUB_REF_NAME).zip"

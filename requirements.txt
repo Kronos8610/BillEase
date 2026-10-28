@@ -29,6 +29,10 @@ pytest-cov==7.0.0
 # concepto se dibuja fuera del papel y que los totales impresos cuadran.
 pypdf==6.18.1
 
+# Fabrica al vuelo el PNG que hace de logotipo en las pruebas, para no tener
+# que versionar imágenes. El programa no la necesita: Qt lee las imágenes.
+pillow==12.3.0
+
 # --- Empaquetado ---
 # Solo hace falta para generar el ejecutable:
 #   pyinstaller billease.spec
