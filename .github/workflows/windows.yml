@@ -50,14 +50,31 @@ jobs:
           pip install -r requirements.txt
 
       - name: Pasar las pruebas
+        id: pruebas
         # No corta la construcción a propósito: si algo falla aquí por una
         # manía de Windows —un fichero temporal que no se suelta, una ruta—,
         # es mejor tener el programa y el aviso que quedarse sin programa.
-        # El fallo se ve igual en el registro de esta ejecución.
         continue-on-error: true
         env:
           QT_QPA_PLATFORM: offscreen
         run: python -m pytest -q
+
+      - name: Decir cómo fueron las pruebas
+        # `continue-on-error` hace que el paso anterior se pinte en verde
+        # aunque haya fallado, que es justo lo que no interesa saber a medias.
+        # Esto lo deja escrito en el resumen de la ejecución, donde se ve sin
+        # abrir ningún registro.
+        run: |
+          $resultado = "${{ steps.pruebas.outcome }}"
+          $linea = if ($resultado -eq "success") {
+            "### Pruebas: pasan todas"
+          } else {
+            "### Pruebas: FALLAN — el programa se ha construido igualmente, " +
+            "pero mira el paso «Pasar las pruebas» antes de repartirlo"
+          }
+          $linea | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          Write-Host $linea
+          if ($resultado -ne "success") { Write-Warning "Las pruebas no pasaron." }
 
       - name: Construir el programa
         run: pyinstaller --noconfirm billease.spec
