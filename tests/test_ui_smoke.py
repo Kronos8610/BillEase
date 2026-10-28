@@ -324,6 +324,7 @@ def test_las_acciones_estan_apagadas_hasta_que_se_elige_una_fila(base, app):
     assert all(not accion.isEnabled() for accion in listado.acciones)
 
     listado.vista.selectRow(0)
+    assert listado.boton_previa.isEnabled()
     assert listado.boton_pdf.isEnabled()
     assert listado.boton_editar.isEnabled()
     assert listado.boton_borrar.isEnabled()
@@ -696,3 +697,76 @@ def test_los_atajos_estan_puestos(base, app):
     listado = Listado(FACTURAS)
     atajos = {a.key().toString() for a in listado.findChildren(QShortcut)}
     assert {"Ctrl+F", "F5", "Esc", "Del"} <= atajos
+
+
+# ─────────────────────── la vista previa ───────────────────────
+
+
+def test_la_vista_previa_sale_del_documento_elegido(base, app, monkeypatch, sin_dialogos):
+    """
+    El botón arma los mismos datos que «Generar PDF» y abre la ventana con
+    ellos. Se intercepta `exec` porque un diálogo modal pararía la prueba.
+    """
+    from data.repositories import autonomo as repo_autonomo
+    from ui.views import vista_previa as modulo
+
+    repo_autonomo.registrar(
+        Autonomo(nif="12345678Z", nombre="Carlos", apellido="García",
+                 direccion="Calle Mayor 12", codigo_postal="28001",
+                 telefono="612345678", email="carlos@billease.es"),
+        "Pass1234",
+    )
+    abiertas = []
+    monkeypatch.setattr(modulo.VistaPrevia, "exec", lambda self: abiertas.append(self))
+
+    listado = Listado(FACTURAS)
+    listado.vista.selectRow(0)
+    documento = listado.seleccionado()
+    listado._previsualizar()
+
+    assert len(abiertas) == 1
+    previa = abiertas[0]
+    try:
+        assert previa.referencia == documento.referencia
+        assert previa.datos["cliente"]["nombre"] == "Construcciones Pérez S.L."
+        assert previa._fichero.is_file()
+    finally:
+        previa.close()
+
+
+def test_sin_fila_elegida_la_vista_previa_no_hace_nada(base, app, monkeypatch, sin_dialogos):
+    from ui.views import vista_previa as modulo
+
+    abiertas = []
+    monkeypatch.setattr(modulo.VistaPrevia, "exec", lambda self: abiertas.append(self))
+
+    listado = Listado(FACTURAS)
+    listado.vista.clearSelection()
+    listado._previsualizar()
+    assert abiertas == []
+
+
+def test_un_documento_sin_conceptos_avisa_en_vez_de_previsualizar(
+    base, app, sin_dialogos
+):
+    """
+    Un papel sin ninguna línea no hay por dónde mirarlo. Avisa, y no abre
+    nada: `sin_dialogos` es imprescindible aquí, porque un aviso de verdad es
+    modal y dejaría la prueba colgada para siempre.
+    """
+    from ui.views import vista_previa as modulo
+
+    abiertas = []
+    documento_id = repo.crear(a_espanol(hoy_iso()), base, [])
+
+    listado = Listado(FACTURAS)
+    fila = [f for f in range(listado.filtro.rowCount())
+            if listado.filtro.index(f, 0).data(ROL_OBJETO).id == documento_id][0]
+    listado.vista.selectRow(fila)
+
+    with pytest.MonkeyPatch.context() as parche:
+        parche.setattr(modulo.VistaPrevia, "exec", lambda self: abiertas.append(self))
+        listado._previsualizar()
+
+    assert abiertas == []
+    assert any("Sin conceptos" in titulo for _, titulo, _ in sin_dialogos)

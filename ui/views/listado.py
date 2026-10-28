@@ -39,7 +39,6 @@ from PyQt6.QtWidgets import (
 
 import theme
 from core.cobros import TRANSICIONES as TRANSICIONES_COBRO
-from core.fechas import a_espanol
 from core.models import (
     ACEPTADO,
     COBRADA,
@@ -55,6 +54,7 @@ from core.taxes import calcular
 from data.repositories import autonomo as repo_autonomo
 from data.repositories import clientes as repo_clientes
 from data.repositories import documentos as repo_documentos
+from documents.armado import datos_de
 from documents.invoice_pdf import generar_documento_pdf
 from ui import iconos
 from ui.models import (
@@ -65,6 +65,7 @@ from ui.models import (
     modelo_presupuestos,
     repartir,
 )
+from ui.views.vista_previa import ErrorDePrevia, VistaPrevia
 from ui.widgets.pildora import PildoraEstado
 
 FACTURAS = "Facturas"
@@ -162,6 +163,8 @@ class Listado(QWidget):
         QShortcut(QKeySequence("F5"), self, self.cargar)
         QShortcut(QKeySequence(Qt.Key.Key_Escape), self, self._limpiar_busqueda)
         QShortcut(QKeySequence(Qt.Key.Key_Delete), self.vista, self._eliminar)
+        if self.es_documento:
+            QShortcut(QKeySequence("Ctrl+P"), self, self._previsualizar)
 
         self.cargar()
 
@@ -214,6 +217,8 @@ class Listado(QWidget):
             return b
 
         if self.es_documento:
+            self.boton_previa = anadir("Vista previa", "ojo", self._previsualizar,
+                                       "Ver cómo queda antes de guardarlo (Ctrl+P)")
             self.boton_pdf = anadir("Generar PDF", "pdf", self._generar_pdf,
                                     "Guarda el documento en PDF")
             self.boton_editar = anadir("Editar", "editar", self._editar,
@@ -516,21 +521,28 @@ class Listado(QWidget):
         if hasattr(ventana, "ir_a"):
             ventana.ir_a(FACTURAS)
 
-    def _generar_pdf(self):
+    def _para_el_pdf(self):
+        """
+        El documento seleccionado, listo para maquetar.
+
+        Devuelve `(documento, datos, totales)`, o None si falta algo —y
+        entonces ya ha avisado de qué—. Lo usan la vista previa y el botón de
+        guardar: las dos tienen que enseñar lo mismo.
+        """
         seleccionado = self.seleccionado()
         if seleccionado is None:
-            return
+            return None
         documento = repo_documentos.obtener(seleccionado.id)
         if documento is None:
             self._avisar("No encontrado", "Ese documento ya no existe.")
-            return
+            return None
         if not documento.lineas:
             self._avisar(
                 "Sin conceptos",
                 f"{documento.referencia} no tiene ninguna línea, así que no hay nada "
                 "que imprimir. Ábrelo y escribe al menos un concepto.",
             )
-            return
+            return None
 
         cliente = repo_clientes.obtener(documento.cliente_id)
         emisor = repo_autonomo.obtener()
@@ -540,42 +552,43 @@ class Listado(QWidget):
                 "No se han podido leer los datos del cliente o los tuyos, y sin "
                 "ellos el documento no es válido.",
             )
+            return None
+
+        return documento, datos_de(documento, cliente, emisor), calcular(documento.lineas)
+
+    def _previsualizar(self):
+        """
+        Enseña el documento como va a salir impreso, sin guardarlo.
+
+        Lo que se ve es el PDF de verdad, generado en una carpeta temporal que
+        se borra al cerrar. Desde la propia ventana se puede guardar.
+        """
+        preparado = self._para_el_pdf()
+        if preparado is None:
             return
+        documento, datos, totales = preparado
+
+        try:
+            previa = VistaPrevia(datos, totales=totales, parent=self)
+        except ErrorDePrevia as e:
+            QMessageBox.critical(
+                self, "No se pudo enseñar el documento",
+                f"{documento.referencia} no se ha podido maquetar.\n\nMotivo: {e}",
+            )
+            return
+        previa.exec()
+
+    def _generar_pdf(self):
+        preparado = self._para_el_pdf()
+        if preparado is None:
+            return
+        documento, datos, totales = preparado
 
         ruta, _ = QFileDialog.getSaveFileName(
             self, "Guardar PDF", f"{documento.referencia}.pdf", "PDF (*.pdf)"
         )
         if not ruta:
             return
-
-        totales = calcular(documento.lineas)
-        datos = {
-            "tipo": documento.tipo,
-            "numero": documento.referencia,
-            "fecha": a_espanol(documento.fecha),
-            "emisor": {
-                "nombre": emisor.nombre_completo,
-                "nif": emisor.nif,
-                "direccion": emisor.direccion,
-                "poblacion": emisor.codigo_postal,
-                "telefono": emisor.telefono,
-                "email": emisor.email,
-                "logotipo": emisor.logotipo,
-                "entidad": emisor.entidad,
-                "iban": emisor.iban,
-            },
-            "cliente": {
-                "nombre": cliente.nombre,
-                "nif": cliente.nif,
-                "direccion": cliente.direccion,
-                "poblacion": cliente.codigo_postal,
-                "telefono": cliente.telefono,
-                "email": cliente.email,
-            },
-            "obra": documento.direccion_obra,
-            "lineas": documento.lineas,
-            "nota": documento.observaciones,
-        }
 
         try:
             resultado = generar_documento_pdf(datos, ruta, totales=totales)

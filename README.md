@@ -16,6 +16,7 @@ Está diseñada para autónomos que necesitan una herramienta ligera y fácil de
 - Escribir cada concepto con su cantidad, su unidad y su precio
 - Saber qué está cobrado y qué queda por cobrar
 - Sacar el **resumen de IVA de cada trimestre** para el modelo 303
+- Ver cómo queda una factura **antes** de generarla
 - Exportar facturas en **PDF** y los datos en **CSV** para la gestoría
 
 No requiere conexión a internet, ni servidores externos. Todo queda guardado localmente en tu ordenador.
@@ -249,6 +250,21 @@ El programa pide la contraseña al abrir, y esa misma contraseña descifra los
 datos. Tras tres intentos fallidos hay que esperar, y la espera crece. Si la
 olvidas, el código de recuperación entra y te deja poner una nueva.
 
+### 👁 Vista previa
+Enseña el documento tal y como va a salir impreso, sin tener que generarlo, buscar el
+fichero y abrirlo con el lector de PDF. Está en la barra de la lista, antes de «Generar
+PDF», y también en **Ctrl+P**.
+
+Lo que se ve **es** el PDF, no un dibujo parecido: se maqueta el fichero de verdad y se
+pinta con el motor de PDF de Qt, así que no hay dos maquetadores que puedan discrepar.
+Se pasan páginas, se acerca y se aleja, y desde la propia ventana se guarda —el mismo
+fichero que estabas mirando, copiado, no vuelto a generar—.
+
+El PDF temporal se borra al cerrar la ventana. Lleva dentro el NIF del cliente y lo que
+se le cobra, y eso no se queda en la carpeta temporal después de echar un vistazo.
+
+![Vista previa](assets/vista_previa.png)
+
 ### 📥 Exportar a PDF
 Genera el PDF de cualquier factura o presupuesto con los datos del emisor, del cliente,
 la dirección de la obra, el desglose de conceptos, la base, el IVA y el total. Si has
@@ -328,14 +344,16 @@ BillEase/
 │   └── repositories/    # documentos, clientes, autonomo
 ├── documents/
 │   ├── invoice_pdf.py   # Factura y presupuesto, sin Qt
+│   ├── armado.py        # De la base al diccionario que pide el PDF
 │   └── export_csv.py    # CSV para Excel en español
 ├── ui/                  # Pantallas
 │   ├── shell.py         # Ventana principal y navegación lateral
 │   ├── iconos.py        # Los iconos, en SVG propio (ya no hay emojis)
 │   ├── models/          # QAbstractTableModel: listados y búsqueda
 │   ├── views/           # listado · documento_editor · cliente_editor · registro
-│   │                    # resumen · ajustes · acceso · seguridad
+│   │                    # resumen · ajustes · acceso · seguridad · vista_previa
 │   └── widgets/         # concepto.py (sugerencias) · pildora.py (estados)
+│                        # ventana.py (maximizar y ancho máximo)
 ├── theme/               # Todo el color, en un sitio
 │   ├── tokens.py        # Paleta clara y oscura, sin dependencias
 │   └── app.qss          # Una hoja de estilos, no 84 llamadas sueltas
@@ -354,6 +372,7 @@ BillEase/
 | **PyQt6** | Interfaz gráfica de escritorio |
 | **SQLite** | Base de datos local |
 | **ReportLab** | Generación de PDFs |
+| **Qt PDF** | Pintar la vista previa en pantalla |
 
 ---
 

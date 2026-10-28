@@ -8,7 +8,7 @@ Receta de empaquetado de BillEase.
 Deja en `dist/BillEase/` el programa listo para copiar o para meter en el
 instalador (`installer/billease.iss`).
 
-Tres decisiones:
+Cuatro decisiones:
 
 - **Un directorio, no un fichero único.** `--onefile` descomprime la
   aplicación entera en una carpeta temporal en cada arranque: tarda varios
@@ -16,6 +16,8 @@ Tres decisiones:
   instante, y el instalador la esconde igual.
 - **`app.qss` viaja con el programa.** Es un fichero de datos, no código: si
   no se incluye, la aplicación arranca sin estilos.
+- **`QtPdf` se declara a mano.** La vista previa pinta el PDF con el motor de
+  Qt; se nombra aquí para que no se quede fuera al recortar módulos.
 - **Sin consola.** `console=False` para que no se abra una ventana negra
   detrás. Los mensajes de arranque siguen yendo a la salida estándar para
   quien ejecute el `.exe` desde una terminal.
@@ -41,6 +43,10 @@ ocultos = [
     "cryptography",
     "cryptography.hazmat.primitives.ciphers.aead",
     "reportlab.graphics.barcode",
+    # El motor de PDF de Qt, que es lo que pinta la vista previa. Sin él, el
+    # ejecutable arranca y el botón «Vista previa» no enseña nada.
+    "PyQt6.QtPdf",
+    "PyQt6.QtPdfWidgets",
 ]
 
 a = Analysis(
