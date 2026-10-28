@@ -559,13 +559,20 @@ def generar_documento_pdf(datos, ruta, totales=None):
     """
     Escribe el PDF y devuelve un resumen de lo generado.
 
+    `ruta` puede ser un fichero o cualquier cosa con `write`: un `BytesIO`,
+    por ejemplo. La vista previa lo usa para maquetar en memoria y no dejar
+    facturas sueltas en la carpeta temporal.
+
     `totales` permite pasar los importes ya calculados —los mismos que se
     enseñaron en pantalla— para que papel y aplicación no puedan discrepar.
     Si no se pasa, se calculan con `core.taxes.calcular`, que es la misma
     función que usa la interfaz.
 
-    Devuelve `{"paginas": int, "totales": Totales, "ruta": str}`.
+    Devuelve `{"paginas": int, "totales": Totales, "ruta": str}`; con un
+    destino en memoria, `ruta` viene vacía porque no hay ninguna.
     """
+    es_camino = isinstance(ruta, (str, Path))
+    destino = str(ruta) if es_camino else ruta
     lineas = list(datos.get("lineas", []))
     if totales is None:
         totales = calcular(lineas)
@@ -574,7 +581,7 @@ def generar_documento_pdf(datos, ruta, totales=None):
     referencia = f"{'Presupuesto' if datos.get('tipo') == 'presupuesto' else 'Factura'} {_texto(datos.get('numero', ''))}".strip()
 
     doc = SimpleDocTemplate(
-        str(ruta),
+        destino,
         pagesize=A4,
         leftMargin=MARGEN,
         rightMargin=MARGEN,
@@ -622,4 +629,8 @@ def generar_documento_pdf(datos, ruta, totales=None):
 
     doc.build(historia, canvasmaker=lienzo)
 
-    return {"paginas": doc.page, "totales": totales, "ruta": str(ruta)}
+    return {
+        "paginas": doc.page,
+        "totales": totales,
+        "ruta": str(ruta) if es_camino else "",
+    }

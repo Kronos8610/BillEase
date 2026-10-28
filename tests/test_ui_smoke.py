@@ -142,7 +142,7 @@ def test_casi_nadie_llama_a_set_style_sheet():
     colores por los widgets es lo que hacía imposible un tema oscuro.
     """
     por_fichero = {
-        str(ruta.relative_to(check_estilos.RAIZ)): check_estilos.llamadas_a_estilo(ruta)
+        ruta.relative_to(check_estilos.RAIZ).as_posix(): check_estilos.llamadas_a_estilo(ruta)
         for ruta in check_estilos.ficheros()
     }
     culpables = {f: lineas for f, lineas in por_fichero.items() if lineas}
@@ -157,7 +157,7 @@ def test_casi_nadie_llama_a_set_style_sheet():
 def test_no_queda_ni_un_emoji_en_la_interfaz():
     """🏠 📄 📝 ➕ 🗑 eran los iconos del menú. Ahora son SVG propios."""
     culpables = [
-        f"{ruta.relative_to(check_estilos.RAIZ)}:{numero}: «{caracter}» {texto}"
+        f"{ruta.relative_to(check_estilos.RAIZ).as_posix()}:{numero}: «{caracter}» {texto}"
         for ruta in check_estilos.ficheros()
         for numero, caracter, texto in check_estilos.emojis(ruta)
     ]
@@ -730,7 +730,7 @@ def test_la_vista_previa_sale_del_documento_elegido(base, app, monkeypatch, sin_
     try:
         assert previa.referencia == documento.referencia
         assert previa.datos["cliente"]["nombre"] == "Construcciones Pérez S.L."
-        assert previa._fichero.is_file()
+        assert previa.pdf.startswith(b"%PDF")
     finally:
         previa.close()
 

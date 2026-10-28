@@ -2,11 +2,12 @@
 Pruebas de la vista previa.
 
 Lo que se comprueba no es que la ventana se abra, sino que lo que enseña es
-el documento de verdad: el PDF se genera, tiene las páginas que debe, lo que
-se guarda desde ahí es byte por byte lo que se estaba mirando, y al cerrar no
-se queda ninguna factura olvidada en la carpeta temporal.
+el documento de verdad: el PDF se maqueta, tiene las páginas que debe, lo que
+se guarda desde ahí es byte por byte lo que se estaba mirando, y en ningún
+momento aparece una factura suelta en la carpeta temporal.
 """
 
+import io
 import os
 from pathlib import Path
 
@@ -84,8 +85,8 @@ def test_la_previa_enseña_el_pdf_de_verdad(base, app):
 
     previa = previa_de(base)
     try:
-        assert previa._fichero.is_file()
-        texto = "\n".join(p.extract_text() or "" for p in PdfReader(str(previa._fichero)).pages)
+        assert previa.pdf.startswith(b"%PDF")
+        texto = "\n".join(p.extract_text() or "" for p in PdfReader(io.BytesIO(previa.pdf)).pages)
         assert "FACTURA" in texto
         assert "Construcciones Pérez S.L." in texto
         assert "Instalación de fontanería en baño principal" in texto
@@ -214,9 +215,8 @@ def test_lo_que_se_guarda_es_lo_que_se_estaba_mirando(base, app, tmp_path, monke
 
     previa = previa_de(base)
     try:
-        mirado = previa._fichero.read_bytes()
         assert previa.guardar() == str(destino)
-        assert destino.read_bytes() == mirado
+        assert destino.read_bytes() == previa.pdf
     finally:
         previa.close()
 
@@ -232,22 +232,32 @@ def test_si_no_se_elige_fichero_no_se_guarda_nada(base, app, monkeypatch):
         previa.close()
 
 
-def test_al_cerrar_no_queda_ninguna_factura_en_la_carpeta_temporal(base, app):
+def test_la_previa_no_escribe_nada_en_la_carpeta_temporal(base, app):
     """
-    El PDF temporal lleva dentro el NIF del cliente y lo que se le cobra. No
-    puede quedarse en %TEMP% después de echar un vistazo.
+    El PDF lleva dentro el NIF del cliente y lo que se le cobra, así que no
+    puede pasar por %TEMP% ni un momento.
+
+    La primera versión sí lo escribía y lo borraba al cerrar, y en Windows el
+    borrado fallaba en silencio: el motor de PDF no suelta el fichero
+    mientras el documento está abierto. Cada vistazo dejaba una factura allí.
+    Por eso esto mira la carpeta entera antes y después, y no solo si un
+    fichero concreto se ha borrado: lo que no se escribe no se puede quedar.
     """
+    import tempfile
+
+    temporales = Path(tempfile.gettempdir())
+    antes = set(temporales.iterdir())
+
     previa = previa_de(base)
-    temporal = Path(previa._fichero)
-    carpeta = temporal.parent
-    assert temporal.is_file()
+    durante = set(temporales.iterdir()) - antes
+    assert previa.pdf.startswith(b"%PDF"), "no se ha maquetado nada"
+    assert durante == set(), f"ha aparecido algo en la carpeta temporal: {durante}"
 
     previa.close()
-    assert not temporal.exists()
-    assert not carpeta.exists()
+    assert set(temporales.iterdir()) - antes == set()
 
 
 def test_cerrar_dos_veces_no_revienta(base, app):
     previa = previa_de(base)
     previa.close()
-    previa.close()          # el segundo cierre no debe encontrar nada que borrar
+    previa.close()

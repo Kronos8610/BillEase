@@ -152,9 +152,17 @@ def test_las_rutas_con_espacios_y_acentos_funcionan(tmp_path):
 
     uri = uri_solo_lectura(ruta)
     assert uri.startswith("file:///") and "%20" in uri      # espacios escapados
-    assert sqlite3.connect(uri, uri=True).execute(
-        "SELECT nombre FROM Cliente"
-    ).fetchone()[0] == "María Fernández"
+
+    # La conexión se cierra a mano. En Windows un fichero abierto no se deja
+    # reemplazar, y `cifrar` termina con un `os.replace`: dejarla suelta hacía
+    # fallar la prueba con «Acceso denegado» por culpa de la propia prueba.
+    solo_lectura = sqlite3.connect(uri, uri=True)
+    try:
+        assert solo_lectura.execute(
+            "SELECT nombre FROM Cliente"
+        ).fetchone()[0] == "María Fernández"
+    finally:
+        solo_lectura.close()
 
     # Y las operaciones que la usan: copiar y cifrar.
     assert backup.copiar(ruta).exists()

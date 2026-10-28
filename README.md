@@ -296,8 +296,9 @@ pinta con el motor de PDF de Qt, así que no hay dos maquetadores que puedan dis
 Se pasan páginas, se acerca y se aleja, y desde la propia ventana se guarda —el mismo
 fichero que estabas mirando, copiado, no vuelto a generar—.
 
-El PDF temporal se borra al cerrar la ventana. Lleva dentro el NIF del cliente y lo que
-se le cobra, y eso no se queda en la carpeta temporal después de echar un vistazo.
+El PDF se maqueta **en memoria** y no llega a tocar el disco. Lleva dentro el NIF del
+cliente y lo que se le cobra, así que no pasa por la carpeta temporal ni un momento: lo
+que no se escribe no se puede quedar.
 
 ![Vista previa](assets/vista_previa.png)
 

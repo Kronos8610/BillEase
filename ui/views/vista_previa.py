@@ -11,16 +11,21 @@ fichero de verdad y se pinta con el motor de PDF de Qt. Así no hay dos
 maquetadores que puedan discrepar, que es como se acaba enseñando en pantalla
 algo distinto de lo que se imprime.
 
-El fichero se escribe en una carpeta temporal y se borra al cerrar. Si desde
-aquí se guarda, se copia a donde diga el usuario: no se vuelve a generar,
-porque entonces lo guardado podría no ser lo que se acaba de mirar.
+El PDF se maqueta **en memoria** y no toca el disco. La primera versión lo
+escribía en la carpeta temporal y lo borraba al cerrar, y en Windows el
+borrado fallaba: el motor de PDF no suelta el fichero mientras el documento
+está abierto, y `rmtree(ignore_errors=True)` se tragaba el fallo sin decir
+nada. Cada vistazo dejaba en %TEMP% una factura con el NIF del cliente y lo
+que se le cobra. Sin fichero no hay nada que borrar ni nada que se quede.
+
+Al guardar se escriben esos mismos bytes: no se vuelve a maquetar, porque
+entonces lo guardado podría no ser lo que se acaba de mirar.
 """
 
-import shutil
-import tempfile
+import io
 from pathlib import Path
 
-from PyQt6.QtCore import QPointF, Qt
+from PyQt6.QtCore import QBuffer, QByteArray, QPointF, Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
@@ -87,15 +92,26 @@ class VistaPrevia(QDialog):
         self.setMinimumSize(760, 620)
         agrandable(self, 1080, 960)
 
-        self._carpeta = Path(tempfile.mkdtemp(prefix="billease-previa-"))
-        self._fichero = self._carpeta / f"{self.referencia}.pdf"
-        self._paginas = self._generar()
+        self.pdf, self._paginas = self._generar()
 
+        # El búfer se queda con una copia de los bytes —`setData`— y no con
+        # un puntero a los de fuera: `QBuffer(QByteArray(...))` guarda la
+        # dirección de un QByteArray temporal que Python destruye acto
+        # seguido, y el documento se carga vacío sin decir nada. Además
+        # tiene que seguir vivo mientras el documento lo use, de ahí que sea
+        # hijo de la ventana.
+        self._buffer = QBuffer(self)
+        self._buffer.setData(QByteArray(self.pdf))
+        self._buffer.open(QBuffer.OpenModeFlag.ReadOnly)
+
+        # Se mira el estado y no lo que devuelve `load`: cargando desde un
+        # dispositivo no devuelve nada, así que compararlo con un error da
+        # siempre «ha fallado».
         self.documento = QPdfDocument(self)
-        if self.documento.load(str(self._fichero)) != QPdfDocument.Error.None_:
-            self._limpiar()
+        self.documento.load(self._buffer)
+        if self.documento.status() != QPdfDocument.Status.Ready:
             raise ErrorDePrevia(
-                "El PDF se ha generado pero no se ha podido abrir para enseñarlo."
+                "El PDF se ha maquetado pero no se ha podido abrir para enseñarlo."
             )
 
         raiz = QVBoxLayout(self)
@@ -114,15 +130,15 @@ class VistaPrevia(QDialog):
     # ───────────────────────────── montaje ─────────────────────────────
 
     def _generar(self):
-        """Escribe el PDF temporal y devuelve cuántas páginas tiene."""
+        """Maqueta el PDF en memoria. Devuelve `(bytes, páginas)`."""
+        memoria = io.BytesIO()
         try:
             resultado = generar_documento_pdf(
-                self.datos, self._fichero, totales=self.totales
+                self.datos, memoria, totales=self.totales
             )
         except Exception as e:                                   # noqa: BLE001
-            self._limpiar()
             raise ErrorDePrevia(f"No se ha podido maquetar el documento: {e}") from e
-        return resultado["paginas"]
+        return memoria.getvalue(), resultado["paginas"]
 
     def _barra(self):
         barra = QWidget()
@@ -268,10 +284,11 @@ class VistaPrevia(QDialog):
 
     def guardar(self):
         """
-        Copia el PDF que se está mirando a donde diga el usuario.
+        Escribe el PDF que se está mirando donde diga el usuario.
 
-        Se copia, no se vuelve a generar: lo que se guarda tiene que ser lo
-        mismo que se acaba de ver, hasta la última coma.
+        Se escriben los bytes que ya están en memoria, no se vuelve a
+        maquetar: lo que se guarda tiene que ser lo mismo que se acaba de
+        ver, hasta la última coma.
         """
         nombre = f"{self.referencia}.pdf"
         if self.carpeta and Path(self.carpeta).is_dir():
@@ -283,7 +300,7 @@ class VistaPrevia(QDialog):
             return None
 
         try:
-            shutil.copyfile(self._fichero, destino)
+            Path(destino).write_bytes(self.pdf)
         except OSError as e:
             QMessageBox.critical(
                 self, "No se pudo guardar",
@@ -300,25 +317,3 @@ class VistaPrevia(QDialog):
         self.guardado = destino
         return destino
 
-    # ───────────────────────────── limpieza ─────────────────────────────
-
-    def _limpiar(self):
-        """
-        Borra el PDF temporal.
-
-        Primero se cierra el documento: en Windows un fichero abierto no se
-        deja borrar, y quedarían copias de las facturas en la carpeta
-        temporal, que es justo donde no deben estar.
-        """
-        documento = getattr(self, "documento", None)
-        if documento is not None:
-            documento.close()
-        shutil.rmtree(self._carpeta, ignore_errors=True)
-
-    def closeEvent(self, evento):
-        self._limpiar()
-        super().closeEvent(evento)
-
-    def done(self, resultado):
-        self._limpiar()
-        super().done(resultado)
