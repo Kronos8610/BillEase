@@ -32,6 +32,7 @@ from core.models import (  # noqa: E402
     ACEPTADO,
     COBRADA,
     ENVIADO,
+    FACTURA,
     PRESUPUESTO,
     Autonomo,
     Cliente,
@@ -770,3 +771,192 @@ def test_un_documento_sin_conceptos_avisa_en_vez_de_previsualizar(
 
     assert abiertas == []
     assert any("Sin conceptos" in titulo for _, titulo, _ in sin_dialogos)
+
+
+# ─────────────────────── dónde va cada PDF ───────────────────────
+
+
+@pytest.fixture
+def emisor(base):
+    """Un autónomo dado de alta, que es quien guarda las carpetas."""
+    from data.repositories import autonomo as repo_autonomo
+
+    repo_autonomo.registrar(
+        Autonomo(nif="12345678Z", nombre="Carlos", apellido="García",
+                 direccion="Calle Mayor 12", codigo_postal="28001",
+                 telefono="612345678", email="carlos@billease.es"),
+        "Pass1234",
+    )
+    return repo_autonomo
+
+
+def test_con_carpeta_puesta_el_pdf_va_derecho_a_ella(base, app, emisor, tmp_path,
+                                                     sin_dialogos, monkeypatch):
+    """
+    Esto es lo que hace útil el ajuste: no se pregunta nada. Si se abriera el
+    diálogo igualmente, la carpeta no serviría de nada.
+    """
+    from PyQt6.QtWidgets import QFileDialog
+
+    destino = tmp_path / "Facturas"
+    destino.mkdir()
+    emisor.guardar_carpeta(FACTURA, str(destino))
+
+    preguntas = []
+    monkeypatch.setattr(
+        QFileDialog, "getSaveFileName",
+        staticmethod(lambda *a, **k: preguntas.append(a) or ("", "")),
+    )
+
+    listado = Listado(FACTURAS)
+    listado.vista.selectRow(0)
+    documento = listado.seleccionado()
+    listado._generar_pdf()
+
+    assert preguntas == [], "no debería haber preguntado dónde guardar"
+    assert (destino / f"{documento.referencia}.pdf").is_file()
+
+
+def test_cada_tipo_va_a_su_carpeta(base, app, emisor, tmp_path, sin_dialogos):
+    facturas = tmp_path / "Facturas"
+    presupuestos = tmp_path / "Presupuestos"
+    facturas.mkdir()
+    presupuestos.mkdir()
+    emisor.guardar_carpeta(FACTURA, str(facturas))
+    emisor.guardar_carpeta(PRESUPUESTO, str(presupuestos))
+
+    for categoria, carpeta in ((FACTURAS, facturas), (PRESUPUESTOS, presupuestos)):
+        listado = Listado(categoria)
+        listado.vista.selectRow(0)
+        documento = listado.seleccionado()
+        listado._generar_pdf()
+        assert (carpeta / f"{documento.referencia}.pdf").is_file()
+
+    # Y ninguno se ha colado en la carpeta del otro.
+    assert [f.name for f in facturas.iterdir()] != [
+        f.name for f in presupuestos.iterdir()
+    ]
+
+
+def test_sin_carpeta_puesta_se_sigue_preguntando(base, app, emisor, tmp_path,
+                                                 sin_dialogos, monkeypatch):
+    """Quien no quiera carpeta fija no pierde nada: todo sigue como estaba."""
+    from PyQt6.QtWidgets import QFileDialog
+
+    destino = tmp_path / "elegida-a-mano.pdf"
+    preguntas = []
+    monkeypatch.setattr(
+        QFileDialog, "getSaveFileName",
+        staticmethod(lambda *a, **k: preguntas.append(a) or (str(destino), "")),
+    )
+
+    listado = Listado(FACTURAS)
+    listado.vista.selectRow(0)
+    listado._generar_pdf()
+
+    assert len(preguntas) == 1
+    assert destino.is_file()
+
+
+def test_una_carpeta_que_ya_no_existe_avisa_y_pregunta(base, app, emisor, tmp_path,
+                                                       sin_dialogos, monkeypatch):
+    """
+    El disco externo sin poner, o la carpeta renombrada. No se falla ni se
+    crea a la brava: se dice y se pregunta, y el ajuste se queda como estaba.
+    """
+    from PyQt6.QtWidgets import QFileDialog
+
+    fantasma = tmp_path / "disco-que-no-esta"
+    emisor.guardar_carpeta(FACTURA, str(fantasma))
+
+    destino = tmp_path / "a-mano.pdf"
+    monkeypatch.setattr(
+        QFileDialog, "getSaveFileName",
+        staticmethod(lambda *a, **k: (str(destino), "")),
+    )
+
+    listado = Listado(FACTURAS)
+    listado.vista.selectRow(0)
+    listado._generar_pdf()
+
+    assert destino.is_file()
+    assert not fantasma.exists(), "no debe crear carpetas por su cuenta"
+    assert any("carpeta ya no está" in titulo for _, titulo, _ in sin_dialogos)
+    assert emisor.carpeta_de(FACTURA) == str(fantasma), "el ajuste no se toca"
+
+
+def test_si_ya_hay_un_pdf_con_ese_nombre_se_pregunta_antes_de_pisarlo(
+    base, app, emisor, tmp_path, monkeypatch
+):
+    from PyQt6.QtWidgets import QFileDialog, QMessageBox
+
+    destino = tmp_path / "Facturas"
+    destino.mkdir()
+    emisor.guardar_carpeta(FACTURA, str(destino))
+
+    listado = Listado(FACTURAS)
+    listado.vista.selectRow(0)
+    documento = listado.seleccionado()
+    fichero = destino / f"{documento.referencia}.pdf"
+    fichero.write_bytes(b"un PDF viejo")
+
+    # Primero se dice que no: se pregunta dónde, y el viejo sigue ahí.
+    otro = tmp_path / "otro-sitio.pdf"
+    monkeypatch.setattr(
+        QFileDialog, "getSaveFileName", staticmethod(lambda *a, **k: (str(otro), ""))
+    )
+    monkeypatch.setattr(
+        QMessageBox, "question",
+        staticmethod(lambda *a, **k: QMessageBox.StandardButton.No),
+    )
+    monkeypatch.setattr(QMessageBox, "information", staticmethod(lambda *a, **k: None))
+    listado._generar_pdf()
+    assert fichero.read_bytes() == b"un PDF viejo"
+    assert otro.is_file()
+
+    # Y ahora que sí: se sustituye.
+    monkeypatch.setattr(
+        QMessageBox, "question",
+        staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes),
+    )
+    listado._generar_pdf()
+    assert fichero.read_bytes().startswith(b"%PDF")
+
+
+def test_en_ajustes_se_elige_y_se_quita_la_carpeta_de_cada_tipo(
+    base, app, emisor, tmp_path, monkeypatch
+):
+    from PyQt6.QtWidgets import QFileDialog
+
+    from ui.views.ajustes import Ajustes
+
+    pantalla = Ajustes()
+    assert "Se pregunta al generar cada PDF" in pantalla.carpetas[FACTURA]["donde"].text()
+    assert not pantalla.carpetas[FACTURA]["quitar"].isEnabled()
+
+    elegida = tmp_path / "Mis facturas"
+    elegida.mkdir()
+    monkeypatch.setattr(
+        QFileDialog, "getExistingDirectory", staticmethod(lambda *a, **k: str(elegida))
+    )
+    pantalla._elegir_carpeta(FACTURA)
+
+    assert emisor.carpeta_de(FACTURA) == str(elegida)
+    assert pantalla.carpetas[FACTURA]["donde"].text() == str(elegida)
+    assert pantalla.carpetas[FACTURA]["quitar"].isEnabled()
+    # La del otro tipo no se ha tocado.
+    assert emisor.carpeta_de(PRESUPUESTO) == ""
+
+    pantalla._quitar_carpeta(FACTURA)
+    assert emisor.carpeta_de(FACTURA) == ""
+    assert not pantalla.carpetas[FACTURA]["quitar"].isEnabled()
+
+
+def test_ajustes_dice_cuando_la_carpeta_guardada_ya_no_existe(
+    base, app, emisor, tmp_path
+):
+    from ui.views.ajustes import Ajustes
+
+    emisor.guardar_carpeta(PRESUPUESTO, str(tmp_path / "se-fue"))
+    pantalla = Ajustes()
+    assert "ya no existe" in pantalla.carpetas[PRESUPUESTO]["donde"].text()

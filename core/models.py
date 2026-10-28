@@ -116,6 +116,9 @@ class Autonomo:
     # todavía no se cobra.
     entidad: str = ""
     iban: str = ""
+    # Dónde va cada PDF al generarlo. Vacías, se pregunta cada vez.
+    carpeta_facturas: str = ""
+    carpeta_presupuestos: str = ""
 
     @property
     def nombre_completo(self):
@@ -137,6 +140,12 @@ class Autonomo:
             logotipo=(fila["logotipo"] if "logotipo" in claves else "") or "",
             entidad=(fila["entidad"] if "entidad" in claves else "") or "",
             iban=(fila["iban"] if "iban" in claves else "") or "",
+            carpeta_facturas=(
+                fila["carpeta_facturas"] if "carpeta_facturas" in claves else ""
+            ) or "",
+            carpeta_presupuestos=(
+                fila["carpeta_presupuestos"] if "carpeta_presupuestos" in claves else ""
+            ) or "",
         )
 
 

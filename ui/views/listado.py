@@ -17,6 +17,8 @@ Lo que antes no había y ahora sí:
   hay que hacer y el botón para hacerlo.
 """
 
+from pathlib import Path
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
@@ -569,7 +571,10 @@ class Listado(QWidget):
         documento, datos, totales = preparado
 
         try:
-            previa = VistaPrevia(datos, totales=totales, parent=self)
+            previa = VistaPrevia(
+                datos, totales=totales,
+                carpeta=repo_autonomo.carpeta_de(documento.tipo), parent=self,
+            )
         except ErrorDePrevia as e:
             QMessageBox.critical(
                 self, "No se pudo enseñar el documento",
@@ -578,15 +583,56 @@ class Listado(QWidget):
             return
         previa.exec()
 
+    def _donde_guardar(self, documento):
+        """
+        A qué fichero va este PDF, preguntando solo si hace falta.
+
+        Con una carpeta puesta en Ajustes para ese tipo de documento, va
+        derecho a `<carpeta>/<número>.pdf` y no se pregunta nada: eso es lo
+        que la hace útil. Se pregunta en tres casos: si no hay carpeta, si ha
+        dejado de existir —un disco externo sin poner, una carpeta
+        renombrada— y si ya hay un fichero con ese nombre y el usuario
+        prefiere elegir otro sitio.
+
+        Devuelve la ruta, o None si el usuario se arrepiente.
+        """
+        nombre = f"{documento.referencia}.pdf"
+        carpeta = repo_autonomo.carpeta_de(documento.tipo)
+
+        if carpeta and Path(carpeta).is_dir():
+            destino = Path(carpeta) / nombre
+            if not destino.exists():
+                return str(destino)
+
+            respuesta = QMessageBox.question(
+                self, "Ya existe",
+                f"En {carpeta} ya hay un {nombre}.\n\n"
+                "¿Lo sustituyo por el que vas a generar ahora?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if respuesta == QMessageBox.StandardButton.Yes:
+                return str(destino)
+            nombre = str(destino)          # el diálogo se abre ahí mismo
+
+        elif carpeta:
+            self._avisar(
+                "La carpeta ya no está",
+                f"{carpeta} no existe ahora mismo. Elige dónde guardar este "
+                "PDF; la carpeta de Ajustes se queda como estaba.",
+            )
+
+        ruta, _ = QFileDialog.getSaveFileName(
+            self, "Guardar PDF", nombre, "PDF (*.pdf)"
+        )
+        return ruta or None
+
     def _generar_pdf(self):
         preparado = self._para_el_pdf()
         if preparado is None:
             return
         documento, datos, totales = preparado
 
-        ruta, _ = QFileDialog.getSaveFileName(
-            self, "Guardar PDF", f"{documento.referencia}.pdf", "PDF (*.pdf)"
-        )
+        ruta = self._donde_guardar(documento)
         if not ruta:
             return
 

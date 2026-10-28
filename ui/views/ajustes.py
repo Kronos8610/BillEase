@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (
 
 import theme
 from config import ruta_base_datos
-from core.models import Autonomo
+from core.models import FACTURA, PRESUPUESTO, Autonomo
 from core.validators import (
     CODIGO_POSTAL,
     EMAIL,
@@ -108,6 +108,7 @@ class Ajustes(QWidget):
         self._montar_mis_datos()
         self._montar_seguridad()
         self._montar_logotipo()
+        self._montar_carpetas()
         self._montar_copias()
         self._montar_exportacion()
         self.columna.addStretch()
@@ -260,6 +261,53 @@ class Ajustes(QWidget):
         botones.addStretch()
         dentro.addLayout(botones)
 
+    def _montar_carpetas(self):
+        """
+        Dónde va cada PDF al generarlo.
+
+        Sin esto, cada «Generar PDF» abría el diálogo de guardar en la última
+        carpeta que hubiera usado Windows, que casi nunca era la que tocaba:
+        las facturas acababan repartidas entre el Escritorio, Descargas y la
+        carpeta del último adjunto que se abrió.
+        """
+        dentro = self._tarjeta(
+            "Dónde se guardan los PDF",
+            "Una carpeta para las facturas y otra para los presupuestos. Al "
+            "generar el PDF va a la suya, con su número de nombre y sin "
+            "preguntar. Si dejas una en blanco, se sigue preguntando cada vez.",
+        )
+
+        self.carpetas = {}
+        for tipo, rotulo in ((FACTURA, "Facturas"), (PRESUPUESTO, "Presupuestos")):
+            dentro.addLayout(self._fila_de_carpeta(tipo, rotulo))
+
+    def _fila_de_carpeta(self, tipo, rotulo):
+        nombre = QLabel(rotulo)
+        nombre.setObjectName("Etiqueta")
+        nombre.setFixedWidth(110)
+
+        donde = QLabel()
+        donde.setObjectName("Apunte")
+        donde.setWordWrap(True)
+        donde.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+
+        elegir = self._accion(
+            "Elegir carpeta", "carpeta", lambda _=False, t=tipo: self._elegir_carpeta(t)
+        )
+        quitar = self._accion(
+            "Quitar", "menos", lambda _=False, t=tipo: self._quitar_carpeta(t), "Peligro"
+        )
+
+        fila = QHBoxLayout()
+        fila.setSpacing(10)
+        fila.addWidget(nombre)
+        fila.addWidget(donde, 1)
+        fila.addWidget(elegir)
+        fila.addWidget(quitar)
+
+        self.carpetas[tipo] = {"donde": donde, "quitar": quitar}
+        return fila
+
     def _montar_copias(self):
         dentro = self._tarjeta(
             "Copias de seguridad",
@@ -316,6 +364,7 @@ class Ajustes(QWidget):
         self._pintar_mis_datos()
         self._pintar_seguridad()
         self._pintar_logotipo()
+        self._pintar_carpetas()
         self._pintar_copias()
 
     def _pintar_mis_datos(self):
@@ -419,6 +468,33 @@ class Ajustes(QWidget):
             else "Todavía no has puesto logotipo. Los documentos salen sin él."
         )
         self.quitar_logo.setEnabled(bool(ruta))
+
+    def _pintar_carpetas(self):
+        for tipo, controles in self.carpetas.items():
+            ruta = repo_autonomo.carpeta_de(tipo)
+            if not ruta:
+                controles["donde"].setText("Se pregunta al generar cada PDF.")
+            elif not Path(ruta).is_dir():
+                # Un disco externo que no está puesto, o una carpeta
+                # renombrada: se dice, y al generar se vuelve a preguntar.
+                controles["donde"].setText(f"{ruta} — esa carpeta ya no existe")
+            else:
+                controles["donde"].setText(ruta)
+            controles["quitar"].setEnabled(bool(ruta))
+
+    def _elegir_carpeta(self, tipo):
+        actual = repo_autonomo.carpeta_de(tipo)
+        elegida = QFileDialog.getExistingDirectory(
+            self, "Dónde guardar los PDF", actual or str(Path.home())
+        )
+        if not elegida:
+            return
+        repo_autonomo.guardar_carpeta(tipo, elegida)
+        self._pintar_carpetas()
+
+    def _quitar_carpeta(self, tipo):
+        repo_autonomo.guardar_carpeta(tipo, "")
+        self._pintar_carpetas()
 
     def _pintar_copias(self):
         base = ruta_base_datos()

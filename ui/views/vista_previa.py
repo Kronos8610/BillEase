@@ -71,10 +71,13 @@ class VistaPrevia(QDialog):
     que lo que se ve aquí es exactamente lo que se guarda.
     """
 
-    def __init__(self, datos, totales=None, parent=None):
+    def __init__(self, datos, totales=None, carpeta="", parent=None):
         super().__init__(parent)
         self.datos = datos
         self.totales = totales
+        # Dónde se abre el diálogo de guardar: la carpeta de Ajustes para
+        # este tipo de documento, si la hay.
+        self.carpeta = carpeta
         self.referencia = str(datos.get("numero", "documento")) or "documento"
         es_presupuesto = datos.get("tipo") == "presupuesto"
         self.rotulo = "Presupuesto" if es_presupuesto else "Factura"
@@ -270,8 +273,11 @@ class VistaPrevia(QDialog):
         Se copia, no se vuelve a generar: lo que se guarda tiene que ser lo
         mismo que se acaba de ver, hasta la última coma.
         """
+        nombre = f"{self.referencia}.pdf"
+        if self.carpeta and Path(self.carpeta).is_dir():
+            nombre = str(Path(self.carpeta) / nombre)
         destino, _ = QFileDialog.getSaveFileName(
-            self, "Guardar PDF", f"{self.referencia}.pdf", "PDF (*.pdf)"
+            self, "Guardar PDF", nombre, "PDF (*.pdf)"
         )
         if not destino:
             return None

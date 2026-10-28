@@ -2,7 +2,7 @@
 
 import sqlite3
 
-from core.models import Autonomo
+from core.models import FACTURA, PRESUPUESTO, Autonomo
 from core.security import hashear, verificar
 from core.validators import normalizar_cp, normalizar_iban, normalizar_telefono
 from data.connection import conexion
@@ -73,6 +73,50 @@ def actualizar(autonomo):
     except sqlite3.IntegrityError:
         conn.rollback()
         return False
+
+
+# Qué columna guarda la carpeta de cada tipo de documento. El nombre del
+# tipo viene de `core.models`, y así no hay un `if` repartido por la interfaz.
+COLUMNA_CARPETA = {
+    FACTURA: "carpeta_facturas",
+    PRESUPUESTO: "carpeta_presupuestos",
+}
+
+
+def carpeta_de(tipo):
+    """
+    La carpeta donde van los PDF de ese tipo, o cadena vacía si no hay.
+
+    No comprueba que exista: eso lo mira quien va a escribir, que es quien
+    puede hacer algo al respecto si el disco externo no está puesto.
+    """
+    emisor = obtener()
+    if emisor is None or tipo not in COLUMNA_CARPETA:
+        return ""
+    return getattr(emisor, COLUMNA_CARPETA[tipo], "") or ""
+
+
+def guardar_carpeta(tipo, ruta):
+    """
+    Apunta en qué carpeta se guardan los PDF de ese tipo. Vacía, se quita.
+
+    Se guarda tal cual la eligió el usuario. Si deja de existir, el programa
+    vuelve a preguntar dónde guardar en lugar de fallar.
+    """
+    columna = COLUMNA_CARPETA.get(tipo)
+    if columna is None:
+        raise ValueError(f"no hay carpeta para «{tipo}»; hay {sorted(COLUMNA_CARPETA)}")
+
+    conn = conexion()
+    fila = conn.execute("SELECT DNI FROM Autonomo LIMIT 1").fetchone()
+    if fila is None:
+        return False
+    conn.execute(
+        f"UPDATE Autonomo SET {columna} = ? WHERE DNI = ?",
+        (str(ruta or "").strip() or None, fila["DNI"]),
+    )
+    conn.commit()
+    return True
 
 
 def guardar_logotipo(ruta):

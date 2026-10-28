@@ -259,6 +259,8 @@ def test_las_facturas_de_antes_no_tienen_obra_y_no_pasa_nada(base_migrada):
 
 
 def test_migrar_dos_veces_no_cambia_nada(base_v0):
+    from data.migrations import MIGRACIONES
+
     conn = abrir(base_v0)
     primera = migrar(conn, registrar=lambda *_: None)
     inventario_tras_la_primera = leer(base_v0)
@@ -266,7 +268,9 @@ def test_migrar_dos_veces_no_cambia_nada(base_v0):
     segunda = migrar(conn, registrar=lambda *_: None)
     conn.close()
 
-    assert primera == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    # Las versiones salen de la lista de migraciones y no escritas a mano:
+    # si no, añadir una migración rompe esta prueba por donde no es.
+    assert primera == [m.VERSION for m in MIGRACIONES]
     assert segunda == []
     assert leer(base_v0)["conteos"] == inventario_tras_la_primera["conteos"]
 
@@ -287,9 +291,10 @@ def test_una_base_a_medio_migrar_solo_aplica_lo_que_falta(base_v0):
         )
         conn.commit()
 
-    assert [m.VERSION for m in pendientes(conn)] == [4, 5, 6, 7, 8, 9, 10]
-    assert migrar(conn, registrar=lambda *_: None) == [4, 5, 6, 7, 8, 9, 10]
-    assert aplicadas(conn) == {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+    faltan = [m.VERSION for m in MIGRACIONES[3:]]
+    assert [m.VERSION for m in pendientes(conn)] == faltan
+    assert migrar(conn, registrar=lambda *_: None) == faltan
+    assert aplicadas(conn) == {m.VERSION for m in MIGRACIONES}
     conn.close()
 
 

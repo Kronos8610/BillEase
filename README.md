@@ -17,6 +17,7 @@ Está diseñada para autónomos que necesitan una herramienta ligera y fácil de
 - Saber qué está cobrado y qué queda por cobrar
 - Sacar el **resumen de IVA de cada trimestre** para el modelo 303
 - Ver cómo queda una factura **antes** de generarla
+- Que cada PDF caiga solo en su carpeta, sin elegirla cada vez
 - Exportar facturas en **PDF** y los datos en **CSV** para la gestoría
 
 No requiere conexión a internet, ni servidores externos. Todo queda guardado localmente en tu ordenador.
@@ -297,12 +298,21 @@ con plazos de vencimiento: una factura no cambia de estado porque pase el tiempo
 cuando dices que ha entrado el dinero. Y se puede deshacer, porque un recibo devuelto
 existe.
 
-### ⚙️ Ajustes: mis datos, logotipo, copias y exportación
+### ⚙️ Ajustes: mis datos, logotipo, carpetas, copias y exportación
 Tus datos de emisor —incluidos la entidad y el IBAN— se corrigen aquí: hasta ahora
 una errata en el NIF obligaba a empezar de cero. Además, tu logotipo en el papel,
 una copia de seguridad al cerrar —y cuando quieras—, y la exportación a CSV de
 documentos, conceptos y clientes. Restaurar una copia guarda antes lo que hubiera,
 así que equivocarse no es un camino de ida.
+
+**Dónde se guardan los PDF**: una carpeta para las facturas y otra para los
+presupuestos. Al generar el PDF va derecho a la suya, con su número de nombre y sin
+preguntar nada. Si ya hay un fichero con ese nombre, pregunta antes de pisarlo; si la
+carpeta ha dejado de existir —un disco externo sin poner—, lo dice y pregunta dónde
+guardar, sin tocar el ajuste. Dejando una en blanco se sigue preguntando cada vez,
+como antes.
+
+![Carpetas de los PDF](assets/carpetas_pdf.png)
 
 ![Ajustes](assets/ajustes.png)
 
