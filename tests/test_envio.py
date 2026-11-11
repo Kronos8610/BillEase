@@ -249,8 +249,12 @@ def test_por_whatsapp_se_guarda_el_pdf_se_copia_y_se_abre_el_chat(
 
     assert destino.read_bytes().startswith(b"%PDF")
     assert abiertos and abiertos[0].startswith("https://wa.me/34612345678?text=")
-    copiados = [u.toLocalFile() for u in QGuiApplication.clipboard().mimeData().urls()]
-    assert copiados == [str(destino)]
+    # Se comparan como rutas y no como texto: Qt las da con «/» y Windows
+    # con «\\», y son el mismo fichero.
+    from pathlib import Path
+
+    copiados = [Path(u.toLocalFile()) for u in QGuiApplication.clipboard().mimeData().urls()]
+    assert copiados == [destino]
     assert "Ctrl+V" in avisos[-1][2]
 
 
