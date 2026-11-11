@@ -76,6 +76,13 @@ jobs:
           Write-Host $linea
           if ($resultado -ne "success") { Write-Warning "Las pruebas no pasaron." }
 
+      - name: Comprobar que el llavero de Windows guarda y devuelve
+        # La contraseña del correo va al Administrador de credenciales. En
+        # Linux no hay llavero y las pruebas usan uno de mentira, así que
+        # esto es lo único que lo prueba de verdad.
+        run: |
+          python -c "from core import llavero; llavero.guardar('prueba@billease','secreto'); assert llavero.leer('prueba@billease') == 'secreto', 'no devuelve lo guardado'; llavero.borrar('prueba@billease'); assert llavero.leer('prueba@billease') == '', 'no se ha borrado'; print('El llavero de Windows funciona')"
+
       - name: Construir el programa
         run: pyinstaller --noconfirm billease.spec
 

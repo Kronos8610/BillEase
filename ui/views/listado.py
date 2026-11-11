@@ -17,10 +17,11 @@ Lo que antes no había y ahora sí:
   hay que hacer y el botón para hacerlo.
 """
 
+import io
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QKeySequence, QShortcut
+from PyQt6.QtCore import QMimeData, Qt, QUrl
+from PyQt6.QtGui import QDesktopServices, QGuiApplication, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
@@ -40,6 +41,7 @@ from PyQt6.QtWidgets import (
 )
 
 import theme
+from core import correo, llavero, whatsapp
 from core.cobros import TRANSICIONES as TRANSICIONES_COBRO
 from core.models import (
     ACEPTADO,
@@ -223,6 +225,8 @@ class Listado(QWidget):
                                        "Ver cómo queda antes de guardarlo (Ctrl+P)")
             self.boton_pdf = anadir("Generar PDF", "pdf", self._generar_pdf,
                                     "Guarda el documento en PDF")
+            self.boton_enviar = anadir("Enviármelo", "compartir", self._menu_enviar,
+                                       "Mandártelo a tu Gmail o a tu WhatsApp")
             self.boton_editar = anadir("Editar", "editar", self._editar,
                                        "También con doble clic en la fila")
         if self.categoria == FACTURAS:
@@ -582,6 +586,122 @@ class Listado(QWidget):
             )
             return
         previa.exec()
+
+    # ───────────────────────── enviármelo ─────────────────────────
+
+    def _menu_enviar(self):
+        if self.seleccionado() is None:
+            return
+        menu = QMenu(self)
+        menu.addAction("A mi Gmail", self._enviar_por_correo)
+        menu.addAction("A mi WhatsApp", self._enviar_por_whatsapp)
+        menu.exec(self.boton_enviar.mapToGlobal(self.boton_enviar.rect().bottomLeft()))
+
+    @staticmethod
+    def _resumen_de(documento, totales):
+        """«Factura 2026-001 · Construcciones Pérez S.L. · 650,38 €»."""
+        return (
+            f"{documento.rotulo.capitalize()} {documento.referencia} · "
+            f"{documento.cliente_nombre or 'sin cliente'} · {formatear(totales.total)} €"
+        )
+
+    def _enviar_por_correo(self):
+        """
+        Manda el PDF al Gmail del propio autónomo, adjunto.
+
+        Se maqueta en memoria y sale tal cual por el correo: no pasa por el
+        disco. La cuenta y su contraseña de aplicación se ponen en Ajustes.
+        """
+        preparado = self._para_el_pdf()
+        if preparado is None:
+            return
+        documento, datos, totales = preparado
+
+        emisor = repo_autonomo.obtener()
+        cuenta = (emisor.correo_envio if emisor else "") or ""
+        clave = llavero.leer(cuenta) if cuenta else ""
+        if not cuenta or not clave:
+            self._avisar(
+                "Falta configurar el correo",
+                "Para mandarte los PDF hay que poner una vez tu cuenta de Gmail "
+                "y su contraseña de aplicación. Está en Ajustes → «Enviarme los "
+                "PDF», con los pasos.",
+            )
+            return
+
+        resumen = self._resumen_de(documento, totales)
+        QGuiApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            memoria = io.BytesIO()
+            generar_documento_pdf(datos, memoria, totales=totales)
+            correo.enviar(
+                cuenta, clave, memoria.getvalue(), f"{documento.referencia}.pdf",
+                resumen, f"{resumen}\n\nEnviado desde BillEase.",
+            )
+        except correo.ErrorDeCorreo as e:
+            QGuiApplication.restoreOverrideCursor()
+            self._avisar("No se ha enviado", str(e))
+            return
+        except Exception as e:                                  # noqa: BLE001
+            QGuiApplication.restoreOverrideCursor()
+            QMessageBox.critical(
+                self, "No se ha enviado",
+                f"{documento.referencia} no se ha podido maquetar.\n\nMotivo: {e}",
+            )
+            return
+        QGuiApplication.restoreOverrideCursor()
+        self._informar("Enviado", f"{resumen}\n\nEstá en la bandeja de {cuenta}.")
+
+    def _enviar_por_whatsapp(self):
+        """
+        Abre el chat de WhatsApp con uno mismo y deja el PDF copiado.
+
+        WhatsApp no deja que un programa mande un fichero, así que el último
+        paso es del usuario: pegar con Ctrl+V y pulsar Intro. Lo demás
+        —guardar el PDF, copiarlo y abrir el chat— se hace aquí.
+        """
+        preparado = self._para_el_pdf()
+        if preparado is None:
+            return
+        documento, datos, totales = preparado
+
+        emisor = repo_autonomo.obtener()
+        resumen = self._resumen_de(documento, totales)
+        direccion = whatsapp.enlace(emisor.telefono if emisor else "", resumen)
+        if not direccion:
+            self._avisar(
+                "Falta tu teléfono",
+                "Para abrir tu chat de WhatsApp hace falta tu móvil. Ponlo en "
+                "Ajustes → «Mis datos».",
+            )
+            return
+
+        # Para pegarlo en WhatsApp el PDF tiene que ser un fichero de verdad,
+        # así que se guarda donde se guardan los demás.
+        ruta = self._donde_guardar(documento)
+        if not ruta:
+            return
+        try:
+            generar_documento_pdf(datos, ruta, totales=totales)
+        except Exception as e:                                  # noqa: BLE001
+            QMessageBox.critical(
+                self, "No se pudo generar el PDF",
+                f"{documento.referencia} no se ha podido escribir en {ruta}.\n\n"
+                f"Motivo: {e}",
+            )
+            return
+
+        copiado = QMimeData()
+        copiado.setUrls([QUrl.fromLocalFile(ruta)])
+        QGuiApplication.clipboard().setMimeData(copiado)
+        QDesktopServices.openUrl(QUrl(direccion))
+
+        self._informar(
+            "Pégalo en el chat",
+            f"Se ha abierto tu chat de WhatsApp y el PDF está copiado.\n\n"
+            f"Pulsa Ctrl+V dentro del chat y después Intro.\n\n"
+            f"Si no se pega, arrástralo desde:\n{ruta}",
+        )
 
     def _donde_guardar(self, documento):
         """

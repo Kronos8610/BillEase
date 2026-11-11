@@ -33,6 +33,7 @@ from data.migrations import (
     m009_logotipo,
     m010_obra_y_banco,
     m011_carpetas_pdf,
+    m012_correo_envio,
 )
 
 MIGRACIONES = (
@@ -47,6 +48,7 @@ MIGRACIONES = (
     m009_logotipo,
     m010_obra_y_banco,
     m011_carpetas_pdf,
+    m012_correo_envio,
 )
 
 

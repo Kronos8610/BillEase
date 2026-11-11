@@ -20,6 +20,10 @@ argon2-cffi==25.1.0
 # autónomo que compile una biblioteca en C para facturar no es una opción.
 cryptography==46.0.3
 
+# Guarda la contraseña de aplicación de Gmail en el llavero del sistema —el
+# Administrador de credenciales, en Windows— y no en la base de datos.
+keyring==25.7.0
+
 # --- Desarrollo y pruebas ---
 pytest==8.4.2
 pytest-qt==4.5.0

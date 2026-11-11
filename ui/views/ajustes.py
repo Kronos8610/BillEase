@@ -43,6 +43,8 @@ from core.validators import (
     formatear_iban,
     validar_formulario,
 )
+from core import correo, llavero
+from core.validators.contacto import es_email
 from data import backup, caja
 from data.repositories import autonomo as repo_autonomo
 from data.repositories import clientes as repo_clientes
@@ -109,6 +111,7 @@ class Ajustes(QWidget):
         self._montar_seguridad()
         self._montar_logotipo()
         self._montar_carpetas()
+        self._montar_envio()
         self._montar_copias()
         self._montar_exportacion()
         self.columna.addStretch()
@@ -308,6 +311,53 @@ class Ajustes(QWidget):
         self.carpetas[tipo] = {"donde": donde, "quitar": quitar}
         return fila
 
+    def _montar_envio(self):
+        """
+        La cuenta desde la que el programa se manda los PDF a sí misma.
+
+        Se entra con una contraseña de aplicación, no con la de la cuenta: la
+        da Google, sirve solo para esto y se anula cuando se quiera. Y se
+        guarda en el llavero del sistema, no en la base de datos.
+        """
+        dentro = self._tarjeta(
+            "Enviarme los PDF",
+            "El programa te manda la factura o el presupuesto a tu propio "
+            "Gmail, para tenerlo en el móvil. Hace falta una contraseña de "
+            "aplicación —no la de tu cuenta—: en myaccount.google.com, "
+            "Seguridad → Verificación en dos pasos → Contraseñas de "
+            "aplicaciones. Se guarda en el Administrador de credenciales de "
+            "Windows, no en la base de datos. El envío por WhatsApp no "
+            "necesita nada de esto: usa tu teléfono de «Mis datos».",
+        )
+
+        self.cuenta_envio = QLineEdit()
+        self.cuenta_envio.setPlaceholderText("tu.cuenta@gmail.com")
+        self.cuenta_envio.setMinimumHeight(32)
+        self.clave_envio = QLineEdit()
+        self.clave_envio.setEchoMode(QLineEdit.EchoMode.Password)
+        self.clave_envio.setMinimumHeight(32)
+
+        formulario = QFormLayout()
+        formulario.setSpacing(10)
+        formulario.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        formulario.addRow(etiqueta("Cuenta de Gmail"), self.cuenta_envio)
+        formulario.addRow(etiqueta("Contraseña de aplicación"), self.clave_envio)
+        dentro.addLayout(formulario)
+
+        self.estado_envio = etiqueta("", "Apunte")
+        self.estado_envio.setWordWrap(True)
+        dentro.addWidget(self.estado_envio)
+
+        botones = QHBoxLayout()
+        botones.setSpacing(8)
+        botones.addWidget(self._accion("Guardar", "aceptar", self._guardar_envio, "Primario"))
+        self.boton_prueba = self._accion("Enviarme una prueba", "enviar", self._probar_envio)
+        botones.addWidget(self.boton_prueba)
+        self.quitar_envio = self._accion("Quitar", "menos", self._quitar_envio, "Peligro")
+        botones.addWidget(self.quitar_envio)
+        botones.addStretch()
+        dentro.addLayout(botones)
+
     def _montar_copias(self):
         dentro = self._tarjeta(
             "Copias de seguridad",
@@ -365,6 +415,7 @@ class Ajustes(QWidget):
         self._pintar_seguridad()
         self._pintar_logotipo()
         self._pintar_carpetas()
+        self._pintar_envio()
         self._pintar_copias()
 
     def _pintar_mis_datos(self):
@@ -481,6 +532,77 @@ class Ajustes(QWidget):
             else:
                 controles["donde"].setText(ruta)
             controles["quitar"].setEnabled(bool(ruta))
+
+    def _pintar_envio(self):
+        emisor = repo_autonomo.obtener()
+        cuenta = (emisor.correo_envio if emisor else "") or ""
+        hay_clave = bool(cuenta and llavero.leer(cuenta))
+
+        self.cuenta_envio.setText(cuenta)
+        self.clave_envio.clear()
+        # La contraseña guardada no se vuelve a enseñar, ni con puntos: solo
+        # se dice que está.
+        self.clave_envio.setPlaceholderText(
+            "Guardada. Escribe otra solo si quieres cambiarla." if hay_clave
+            else "16 letras, como te las da Google"
+        )
+        self.estado_envio.setText(
+            f"Listo: los PDF se mandan a {cuenta}." if hay_clave
+            else "Todavía no está configurado." if not cuenta
+            else "Falta la contraseña de aplicación."
+        )
+        self.boton_prueba.setEnabled(hay_clave)
+        self.quitar_envio.setEnabled(bool(cuenta))
+
+    def _guardar_envio(self):
+        cuenta = self.cuenta_envio.text().strip().lower()
+        clave = correo.limpiar_clave(self.clave_envio.text())
+        if not es_email(cuenta):
+            self.estado_envio.setText("Esa dirección de correo no es válida.")
+            return False
+        if not clave and not llavero.leer(cuenta):
+            self.estado_envio.setText("Falta la contraseña de aplicación.")
+            return False
+
+        if clave:
+            try:
+                llavero.guardar(cuenta, clave)
+            except llavero.LlaveroNoDisponible as e:
+                QMessageBox.critical(
+                    self, "No se pudo guardar la contraseña",
+                    f"{e}\n\nNo se ha guardado en ningún otro sitio.",
+                )
+                return False
+        anterior = repo_autonomo.obtener()
+        if anterior and anterior.correo_envio and anterior.correo_envio != cuenta:
+            llavero.borrar(anterior.correo_envio)
+        repo_autonomo.guardar_correo_envio(cuenta)
+        self._pintar_envio()
+        return True
+
+    def _probar_envio(self):
+        emisor = repo_autonomo.obtener()
+        cuenta = (emisor.correo_envio if emisor else "") or ""
+        try:
+            correo.enviar(
+                cuenta, llavero.leer(cuenta), b"", "",
+                "BillEase · prueba de envío",
+                "Si lees esto, BillEase ya puede mandarte los PDF a este correo.",
+                adjuntar=False,
+            )
+        except correo.ErrorDeCorreo as e:
+            QMessageBox.warning(self, "La prueba no ha salido", str(e))
+            return
+        QMessageBox.information(
+            self, "Prueba enviada", f"Mira la bandeja de entrada de {cuenta}."
+        )
+
+    def _quitar_envio(self):
+        emisor = repo_autonomo.obtener()
+        if emisor and emisor.correo_envio:
+            llavero.borrar(emisor.correo_envio)
+        repo_autonomo.guardar_correo_envio("")
+        self._pintar_envio()
 
     def _elegir_carpeta(self, tipo):
         actual = repo_autonomo.carpeta_de(tipo)

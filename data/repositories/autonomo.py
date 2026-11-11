@@ -119,6 +119,25 @@ def guardar_carpeta(tipo, ruta):
     return True
 
 
+def guardar_correo_envio(cuenta):
+    """
+    Apunta desde qué cuenta de Gmail se mandan los PDF. Vacía, se quita.
+
+    Solo la dirección: la contraseña de aplicación va en el llavero del
+    sistema, no en la base.
+    """
+    conn = conexion()
+    fila = conn.execute("SELECT DNI FROM Autonomo LIMIT 1").fetchone()
+    if fila is None:
+        return False
+    conn.execute(
+        "UPDATE Autonomo SET correo_envio = ? WHERE DNI = ?",
+        (str(cuenta or "").strip().lower() or None, fila["DNI"]),
+    )
+    conn.commit()
+    return True
+
+
 def guardar_logotipo(ruta):
     """
     Apunta qué imagen encabeza los documentos. Con cadena vacía, se quita.

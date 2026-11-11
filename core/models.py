@@ -119,6 +119,9 @@ class Autonomo:
     # Dónde va cada PDF al generarlo. Vacías, se pregunta cada vez.
     carpeta_facturas: str = ""
     carpeta_presupuestos: str = ""
+    # La cuenta de Gmail desde la que el programa se manda los PDF a sí
+    # misma. La contraseña no está aquí: va en el llavero del sistema.
+    correo_envio: str = ""
 
     @property
     def nombre_completo(self):
@@ -146,6 +149,7 @@ class Autonomo:
             carpeta_presupuestos=(
                 fila["carpeta_presupuestos"] if "carpeta_presupuestos" in claves else ""
             ) or "",
+            correo_envio=(fila["correo_envio"] if "correo_envio" in claves else "") or "",
         )
 
 

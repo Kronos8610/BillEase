@@ -47,6 +47,10 @@ ocultos = [
     # ejecutable arranca y el botón «Vista previa» no enseña nada.
     "PyQt6.QtPdf",
     "PyQt6.QtPdfWidgets",
+    # El llavero de Windows, donde va la contraseña del correo. `keyring`
+    # elige su motor al arrancar, por nombre: si no viaja, no hay dónde
+    # guardarla y «Enviármelo» por Gmail no se puede configurar.
+    "keyring.backends.Windows",
 ]
 
 a = Analysis(

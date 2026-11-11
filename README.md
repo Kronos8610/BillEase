@@ -18,6 +18,7 @@ Está diseñada para autónomos que necesitan una herramienta ligera y fácil de
 - Sacar el **resumen de IVA de cada trimestre** para el modelo 303
 - Ver cómo queda una factura **antes** de generarla
 - Que cada PDF caiga solo en su carpeta, sin elegirla cada vez
+- Mandarte el PDF a tu Gmail o a tu WhatsApp
 - Exportar facturas en **PDF** y los datos en **CSV** para la gestoría
 
 No requiere conexión a internet, ni servidores externos. Todo queda guardado localmente en tu ordenador.
@@ -301,6 +302,20 @@ cliente y lo que se le cobra, así que no pasa por la carpeta temporal ni un mom
 que no se escribe no se puede quedar.
 
 ![Vista previa](assets/vista_previa.png)
+
+### 📤 Enviármelo
+El programa te manda el documento **a ti**, no al cliente: para tenerlo en el móvil o
+reenviarlo desde ahí. Está en la barra de la lista, «Enviármelo», con dos destinos:
+
+- **A mi Gmail.** Sale solo, con el PDF adjunto y el número, el cliente y el total en
+  el asunto. Se configura una vez en **Ajustes → Enviarme los PDF** con tu cuenta y una
+  *contraseña de aplicación* de Google —no la de tu cuenta—, que se saca en
+  `myaccount.google.com` → Seguridad → Verificación en dos pasos → Contraseñas de
+  aplicaciones, y se anula cuando quieras. Se guarda en el Administrador de
+  credenciales de Windows, **no en la base de datos**.
+- **A mi WhatsApp.** WhatsApp no deja que un programa mande un fichero, así que aquí el
+  último paso es tuyo: el programa guarda el PDF, lo deja copiado y abre tu chat
+  contigo mismo; tú pulsas **Ctrl+V** e **Intro**. Usa tu móvil de «Mis datos».
 
 ### 📥 Exportar a PDF
 Genera el PDF de cualquier factura o presupuesto con los datos del emisor, del cliente,
